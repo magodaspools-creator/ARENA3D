@@ -207,7 +207,8 @@ export class UI {
       const item = itemId ? this.game.getItem(itemId) : null;
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = 'equip-slot' + (item ? ' filled' : '');
+      el.className = 'equip-slot equip-slot-' + slotName + (item ? ' filled' : '');
+      el.dataset.slot = slotName;
       el.title = item
         ? item.name + ' — clique para desequipar'
         : equipmentLabels[slotName];
