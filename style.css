@@ -372,7 +372,7 @@ button:hover { filter: brightness(1.1); }
   pointer-events: auto;
 }
 .inventory-panel {
-  width: min(900px, calc(100vw - 32px));
+  width: min(980px, calc(100vw - 32px));
   padding: 20px;
   background: linear-gradient(145deg, rgba(20,20,27,.98), rgba(9,11,17,.98));
   border: 1px solid rgba(232,199,122,.45);
@@ -403,8 +403,8 @@ button:hover { filter: brightness(1.1); }
 
 .inventory-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 22px;
   align-items: start;
 }
 .inventory-backpack,
@@ -412,11 +412,11 @@ button:hover { filter: brightness(1.1); }
   min-width: 0;
 }
 .inventory-paperdoll {
-  padding-left: 18px;
+  padding-left: 22px;
   border-left: 1px solid rgba(232,199,122,.16);
 }
 .equipment-title {
-  margin-bottom: 9px;
+  margin: 0 0 10px;
   color: #b8aa91;
   font-family: Georgia, serif;
   font-size: 12px;
@@ -424,9 +424,103 @@ button:hover { filter: brightness(1.1); }
   text-transform: uppercase;
 }
 
+/* Equipamento em formato de paper-doll, inspirado na organização clássica do Tibia.
+   O centro fica livre visualmente para a armadura; peças periféricas não ficam espremidas. */
+#equipment-grid {
+  width: 286px;
+  margin: 4px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 82px);
+  grid-template-rows: repeat(4, 82px);
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+.equip-slot {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  min-width: 0;
+  padding: 5px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(232,199,122,.18);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(232,199,122,.06), transparent 58%),
+    rgba(255,255,255,.025);
+  color: #e8e2d4;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+  cursor: pointer;
+}
+.equip-slot:hover {
+  border-color: rgba(232,199,122,.55);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(232,199,122,.11), transparent 58%),
+    rgba(255,255,255,.07);
+}
+.equip-slot.filled {
+  border-color: rgba(232,199,122,.38);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(232,199,122,.09), transparent 62%),
+    rgba(232,199,122,.035);
+}
+
+/* Posições do conjunto: cabeça / amuleto / anel,
+   arma / armadura / escudo,
+   vazio / pernas / vazio,
+   vazio / botas / vazio. */
+.equip-slot-head   { grid-column: 2; grid-row: 1; }
+.equip-slot-amulet { grid-column: 1; grid-row: 1; }
+.equip-slot-ring   { grid-column: 3; grid-row: 1; }
+.equip-slot-weapon { grid-column: 1; grid-row: 2; }
+.equip-slot-armor  { grid-column: 2; grid-row: 2; }
+.equip-slot-shield { grid-column: 3; grid-row: 2; }
+.equip-slot-legs   { grid-column: 2; grid-row: 3; }
+.equip-slot-boots  { grid-column: 2; grid-row: 4; }
+
+.equip-slot-label {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(143,134,114,.78);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .45px;
+  text-align: center;
+  pointer-events: none;
+}
+.equip-slot-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  color: #a99b82;
+  font-size: 30px;
+  line-height: 1;
+}
+.equip-body-glyph {
+  opacity: .42;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+.equip-item-sprite {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.6));
+}
+.equip-slot-item {
+  display: none;
+}
+
 #inventory-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 7px;
 }
 .inv-slot {
@@ -454,10 +548,11 @@ button:hover { filter: brightness(1.1); }
   border-color: rgba(255,255,255,.04);
 }
 .inv-icon {
-  font-size: 24px;
-  line-height: 1;
-  color: #e8c77a;
-  text-shadow: 0 0 12px rgba(232,199,122,.35);
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.55));
 }
 .inv-name {
   width: 100%;
@@ -474,83 +569,26 @@ button:hover { filter: brightness(1.1); }
   color: #e8c77a;
   font-size: 10px;
 }
+.inv-glyph { display: grid; place-items: center; font-size: 30px; }
 
-/* Paper-doll: oito slots, cada um representando visualmente uma parte do corpo. */
-#equipment-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-.equip-slot {
-  position: relative;
-  min-width: 0;
-  min-height: 92px;
-  padding: 7px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 6px;
-  background: rgba(255,255,255,.035);
-  color: #e8e2d4;
-  box-shadow: none;
-}
-.equip-slot:hover {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(232,199,122,.45);
-}
-.equip-slot-label {
-  color: #7f7667;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: .7px;
-}
-.equip-slot-icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  color: #a99b82;
-  font-size: 28px;
-  line-height: 1;
-}
-.equip-body-glyph {
-  opacity: .6;
-  text-shadow: 0 2px 8px rgba(0,0,0,.7);
-}
-.equip-item-sprite {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,.55));
-}
-.equip-slot.filled {
-  border-color: rgba(232,199,122,.25);
-}
-.equip-slot-item {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #d6c8ad;
-  font-family: Georgia, serif;
-  font-size: 9px;
-}
 .inventory-hint {
   margin-top: 12px;
   color: #8f8672;
   font-size: 11px;
   text-align: center;
 }
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .inventory-panel { width: min(620px, calc(100vw - 24px)); padding: 14px; }
   .inventory-layout { grid-template-columns: 1fr; gap: 14px; }
-  .inventory-paperdoll { padding-left: 0; border-left: 0; border-top: 1px solid rgba(232,199,122,.16); padding-top: 12px; }
-  #inventory-grid { grid-template-columns: repeat(4, 1fr); }
-  #inventory-btn { bottom: 44px; right: 10px; }
+  .inventory-paperdoll {
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(232,199,122,.16);
+  }
+  #equipment-grid { width: 274px; grid-template-columns: repeat(3, 78px); grid-template-rows: repeat(4, 78px); gap: 10px; }
+  .equip-slot { width: 78px; height: 78px; }
+  .equip-item-sprite, .equip-slot-icon { width: 52px; height: 52px; }
+  #inventory-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 /* ---------- overlay controls / item sprites ---------- */
 .overlay-close {
@@ -683,18 +721,6 @@ button:hover { filter: brightness(1.1); }
   box-shadow: 0 0 14px rgba(232,199,122,.16);
 }
 .loot-drop b { font-weight: normal; }
-
-.equipment-title { margin: 12px 0 7px; color: #e8c77a; font: 12px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; }
-#equipment-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-.equip-slot { min-width: 0; height: 68px; padding: 5px; display: grid; grid-template-columns: 1fr; grid-template-rows: 15px 1fr 16px; align-items: center; justify-items: center; border: 1px solid rgba(232,199,122,.18); border-radius: 5px; background: rgba(255,255,255,.025); color: #e8e2d4; box-shadow: none; cursor: pointer; }
-.equip-slot.filled { border-color: rgba(232,199,122,.38); background: rgba(232,199,122,.045); }
-.equip-slot:hover { border-color: rgba(232,199,122,.55); background: rgba(255,255,255,.07); }
-.equip-slot-label { color: #8f8672; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; }
-.equip-slot-icon { font-size: 23px; line-height: 1; color: #e8c77a; }
-.equip-slot-item { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
-.equip-slot-empty { color: #555; font-size: 18px; }
-@media (max-width: 700px) { #equipment-grid { grid-template-columns: repeat(4, 1fr); } .equip-slot { height: 62px; } }
-
 
 /* ---------- action bar ---------- */
 #action-bar {
