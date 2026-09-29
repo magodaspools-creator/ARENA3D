@@ -59,7 +59,7 @@ export class CharacterState {
         xp: Math.max(0, Math.floor(saved.xp || 0)),
         gold: Math.max(0, Math.floor(saved.gold || 0)),
         equipment: this.sanitizeEquipment(saved),
-        actionBar: Array.isArray(saved.actionBar) ? Array.from({ length: 6 }, (_, i) => typeof saved.actionBar[i] === 'string' ? saved.actionBar[i] : null) : Array(6).fill(null),
+        actionBar: this.sanitizeActionBar(saved.actionBar),
         inventory: Array.isArray(saved.inventory)
           ? saved.inventory
               .filter((item) => item && typeof item.id === 'string')
@@ -318,10 +318,29 @@ export class CharacterState {
     return this.data.actionBar;
   }
 
+  sanitizeActionBar(actionBar) {
+    const result = Array(6).fill(null);
+    const used = new Set();
+    if (!Array.isArray(actionBar)) return result;
+    for (let i = 0; i < 6; i++) {
+      const itemId = typeof actionBar[i] === 'string' ? actionBar[i] : null;
+      if (!itemId || used.has(itemId)) continue;
+      result[i] = itemId;
+      used.add(itemId);
+    }
+    return result;
+  }
+
   setActionBarSlot(index, itemId = null) {
     const slot = Math.floor(index);
     if (slot < 0 || slot >= 6) return false;
-    this.data.actionBar[slot] = itemId || null;
+    const id = itemId || null;
+    if (id) {
+      for (let i = 0; i < 6; i++) {
+        if (i !== slot && this.data.actionBar[i] === id) this.data.actionBar[i] = null;
+      }
+    }
+    this.data.actionBar[slot] = id;
     this.save();
     return true;
   }
