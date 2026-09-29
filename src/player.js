@@ -128,7 +128,10 @@ export class Player {
       this.dashT -= dt;
       this.vel.copy(this.dashDir).multiplyScalar(this.dashSpeed);
       if (Math.random() < 0.7) g.fx.emit(V.copy(this.pos).setY(0.2), { count: 1, color: 0x8a7a66, speed: 1, life: 0.5, size: 0.5, drag: 2 });
-      if (this.dashHits) g.combat.aoe(this.pos, 1.7, this.voc.ability.damage, this.voc.ability.color, this.dashHits);
+      if (this.dashHits) {
+        const dashDamage = characterStats ? [characterStats.abilityMin, characterStats.abilityMax] : this.voc.ability.damage;
+        g.combat.aoe(this.pos, 1.7, dashDamage, this.voc.ability.color, this.dashHits, this.damageContext('physical', characterStats));
+      }
       if (this.dashT <= 0) this.dashHits = null;
     } else {
       const speed = (characterStats?.speed ?? this.voc.speed) * (this.slowT > 0 ? 0.55 : 1);
@@ -177,6 +180,14 @@ export class Player {
     return this.pos.clone().addScaledVector(dir, 0.7);
   }
 
+  damageContext(damageType, stats) {
+    return {
+      damageType,
+      critChance: stats?.critChance ?? 0.12,
+      critMultiplier: stats?.critMultiplier ?? 1.6,
+    };
+  }
+
   attack(target) {
     const g = this.game, a = this.voc.attack, s = g.character?.stats;
     this.attackCd = s?.attackCooldown ?? a.cooldown;
@@ -190,14 +201,18 @@ export class Player {
         const range = s?.attackRange ?? a.range;
         const damage = s ? [s.attackMin, s.attackMax] : a.damage;
         g.fx.slash(this.pos, dir, range, a.arc, a.color);
-        g.combat.meleeArc(this.pos, dir, range, a.arc, damage, a.color);
+        g.combat.meleeArc(this.pos, dir, range, a.arc, damage, a.color, this.damageContext('physical', s));
       });
     } else {
       g.schedule(0.14, () => {
         if (this.dead) return;
         const range = s?.attackRange ?? a.range;
         const damage = s ? [s.attackMin, s.attackMax] : a.damage;
-        g.combat.spawn({ team: 'player', pos: this.muzzle(dir), dir, speed: a.speed, range, damage, visual: a.visual, color: a.color, splash: a.splash });
+        g.combat.spawn({
+          team: 'player', pos: this.muzzle(dir), dir, speed: a.speed, range, damage,
+          visual: a.visual, color: a.color, splash: a.splash,
+          ...this.damageContext('physical', s),
+        });
       });
     }
   }
@@ -214,7 +229,7 @@ export class Player {
           g.fx.ring(this.pos, ab.color, ab.radius, 0.45, 1);
           g.fx.ring(this.pos, 0xffffff, ab.radius * 0.8, 0.3, 0.6);
           g.fx.emit(V.copy(this.pos).setY(1), { count: 40, color: ab.color, speed: 9, life: 0.4, flat: true, size: 0.35, drag: 5 });
-          if (g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color)) g.hitstop = 0.08;
+          if (g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color, undefined, this.damageContext('physical', s))) g.hitstop = 0.08;
           g.rig.shake(0.3);
         });
         break;
@@ -225,7 +240,12 @@ export class Player {
           for (let i = 0; i < ab.count; i++) {
             const ang = Math.atan2(dir.x, dir.z) + (i / (ab.count - 1) - 0.5) * ab.spread;
             const d = new THREE.Vector3(Math.sin(ang), 0, Math.cos(ang));
-            g.combat.spawn({ team: 'player', pos: this.muzzle(d), dir: d, speed: 30, range: 20, damage: s ? [s.abilityMin, s.abilityMax] : ab.damage, visual: 'arrow', color: ab.color });
+            g.combat.spawn({
+              team: 'player', pos: this.muzzle(d), dir: d, speed: 30, range: 20,
+              damage: s ? [s.abilityMin, s.abilityMax] : ab.damage,
+              visual: 'arrow', color: ab.color,
+              ...this.damageContext('physical', s),
+            });
           }
           g.fx.emit(V.copy(this.pos).setY(1.3), { count: 20, color: ab.color, speed: 3, life: 0.5 });
         });
@@ -247,7 +267,7 @@ export class Player {
           g.fx.ring(t, 0xff7a1a, ab.radius * 1.2, 0.6);
           g.fx.emit(V.copy(t).setY(0.5), { count: 80, color: 0xff6a1a, speed: 11, up: 3, life: 0.8, size: 0.6, gravity: 8, drag: 2 });
           g.fx.emit(V.copy(t).setY(0.5), { count: 20, color: 0x442211, speed: 3, up: 2, life: 1.6, size: 1.2, drag: 1 });
-          g.combat.aoe(t, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color);
+          g.combat.aoe(t, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color, undefined, this.damageContext('magic', s));
           g.rig.shake(0.7);
         });
         break;
@@ -258,7 +278,7 @@ export class Player {
         g.fx.beam(this.pos, ab.color, 6, 1.0, 1.0);
         g.fx.ring(this.pos, ab.color, ab.radius, 0.7);
         g.fx.emit(V.copy(this.pos).setY(0.5), { count: 50, color: ab.color, speed: 4, up: 2.5, life: 1.2, size: 0.4, drag: 2 });
-        g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color);
+        g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color, undefined, this.damageContext('magic', s));
         break;
       case 'dash':
         this.face(dir, 0.3);
