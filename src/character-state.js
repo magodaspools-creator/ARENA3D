@@ -81,7 +81,7 @@ export class CharacterState {
     const oldLevel = this.level;
     this.data.xp += gained;
 
-    while (this.level < 200 && this.xp >= this.nextLevelXP) {
+    while (this.xp >= this.nextLevelXP) {
       this.data.level++;
     }
 
