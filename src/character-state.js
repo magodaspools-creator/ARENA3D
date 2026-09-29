@@ -33,7 +33,7 @@ function fresh(vocation) {
     xp: 0,
     gold: 0,
     inventory: [],
-    equipment: {},
+    equipment: { ...(STARTER_EQUIPMENT[vocation] || {}) },
   };
 }
 
