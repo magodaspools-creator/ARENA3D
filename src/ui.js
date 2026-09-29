@@ -165,6 +165,10 @@ export class UI {
         '<div><div class="profile-vocation">' + (voc?.name || character.vocation) + '</div><div class="profile-title">' + (voc?.title || '') + '</div>' +
         '<div class="profile-level">Nível ' + character.level + '</div></div>' +
       '</div>' +
+      '<div class="profile-section-title">Equipamentos</div>' +
+      '<div class="profile-grid profile-equipment">' +
+        ['head','armor','legs','boots','weapon','shield','amulet','ring'].map(slot => '<div><span>' + slot + '</span><b>' + (character.equipment?.[slot] ? (this.game.getItem(character.equipment[slot])?.name || '—') : '—') + '</b></div>').join('') +
+      '</div>' +
       '<div class="profile-section-title">Atributos</div>' +
       '<div class="profile-grid profile-stats">' +
         '<div><span>Vida máxima</span><b>' + stats.maxHp + '</b></div>' +
