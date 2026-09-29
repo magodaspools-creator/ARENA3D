@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
-  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest, createSecretGate,
+  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest, createSecretGate, createLever,
 } from '../world.js';
 import { NPC } from '../npc.js';
 import { Enemy } from '../enemy.js';
@@ -180,7 +180,7 @@ export function createArea1(game) {
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
-  const secretLever = createRuneStone(game, 19.2, 9.0);
+  const secretLever = createLever(game, 19.2, 9.0, -0.35);
   const chest = createChest(game, 15.5, 10.5, 0.2);
   const secretGate = createSecretGate(game, 23, 10.0, Math.PI / 2, 3.0);
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
@@ -231,7 +231,7 @@ export function createArea1(game) {
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
   if (prog.counters.chestOpened) chest.restoreOpen();
-  if (prog.counters.secretOpened) secretGate.restoreOpen();
+  if (prog.counters.secretOpened) { secretGate.restoreOpen(); secretLever.restorePulled(); }
 
   game.interaction.add({
     pos: chest.pos, radius: 2.5, height: 2.0,
@@ -263,6 +263,7 @@ export function createArea1(game) {
     enabled: () => !prog.counters.secretOpened,
     onInteract: () => {
       prog.setCounter('secretOpened', true);
+      secretLever.pull();
       secretGate.openGate();
       game.ui.toast('Um mecanismo antigo se move... uma passagem se abre na muralha.');
       game.ui.banner('ATALHO DESCOBERTO', 'A passagem lateral reconecta as ruínas à entrada.', 'victory', 3.2);
@@ -418,6 +419,7 @@ export function createArea1(game) {
       braziers.forEach((b) => b.update(dt, t));
       gate.update(dt, t);
       secretGate.update(dt, t);
+      secretLever.update(t);
       portal.update(dt, t);
       const p = game.player;
       barrierMat.opacity += ((barrierCol.enabled ? 0.45 + Math.sin(t * 4) * 0.1 : 0) - barrierMat.opacity) * Math.min(1, dt * 4);
