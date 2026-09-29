@@ -139,7 +139,7 @@ export class UI {
       el.innerHTML = '<img class="inv-icon" alt=""><span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
       if (item.sprite) el.querySelector('.inv-icon').src = item.sprite;
       el.querySelector('.inv-name').textContent = item.name;
-      el.onclick = () => this.game.useItem(slot.id);
+      el.onclick = () => this.game.equipItem(slot.id) || this.game.useItem(slot.id);
       grid.appendChild(el);
     }
 
