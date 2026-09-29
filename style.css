@@ -338,9 +338,10 @@ button:hover { filter: brightness(1.1); }
   background: rgba(255,255,255,.05);
 }
 @media (max-width: 600px) {
-  .shop-item-card { grid-template-columns: 68px 1fr; }
-  .shop-icon { width: 60px; height: 60px; }
-  .shop-price { grid-column: 2; text-align: left; }
+  .shop-item-card { grid-template-columns: 56px 1fr; }
+  .shop-icon { width: 52px; height: 52px; }
+  .shop-buy-col { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; }
+  .shop-price { text-align: left; }
   .shop-actions { justify-content: stretch; }
   .shop-actions button { flex: 1; }
 }
