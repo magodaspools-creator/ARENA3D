@@ -290,7 +290,7 @@ class Game {
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
           this.ui.toast(item.name + ' comprada: -' + price + ' ouro');
-          this.ui.fx?.ring?.(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
+          this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
           render();
         },
         onClose: () => this.closeShop(),
