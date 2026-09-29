@@ -233,7 +233,7 @@ export function createArea1(game) {
     look: { skin: 0xb98268, body: 0x5a4636, legs: 0x30271f, robe: 0x6a5542, hood: 0x46372c, head: 'hood', accent: 0xd0a45f },
     dialogue: () => ({
       lines: [
-        'Tenho algumas mercadorias úteis para quem pretende atravessar as ruínas.',
+        'Tenho algumas mercadorias úteis para quem pretende atravessar as ruínas. Também mantenho alguns equipamentos simples para quem ainda está começando.',
         'Não espere pechincha: a estrada até Vhal está cada vez mais perigosa.',
         'Escolha o que precisar e pague em ouro. Volte quando quiser reabastecer.',
       ],
@@ -246,6 +246,14 @@ export function createArea1(game) {
           { itemId: 'iron_scrap', price: 12 },
           { itemId: 'wisp_essence', price: 25 },
           { itemId: 'moon_herb', price: 40 },
+
+          // Equipamentos iniciais do comerciante: acima dos achados dos mobs,
+          // mas ainda claramente pertencentes à progressão da Área 1.
+          { itemId: 'leather_cap', price: 65 },
+          { itemId: 'reinforced_leggings', price: 72 },
+          { itemId: 'leather_boots', price: 68 },
+          { itemId: 'warding_amulet', price: 85 },
+          { itemId: 'iron_buckler', price: 95 },
         ],
       });
     },
