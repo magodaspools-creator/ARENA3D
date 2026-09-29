@@ -506,3 +506,74 @@ export function createChest(game, x, z, rot = 0) {
     },
   };
 }
+
+
+/** Hidden shortcut gate: a small ruined arch that opens a passage through a wall. */
+export function createSecretGate(game, x, z, rot = 0, width = 2.8) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rot;
+
+  const stone = mat(0x555960, { rough: 0.85 });
+  const metal = mat(0x272a2e, { metal: 0.75, rough: 0.4 });
+
+  for (const s of [-1, 1]) {
+    g.add(mesh(new THREE.BoxGeometry(0.65, 3.6, 1.0), stone, s * (width / 2 + 0.4), 1.8, 0));
+  }
+  g.add(mesh(new THREE.BoxGeometry(width + 1.4, 0.55, 1.0), stone, 0, 3.65, 0));
+
+  const bars = new THREE.Group();
+  for (let bx = -width / 2 + 0.3; bx <= width / 2 - 0.2; bx += 0.48) {
+    bars.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 3.0, 5), metal, bx, 1.5, 0));
+  }
+  g.add(bars);
+
+  const rune = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.54, 6), glow(0x7ad7ff, 1.8));
+  rune.position.set(0, 2.2, 0.56);
+  rune.rotation.x = Math.PI / 2;
+  g.add(rune);
+
+  const light = new THREE.PointLight(0x5fc8ff, 7, 7, 1.6);
+  light.position.set(0, 2.0, 0.8);
+  g.add(light);
+
+  game.scene.add(g);
+  const collider = game.collision.addBox(x - 0.55, x + 0.55, z - width / 2, z + width / 2);
+
+  const gate = {
+    pos: new THREE.Vector3(x, 0, z),
+    open: false,
+    openT: 0,
+    openGate() {
+      if (gate.open) return;
+      gate.open = true;
+      gate.openT = 0;
+      game.fx.emit(new THREE.Vector3(x, 1.8, z), {
+        count: 55, color: 0x7ad7ff, speed: 5, up: 1.8, life: 0.9, size: 0.35,
+      });
+      game.fx.ring(new THREE.Vector3(x, 0.15, z), 0x7ad7ff, 2.2, 0.5);
+    },
+    restoreOpen() {
+      gate.open = true;
+      gate.openT = 1;
+      bars.position.y = -3.8;
+      rune.visible = false;
+      light.intensity = 0.4;
+      collider.enabled = false;
+    },
+    update(dt, t) {
+      rune.rotation.z = t * 0.8;
+      if (!gate.open) {
+        light.intensity = 6 + Math.sin(t * 3) * 1.5;
+        return;
+      }
+      gate.openT = Math.min(1, gate.openT + dt * 2.8);
+      const k = smooth(gate.openT);
+      bars.position.y = -3.8 * k;
+      rune.visible = gate.openT < 0.85;
+      light.intensity = 7 * (1 - k) + 0.4;
+      if (gate.openT >= 1) collider.enabled = false;
+    },
+  };
+  return gate;
+}
