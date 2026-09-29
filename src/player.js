@@ -185,6 +185,7 @@ export class Player {
       damageType,
       critChance: stats?.critChance ?? 0.12,
       critMultiplier: stats?.critMultiplier ?? 1.6,
+      bonus: damageType === 'magic' ? (stats?.magicPower ?? 0) : (stats?.physicalPower ?? 0),
     };
   }
 
