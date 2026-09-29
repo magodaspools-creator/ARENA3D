@@ -192,6 +192,7 @@ export class UI {
       el.draggable = true;
       el.addEventListener('dragstart', (event) => {
         event.dataTransfer?.setData('text/plain', item.id);
+        event.dataTransfer?.setData('application/x-arena-inventory', '1');
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
         el.classList.add('dragging');
       });
