@@ -58,6 +58,7 @@ export class CharacterState {
         xp: Math.max(0, Math.floor(saved.xp || 0)),
         gold: Math.max(0, Math.floor(saved.gold || 0)),
         equipment: this.sanitizeEquipment(saved),
+        actionBar: Array.isArray(saved.actionBar) ? Array.from({ length: 6 }, (_, i) => typeof saved.actionBar[i] === 'string' ? saved.actionBar[i] : null) : Array(6).fill(null),
         inventory: Array.isArray(saved.inventory)
           ? saved.inventory
               .filter((item) => item && typeof item.id === 'string')
@@ -310,6 +311,18 @@ export class CharacterState {
 
   get inventory() {
     return this.data.inventory;
+  }
+
+  get actionBar() {
+    return this.data.actionBar;
+  }
+
+  setActionBarSlot(index, itemId = null) {
+    const slot = Math.floor(index);
+    if (slot < 0 || slot >= 6) return false;
+    this.data.actionBar[slot] = itemId || null;
+    this.save();
+    return true;
   }
 
   get inventorySlots() {
