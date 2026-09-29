@@ -14,6 +14,7 @@ import { Dialogue } from './npc.js';
 import { Player } from './player.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
+import { getItem } from './items.js';
 import { createArea1 } from './areas/area1.js';
 
 const FOG = 0x0b1220;
@@ -71,7 +72,10 @@ class Game {
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
     addEventListener('resize', () => this.resize());
-    addEventListener('keydown', (e) => { if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp(); });
+    addEventListener('keydown', (e) => {
+      if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
+      if (e.code === 'KeyI' && (this.state === 'play' || this.state === 'inventory')) this.toggleInventory();
+    });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
 
@@ -136,17 +140,62 @@ class Game {
 
   addEnemy(e) { this.enemies.push(e); return e; }
 
-  onEnemyKilled(e) {
+  onEnemyKilled(e, loot = []) {
     if (!e.isBoss) {
       this.stats.kills++;
       const reward = e.rewards || { xp: 0, gold: 0 };
       this.rewardCharacter(reward.xp, reward.gold);
+      this.grantLoot(loot);
     }
     this.area.onEnemyKilled(e);
   }
 
-  onBossDefeated(reward = { xp: 0, gold: 0 }) {
+  onBossDefeated(reward = { xp: 0, gold: 0, loot: [] }) {
     this.rewardCharacter(reward.xp, reward.gold);
+    this.grantLoot(reward.loot || []);
+  }
+
+  grantLoot(drops = []) {
+    if (!this.character) return;
+    for (const drop of drops) {
+      const item = getItem(drop.itemId);
+      if (!item) continue;
+      const amount = Math.max(1, Math.floor(drop.amount || 1));
+      this.character.addItem(item.id, amount, item.maxStack);
+      this.ui.toast('+' + amount + ' ' + item.name, 2.5);
+    }
+    this.ui.setInventory(this.character);
+  }
+
+  getItem(itemId) {
+    return getItem(itemId);
+  }
+
+  useItem(itemId) {
+    if (!this.character || !this.player || this.player.dead) return;
+    const item = getItem(itemId);
+    if (!item?.effect) return;
+    if (item.effect.type === 'healPercent') {
+      if (this.player.hp >= this.player.maxHp) {
+        this.ui.toast('Sua vida já está cheia.');
+        return;
+      }
+      if (!this.character.removeItem(itemId, 1)) return;
+      this.player.heal(this.player.maxHp * item.effect.value, true);
+      this.ui.setInventory(this.character);
+    }
+  }
+
+  toggleInventory() {
+    if (this.state === 'play') {
+      this.state = 'inventory';
+      this.inputLocked = true;
+      this.ui.showInventory(this.character);
+    } else if (this.state === 'inventory') {
+      this.state = 'play';
+      this.inputLocked = false;
+      this.ui.hideInventory();
+    }
   }
 
   rewardCharacter(xp, gold) {
