@@ -41,10 +41,11 @@ export class Dialogue {
 
 export class NPC {
   /** dialogue(): returns { lines, onDone } for the current quest state */
-  constructor(game, { name, x, z, facing = 0, look, dialogue }) {
+  constructor(game, { name, x, z, facing = 0, look, dialogue, service = null }) {
     this.game = game;
     this.name = name;
     this.dialogue = dialogue;
+    this.service = service;
     this.rig = createHumanoid(look);
     this.rig.handR.add(createWeapon('lanternStaff'));
     this.root = this.rig.root;
@@ -77,7 +78,11 @@ export class NPC {
   }
   talk() {
     const d = this.dialogue();
-    this.game.dialogue.open(this.name, d.lines, this.head, d.onDone);
+    const onDone = () => {
+      if (d.onDone) d.onDone();
+      if (this.service) this.service();
+    };
+    this.game.dialogue.open(this.name, d.lines, this.head, onDone);
     this.anim.attack('cast', 0.8);
   }
   update(dt) {
