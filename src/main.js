@@ -254,7 +254,9 @@ class Game {
     if (!this.character || !this.player || this.player.dead) return false;
     const itemId = this.character.actionBar?.[index];
     if (!itemId) return false;
-    return this.useItem(itemId);
+    const used = this.useItem(itemId);
+    if (used) this.ui.flashActionBarSlot(index);
+    return used;
   }
 
   toggleInventory() {
