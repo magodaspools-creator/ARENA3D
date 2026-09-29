@@ -396,3 +396,78 @@ button:hover { filter: brightness(1.1); }
 .equip-slot-item { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
 .equip-slot-empty { color: #555; font-size: 18px; }
 @media (max-width: 700px) { #equipment-grid { grid-template-columns: repeat(4, 1fr); } .equip-slot { height: 62px; } }
+
+
+/* ---------- action bar ---------- */
+#action-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(6, 58px);
+  gap: 6px;
+  z-index: 50;
+  pointer-events: auto;
+}
+.action-slot {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(232,199,122,.38);
+  border-radius: 6px;
+  background: linear-gradient(145deg, rgba(20,22,30,.92), rgba(7,9,14,.92));
+  color: #e8e2d4;
+  box-shadow: 0 4px 18px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.025);
+  cursor: pointer;
+  overflow: hidden;
+}
+.action-slot:hover,
+.action-slot.drag-over {
+  border-color: rgba(232,199,122,.85);
+  background: linear-gradient(145deg, rgba(40,37,42,.96), rgba(10,11,17,.96));
+}
+.action-slot .action-key {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  color: #e8c77a;
+  font: 700 10px "Segoe UI", sans-serif;
+  text-shadow: 0 1px 3px #000;
+}
+.action-slot .action-icon {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.65));
+}
+.action-slot .action-glyph {
+  font-size: 26px;
+  color: #e8c77a;
+}
+.action-slot .action-qty {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  color: #e8c77a;
+  font: 700 10px "Segoe UI", sans-serif;
+  text-shadow: 0 1px 3px #000;
+}
+.action-slot.empty::after {
+  content: "—";
+  color: rgba(255,255,255,.12);
+  font-size: 18px;
+}
+@media (max-width: 700px) {
+  #action-bar {
+    bottom: 12px;
+    grid-template-columns: repeat(6, 48px);
+    gap: 4px;
+  }
+  .action-slot { width: 48px; height: 48px; }
+  .action-slot .action-icon { width: 32px; height: 32px; }
+}
