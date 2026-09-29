@@ -127,6 +127,10 @@ export class CharacterState {
 
     return {
       maxHp: Math.round(v.hp * hpScale + (equipmentBonus.maxHp || 0)),
+      critChance: Math.min(0.5, 0.12 + (equipmentBonus.critChance || 0)),
+      critMultiplier: Math.max(1.6, 1.6 + (equipmentBonus.critMultiplier || 0)),
+      physicalPower: equipmentBonus.physicalPower || 0,
+      magicPower: equipmentBonus.magicPower || 0,
       attackMin: Math.round(v.attack.damage[0] * damageScale + (equipmentBonus.attackMin || 0)),
       attackMax: Math.round(v.attack.damage[1] * damageScale + (equipmentBonus.attackMax || 0)),
       abilityMin: Math.round(v.ability.damage[0] * damageScale + (equipmentBonus.abilityMin || 0)),
