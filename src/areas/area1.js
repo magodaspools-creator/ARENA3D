@@ -280,7 +280,7 @@ export function createArea1(game) {
       prog.setCounter('chestOpened', true);
       game.rewardCharacter(0, 35);
       game.spawnGroundLoot([
-        { itemId: 'red_potion', amount: 2 },
+        { itemId: 'red_potion', amount: 1 },
         { itemId: 'iron_scrap', amount: 3 },
       ], chest.pos);
       game.ui.toast('Baú aberto: 35 ouro e alguns suprimentos.');
