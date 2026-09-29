@@ -19,6 +19,7 @@ export class UI {
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
+      inventory: $('inventory'), inventoryGrid: $('inventory-grid'), inventoryCount: $('inventory-count'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -109,6 +110,45 @@ export class UI {
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
+
+  showInventory(character) {
+    this.el.inventory.classList.remove('hidden');
+    this.setInventory(character);
+  }
+
+  hideInventory() {
+    this.el.inventory.classList.add('hidden');
+  }
+
+  setInventory(character) {
+    if (!character) return;
+    const grid = this.el.inventoryGrid;
+    grid.innerHTML = '';
+    const slots = character.inventory;
+    this.el.inventoryCount.textContent = slots.length + ' / 24 espaços';
+
+    for (const slot of slots) {
+      const item = this.game.getItem(slot.id);
+      if (!item) continue;
+
+      const el = document.createElement('button');
+      el.className = 'inv-slot' + (item.effect ? ' usable' : '');
+      el.type = 'button';
+      el.title = item.name + ' — ' + item.description;
+      el.innerHTML = '<span class="inv-icon"></span><span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
+      el.querySelector('.inv-icon').textContent = item.icon;
+      el.querySelector('.inv-name').textContent = item.name;
+      el.onclick = () => this.game.useItem(slot.id);
+      grid.appendChild(el);
+    }
+
+    for (let i = slots.length; i < 24; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'inv-slot empty';
+      grid.appendChild(empty);
+    }
+  }
+
   setProgress(character) {
     if (!character) return;
     this.el.level.textContent = `Nv. ${character.level}`;
