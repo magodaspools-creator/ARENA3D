@@ -19,7 +19,7 @@ export class UI {
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
-      inventory: $('inventory'), inventoryGrid: $('inventory-grid'), inventoryCount: $('inventory-count'),
+      inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
     };
     this.prompt = this.anchor('prompt');
@@ -125,6 +125,20 @@ export class UI {
     if (!character) return;
     const grid = this.el.inventoryGrid;
     grid.innerHTML = '';
+    const equipmentLabels = { head: 'Cabeça', armor: 'Armadura', legs: 'Pernas', boots: 'Botas', weapon: 'Arma', shield: 'Escudo', amulet: 'Amuleto', ring: 'Anel' };
+    this.el.equipmentGrid.innerHTML = '';
+    for (const slotName of ['head','armor','legs','boots','weapon','shield','amulet','ring']) {
+      const itemId = character.equipment?.[slotName];
+      const item = itemId ? this.game.getItem(itemId) : null;
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'equip-slot' + (item ? ' filled' : '');
+      el.title = item ? item.name + ' — clique para desequipar' : equipmentLabels[slotName];
+      el.innerHTML = '<span class="equip-slot-label">' + equipmentLabels[slotName] + '</span>' +
+        (item ? '<span class="equip-slot-icon">' + (item.icon || '◆') + '</span><span class="equip-slot-item">' + item.name + '</span>' : '<span class="equip-slot-empty">—</span>');
+      if (item) el.onclick = () => this.game.unequipItem(slotName);
+      this.el.equipmentGrid.appendChild(el);
+    }
     const slots = character.inventory;
     this.el.inventoryCount.textContent = slots.length + ' / 24 espaços';
 
