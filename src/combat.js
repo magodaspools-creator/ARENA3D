@@ -55,8 +55,9 @@ export class Combat {
   hitEnemy(e, dmg, from, color = 0xffffff, context = {}) {
     const { amount, crit } = this.resolveDamage(dmg, { target: e, ...context });
     e.takeDamage(amount, from, crit);
+    const impactPos = V.copy(e.pos).setY(e.height * 0.55);
     this.game.ui.damageNumber(V.copy(e.pos).setY(e.height), amount, crit ? 'crit' : '');
-    this.game.fx.hitSpark(V.copy(e.pos).setY(e.height * 0.55), color);
+    this.game.fx.damageImpact(impactPos, { color, type: context.damageType || 'physical', crit });
     this.game.stats.damage += amount;
     return amount;
   }
