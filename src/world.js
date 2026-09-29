@@ -443,3 +443,66 @@ export function createSign(game, x, z, rot = 0) {
   game.scene.add(g);
   game.collision.addCircle(x, z, 0.3, { projectiles: false });
 }
+
+/** Old stone chest: opens once and exposes a small loot cache. */
+export function createChest(game, x, z, rot = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rot;
+
+  const stone = mat(0x4d5158, { metal: 0.15, rough: 0.78 });
+  const metal = mat(0x8a6a3e, { metal: 0.65, rough: 0.4 });
+  const base = mesh(new THREE.BoxGeometry(1.7, 0.9, 1.15), stone, 0, 0.55, 0);
+  const lid = mesh(new THREE.BoxGeometry(1.78, 0.28, 1.2), stone, 0, 1.12, 0);
+  const band = mesh(new THREE.BoxGeometry(0.18, 1.15, 1.24), metal, 0, 0.65, 0);
+  const lock = mesh(new THREE.BoxGeometry(0.28, 0.34, 0.12), metal, 0, 0.72, 0.62);
+  g.add(base, lid, band, lock);
+
+  const glowMat = glow(0xffc66a, 2.5);
+  const rune = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 6), glowMat);
+  rune.position.set(0, 0.76, 0.68);
+  rune.rotation.x = Math.PI / 2;
+  g.add(rune);
+
+  const light = new THREE.PointLight(0xffb45a, 1.5, 5, 1.8);
+  light.position.set(0, 1.2, 0.7);
+  g.add(light);
+
+  game.scene.add(g);
+  game.collision.addCircle(x, z, 1.0);
+
+  return {
+    pos: new THREE.Vector3(x, 0, z),
+    anchor: new THREE.Vector3(x, 1.8, z),
+    opened: false,
+    openT: 0,
+    open() {
+      if (this.opened) return;
+      this.opened = true;
+      this.openT = 0;
+      game.fx.emit(new THREE.Vector3(x, 1.1, z + 0.5), {
+        count: 45, color: 0xffc66a, speed: 5, up: 2, life: 0.8, size: 0.45,
+      });
+      game.fx.ring(new THREE.Vector3(x, 0.2, z), 0xffc66a, 2.5, 0.45);
+    },
+    restoreOpen() {
+      this.opened = true;
+      this.openT = 1;
+      lid.rotation.x = -Math.PI * 0.62;
+      rune.visible = false;
+      light.intensity = 0.2;
+    },
+    update(dt, t) {
+      if (!this.opened) {
+        rune.rotation.z = t * 0.8;
+        light.intensity = 1.2 + Math.sin(t * 4) * 0.3;
+        return;
+      }
+      this.openT = Math.min(1, this.openT + dt * 3.5);
+      const k = smooth(this.openT);
+      lid.rotation.x = -Math.PI * 0.62 * k;
+      rune.visible = this.openT < 0.9;
+      light.intensity = 8 * (1 - k) + 0.2;
+    },
+  };
+}
