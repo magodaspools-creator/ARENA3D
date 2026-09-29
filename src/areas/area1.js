@@ -265,11 +265,22 @@ export function createArea1(game) {
   }
 
   // ---------- enemies ----------
-  const spawn = (type, x, z, group) => game.addEnemy(new Enemy(game, type, x, z, { group }));
-  spawn('hollow', -1, 18.5, 'path'); spawn('hollow', 3.5, 16, 'path');
-  spawn('hollow', -12.5, 5.5, 'west'); spawn('wisp', -17.5, -1.5, 'west');
-  spawn('hollow', 12.5, 5.5, 'east'); spawn('hollow', 16.5, -2, 'east'); spawn('wisp', 18, 6, 'east');
-  spawn('hollow', -3.5, -9, 'north'); spawn('hollow', 3.5, -10, 'north'); spawn('wisp', 0, -16.5, 'north');
+  const spawn = (type, x, z, group, respawnable = false) => {
+    const e = game.addEnemy(new Enemy(game, type, x, z, { group }));
+    e.respawnable = respawnable;
+    if (respawnable) e.spawnData = { type, x, z, group };
+    return e;
+  };
+
+  // Farm mobs: each one returns after a short cooldown so the area can be used
+  // as a safe XP/gold/loot farming loop.
+  const farmSpawns = [
+    ['hollow', -1, 18.5, 'path'], ['hollow', 3.5, 16, 'path'],
+    ['hollow', -12.5, 5.5, 'west'], ['wisp', -17.5, -1.5, 'west'],
+    ['hollow', 12.5, 5.5, 'east'], ['hollow', 16.5, -2, 'east'], ['wisp', 18, 6, 'east'],
+    ['hollow', -3.5, -9, 'north'], ['hollow', 3.5, -10, 'north'], ['wisp', 0, -16.5, 'north'],
+  ];
+  farmSpawns.forEach(([type, x, z, group]) => spawn(type, x, z, group, true));
 
   const adds = [];
   const boss = new Boss(game, ARENA.x, ARENA.z - 3, {
@@ -364,6 +375,15 @@ export function createArea1(game) {
     },
 
     onEnemyKilled(e) {
+      if (e.respawnable && e.spawnData && !e.respawnScheduled) {
+        e.respawnScheduled = true;
+        game.schedule(18, () => {
+          e.respawnScheduled = false;
+          if (game.state !== 'play' || prog.id === 'complete') return;
+          spawn(e.spawnData.type, e.spawnData.x, e.spawnData.z, e.spawnData.group, true);
+        });
+      }
+
       if (e.group && e.group !== 'boss') {
         const left = game.enemies.filter((o) => o.alive && o.group === e.group).length;
         if (left === 0 && e.group !== 'path') game.ui.toast('Área limpa. A chama pode ser acesa.');
