@@ -182,6 +182,8 @@ export class UI {
         '<div class="profile-xp-bar"><div style="width:' + xpPct + '%"></div></div>' +
         '<div class="profile-xp-foot"><span>Nível ' + character.level + '</span><span>' + xpPct + '%</span><span>Próximo: ' + (character.level + 1) + '</span></div>' +
       '</div>' +
+      '<div class="profile-section-title">Equipamento</div>' +
+      '<div class="profile-grid profile-resources"><div><span>Arma</span><b>' + (character.equipment?.weapon ? (this.game.getItem(character.equipment.weapon)?.name || '—') : '—') + '</b></div><div><span>Armadura</span><b>' + (character.equipment?.armor ? (this.game.getItem(character.equipment.armor)?.name || '—') : '—') + '</b></div></div>' +
       '<div class="profile-section-title">Recursos</div>' +
       '<div class="profile-grid profile-resources">' +
         '<div><span>Inventário</span><b>' + character.inventorySlots + ' / 24</b></div>' +
