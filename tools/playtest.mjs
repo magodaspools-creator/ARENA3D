@@ -97,6 +97,24 @@ await shot('04-npc-dialog');
 for (let i = 0; i < 12 && (await state()).stage === 'arrive'; i++) { await press('KeyE'); await sleep(500); }
 check((await state()).stage === 'braziers', 'talking to the NPC gives the Watchfire objective');
 
+// healer service: insufficient gold must be rejected, then a paid full heal must work
+await tp(4.8, 35.2);
+await sleep(500);
+await press('KeyE');
+await sleep(900);
+for (let i = 0; i < 2; i++) { await press('KeyE'); await sleep(500); }
+check(await ev(() => game.character.gold === 0), 'healer does not spend gold when the player cannot pay');
+await ev(() => { game.character.addGold(20); game.player.hp = Math.max(1, Math.floor(game.player.maxHp * 0.35)); });
+const hpBeforeHeal = await ev(() => game.player.hp);
+await press('KeyE');
+await sleep(900);
+for (let i = 0; i < 2; i++) { await press('KeyE'); await sleep(500); }
+const healerResult = await ev(() => ({ hp: game.player.hp, maxHp: game.player.maxHp, gold: game.character.gold }));
+check(hpBeforeHeal < healerResult.maxHp, 'healer test starts with missing HP');
+check(healerResult.hp === healerResult.maxHp, 'healer restores the player to full HP');
+check(healerResult.gold === 0, 'healer charges exactly 20 gold');
+await shot('05-healer');
+
 // rune stone clue
 await tp(9, 22.2);
 await sleep(400);
