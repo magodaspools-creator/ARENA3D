@@ -3,6 +3,7 @@
 export const ITEMS = {
   red_potion: {
     id: 'red_potion',
+    sprite: 'assets/items/red-potion.svg',
     name: 'Poção Rubra',
     description: 'Recupera 35% da vida máxima ao ser usada.',
     category: 'consumível',
@@ -13,6 +14,7 @@ export const ITEMS = {
   },
   iron_scrap: {
     id: 'iron_scrap',
+    sprite: 'assets/items/iron-scrap.svg',
     name: 'Fragmento de Ferro',
     description: 'Metal bruto deixado pelos servos ocos.',
     category: 'material',
@@ -22,6 +24,7 @@ export const ITEMS = {
   },
   wisp_essence: {
     id: 'wisp_essence',
+    sprite: 'assets/items/wisp-essence.svg',
     name: 'Essência Fátua',
     description: 'Uma pequena concentração da energia dos fogos-fátuos.',
     category: 'material',
@@ -31,6 +34,7 @@ export const ITEMS = {
   },
   moon_herb: {
     id: 'moon_herb',
+    sprite: 'assets/items/moon-herb.svg',
     name: 'Erva Lunar',
     description: 'Planta rara que cresce nas áreas tocadas pela névoa.',
     category: 'material',
@@ -40,6 +44,7 @@ export const ITEMS = {
   },
   hollow_core: {
     id: 'hollow_core',
+    sprite: 'assets/items/hollow-core.svg',
     name: 'Núcleo Oco',
     description: 'O núcleo do Guardião Oco. Ainda pulsa com energia residual.',
     category: 'quest',
