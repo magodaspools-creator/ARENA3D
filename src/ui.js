@@ -13,7 +13,7 @@ export class UI {
     this.floaters = [];
     this.anchors = new Set();
     this.el = {
-      hud: $('hud'), hpFill: $('hp-fill'), hpText: $('hp-text'), pname: $('pname'), portrait: $('portrait'),
+      hud: $('hud'), level: $('level'), xpFill: $('xp-fill'), xpText: $('xp-text'), gold: $('gold'), hpFill: $('hp-fill'), hpText: $('hp-text'), pname: $('pname'), portrait: $('portrait'),
       objective: $('objective'), objText: $('obj-text'), objHint: $('obj-hint'),
       bossBar: $('boss-bar'), bossName: $('boss-name'), bossFill: $('boss-fill'),
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
@@ -98,16 +98,25 @@ export class UI {
   }
 
   // ---------- HUD ----------
-  showHud(voc) {
+  showHud(voc, character = null) {
     this.el.hud.classList.remove('hidden');
     this.el.pname.innerHTML = `${voc.name}<small>${voc.title}</small>`;
     this.el.portrait.style.setProperty('--vc', voc.color);
     this.el.portrait.textContent = voc.name[0];
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
     this.el.skAbility.querySelector('.label').textContent = voc.ability.name;
+    this.setProgress(character);
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
+  setProgress(character) {
+    if (!character) return;
+    this.el.level.textContent = `Nv. ${character.level}`;
+    this.el.xpFill.style.width = `${character.xpPercent * 100}%`;
+    this.el.xpText.textContent = `${character.xpIntoLevel} / ${character.xpForNextLevel} XP`;
+    this.el.gold.textContent = `Ouro: ${character.gold}`;
+  }
+
   setHP(hp, max) {
     this.el.hpFill.style.width = `${(hp / max) * 100}%`;
     this.el.hpText.textContent = `${Math.ceil(hp)} / ${max}`;
