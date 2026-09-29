@@ -173,22 +173,61 @@ export class UI {
 
   setInventory(character) {
     if (!character) return;
+
     const grid = this.el.inventoryGrid;
     grid.innerHTML = '';
-    const equipmentLabels = { head: 'Cabeça', armor: 'Armadura', legs: 'Pernas', boots: 'Botas', weapon: 'Arma', shield: 'Escudo', amulet: 'Amuleto', ring: 'Anel' };
+
+    const equipmentLabels = {
+      head: 'Cabeça',
+      armor: 'Armadura',
+      legs: 'Pernas',
+      boots: 'Botas',
+      weapon: 'Arma',
+      shield: 'Escudo',
+      amulet: 'Amuleto',
+      ring: 'Anel',
+    };
+
+    const equipmentGlyphs = {
+      head: '◉',
+      armor: '♜',
+      legs: '∥',
+      boots: '◢',
+      weapon: '⚔',
+      shield: '⬟',
+      amulet: '◇',
+      ring: '○',
+    };
+
     this.el.equipmentGrid.innerHTML = '';
-    for (const slotName of ['head','armor','legs','boots','weapon','shield','amulet','ring']) {
+
+    // Paper-doll: o equipamento fica em uma coluna própria, à direita da mochila.
+    for (const slotName of ['head', 'amulet', 'armor', 'weapon', 'legs', 'shield', 'boots', 'ring']) {
       const itemId = character.equipment?.[slotName];
       const item = itemId ? this.game.getItem(itemId) : null;
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'equip-slot' + (item ? ' filled' : '');
-      el.title = item ? item.name + ' — clique para desequipar' : equipmentLabels[slotName];
-      el.innerHTML = '<span class="equip-slot-label">' + equipmentLabels[slotName] + '</span>' +
-        (item ? '<span class="equip-slot-icon">' + (item.icon || '◆') + '</span><span class="equip-slot-item">' + item.name + '</span>' : '<span class="equip-slot-empty">—</span>');
+      el.title = item
+        ? item.name + ' — clique para desequipar'
+        : equipmentLabels[slotName];
+
+      const visual = item
+        ? (item.sprite
+          ? '<img class="equip-slot-icon equip-item-sprite" alt="">'
+          : '<span class="equip-slot-icon">' + (item.icon || '◆') + '</span>')
+        : '<span class="equip-slot-icon equip-body-glyph">' + equipmentGlyphs[slotName] + '</span>';
+
+      el.innerHTML =
+        '<span class="equip-slot-label">' + equipmentLabels[slotName] + '</span>' +
+        visual +
+        '<span class="equip-slot-item">' + (item ? item.name : 'Vazio') + '</span>';
+
+      if (item?.sprite) el.querySelector('.equip-item-sprite').src = item.sprite;
       if (item) el.onclick = () => this.game.unequipItem(slotName);
       this.el.equipmentGrid.appendChild(el);
     }
+
     const slots = character.inventory;
     this.el.inventoryCount.textContent = slots.length + ' / 24 espaços';
 
@@ -208,7 +247,9 @@ export class UI {
       });
       el.addEventListener('dragend', () => el.classList.remove('dragging'));
       el.title = item.name + ' — ' + item.description;
-      el.innerHTML = (item.sprite ? '<img class="inv-icon" alt="">' : '<span class="inv-icon inv-glyph">' + (item.icon || '◆') + '</span>') + '<span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
+      el.innerHTML =
+        (item.sprite ? '<img class="inv-icon" alt="">' : '<span class="inv-icon inv-glyph">' + (item.icon || '◆') + '</span>') +
+        '<span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
       if (item.sprite) el.querySelector('.inv-icon').src = item.sprite;
       el.querySelector('.inv-name').textContent = item.name;
       el.onclick = () => this.game.equipItem(slot.id) || this.game.useItem(slot.id);
