@@ -37,6 +37,8 @@
 
       <div id="objective"><div class="otitle">Objetivo</div><div id="obj-text"></div><div id="obj-hint"></div></div>
 
+      <button id="inventory-btn" type="button">Inventário <span>[I]</span></button>
+
       <div id="boss-bar" class="hidden">
         <div id="boss-name"></div>
         <div class="bar"><div id="boss-fill"></div></div>
@@ -51,6 +53,20 @@
     </div>
 
     <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
+
+    <div id="inventory" class="hidden">
+      <div class="inventory-panel">
+        <div class="inventory-head">
+          <div>
+            <div class="inventory-title">Inventário</div>
+            <div id="inventory-count">0 / 24 espaços</div>
+          </div>
+          <button id="inventory-close" type="button">Fechar [I]</button>
+        </div>
+        <div id="inventory-grid"></div>
+        <div class="inventory-hint">Consumíveis podem ser usados diretamente. Materiais serão utilizados em sistemas futuros.</div>
+      </div>
+    </div>
 
     <div id="select">
       <div class="select-panel">
