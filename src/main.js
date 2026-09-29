@@ -106,6 +106,10 @@ class Game {
     document.getElementById('inventory-close').onclick = () => this.closeOverlay();
     document.getElementById('profile-close').onclick = () => this.closeOverlay();
     document.getElementById('shop-close').onclick = () => this.closeShop();
+    document.getElementById('pause-resume').onclick = () => this.resumeGame();
+    document.getElementById('pause-controls-btn').onclick = () => this.showPauseControls();
+    document.getElementById('pause-menu').onclick = () => this.returnToCharacterSelect();
+    document.getElementById('controls-back').onclick = () => this.showPauseMenu();
     document.getElementById('shop-cancel').onclick = () => this.closeShop();
 
     this.clock = new THREE.Clock();
