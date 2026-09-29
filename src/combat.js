@@ -33,15 +33,26 @@ export class Combat {
     this.projectiles = [];
   }
 
-  roll([a, b], critChance = 0.12) {
+  roll([a, b], critChance = 0.12, critMultiplier = 1.6) {
     let n = a + Math.random() * (b - a);
     const crit = Math.random() < critChance;
-    if (crit) n *= 1.6;
+    if (crit) n *= critMultiplier;
     return { amount: Math.round(n), crit };
   }
 
-  hitEnemy(e, dmg, from, color = 0xffffff) {
-    const { amount, crit } = this.roll(dmg);
+  resolveDamage(range, { target = null, damageType = 'physical', critChance = 0.12, critMultiplier = 1.6 } = {}) {
+    const rolled = this.roll(range, critChance, critMultiplier);
+    const resistance = Math.max(0, Math.min(0.9, Number(target?.resistances?.[damageType] ?? 0)));
+    return {
+      amount: Math.max(1, Math.round(rolled.amount * (1 - resistance))),
+      crit: rolled.crit,
+      damageType,
+      resistance,
+    };
+  }
+
+  hitEnemy(e, dmg, from, color = 0xffffff, context = {}) {
+    const { amount, crit } = this.resolveDamage(dmg, { target: e, ...context });
     e.takeDamage(amount, from, crit);
     this.game.ui.damageNumber(V.copy(e.pos).setY(e.height), amount, crit ? 'crit' : '');
     this.game.fx.hitSpark(V.copy(e.pos).setY(e.height * 0.55), color);
@@ -50,7 +61,7 @@ export class Combat {
   }
 
   /** Hits every target in front of `origin` within range and angle. */
-  meleeArc(origin, dir, range, arc, dmg, color) {
+  meleeArc(origin, dir, range, arc, dmg, color, context = {}) {
     let hits = 0;
     for (const e of this.game.enemies) {
       if (!e.targetable) continue;
@@ -59,29 +70,32 @@ export class Combat {
       if (dist - e.radius > range) continue;
       const cos = (dx * dir.x + dz * dir.z) / (dist || 1);
       if (Math.acos(Math.max(-1, Math.min(1, cos))) > arc / 2 && dist > e.radius + 0.7) continue;
-      this.hitEnemy(e, dmg, origin, color);
+      this.hitEnemy(e, dmg, origin, color, context);
       hits++;
     }
     if (hits) { this.game.hitstop = 0.055; this.game.rig.shake(0.12); }
     return hits;
   }
 
-  aoe(center, radius, dmg, color, exclude) {
+  aoe(center, radius, dmg, color, exclude, context = {}) {
     let hits = 0;
     for (const e of this.game.enemies) {
       if (!e.targetable || exclude?.has(e)) continue;
       if (Math.hypot(e.pos.x - center.x, e.pos.z - center.z) - e.radius > radius) continue;
       exclude?.add(e);
-      this.hitEnemy(e, dmg, center, color);
+      this.hitEnemy(e, dmg, center, color, context);
       hits++;
     }
     return hits;
   }
 
-  /** p: { team, pos, dir, speed, range, damage, visual, color, splash, radius } */
+  /** p: { team, pos, dir, speed, range, damage, visual, color, splash, radius, damageType, critChance, critMultiplier } */
   spawn(p) {
     const pr = {
       team: p.team, damage: p.damage, color: p.color, splash: p.splash || 0,
+      damageType: p.damageType || 'physical',
+      critChance: p.critChance ?? 0.12,
+      critMultiplier: p.critMultiplier ?? 1.6,
       radius: p.radius ?? 0.35, visual: p.visual,
       pos: new THREE.Vector3(p.pos.x, PROJ_Y, p.pos.z),
       vel: new THREE.Vector3(p.dir.x, 0, p.dir.z).normalize().multiplyScalar(p.speed),
@@ -126,8 +140,16 @@ export class Combat {
         for (const e of this.game.enemies) {
           if (!e.targetable) continue;
           if (Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < e.radius + p.radius) {
-            if (p.splash) this.aoe(p.pos, p.splash, p.damage, p.color);
-            else this.hitEnemy(e, p.damage, V.copy(p.pos).sub(p.vel), p.color);
+            if (p.splash) this.aoe(p.pos, p.splash, p.damage, p.color, undefined, {
+              damageType: p.damageType,
+              critChance: p.critChance,
+              critMultiplier: p.critMultiplier,
+            });
+            else this.hitEnemy(e, p.damage, V.copy(p.pos).sub(p.vel), p.color, {
+              damageType: p.damageType,
+              critChance: p.critChance,
+              critMultiplier: p.critMultiplier,
+            });
             this.explode(p);
             break;
           }
