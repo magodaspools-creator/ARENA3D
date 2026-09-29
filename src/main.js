@@ -86,6 +86,8 @@ class Game {
       this.state = 'play';
       this.inputLocked = false;
     };
+    document.getElementById('inventory-btn').onclick = () => this.toggleInventory();
+    document.getElementById('inventory-close').onclick = () => this.toggleInventory();
 
     this.clock = new THREE.Clock();
     document.getElementById('loading').remove();
