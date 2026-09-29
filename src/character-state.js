@@ -116,7 +116,11 @@ export class CharacterState {
     const abilityCooldownScale = Math.max(0.85, 1 - levelBonus * 0.003);
 
     const equipment = this.equipment;
-    const equipmentBonus = Object.values(equipment).reduce((sum, id) => sum + (id ? this.getEquipmentBonus(id) : null), {});
+    const equipmentBonus = Object.values(equipment).reduce((sum, id) => {
+      const bonus = id ? this.getEquipmentBonus(id) : {};
+      for (const [key, value] of Object.entries(bonus)) sum[key] = (sum[key] || 0) + Number(value || 0);
+      return sum;
+    }, {});
     const baseReduction = Math.max(0, 1 - v.armor);
     const armorReduction = Math.min(0.65, baseReduction + levelBonus * 0.004 + (equipmentBonus.armorPercent || 0));
 
