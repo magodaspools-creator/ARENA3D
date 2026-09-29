@@ -1,3 +1,5 @@
+import { VOCATIONS } from './vocations.js';
+
 const STORAGE_PREFIX = 'arena.character.v1';
 
 export const XP = {
@@ -78,6 +80,35 @@ export class CharacterState {
 
   get xpPercent() {
     return Math.min(1, this.xpIntoLevel / this.xpForNextLevel);
+  }
+
+  // Derived combat stats. Equipment and buffs will be layered on top later.
+  get stats() {
+    const v = VOCATIONS[this.vocation];
+    const levelBonus = Math.max(0, this.level - 1);
+    const damageScale = 1 + Math.min(0.75, levelBonus * 0.035);
+    const hpScale = 1 + Math.min(2.5, levelBonus * 0.06);
+    const speedScale = 1 + Math.min(0.25, levelBonus * 0.01);
+    const attackSpeedScale = Math.max(0.8, 1 - levelBonus * 0.005);
+    const abilityCooldownScale = Math.max(0.85, 1 - levelBonus * 0.003);
+
+    const baseReduction = Math.max(0, 1 - v.armor);
+    const armorReduction = Math.min(0.65, baseReduction + levelBonus * 0.004);
+
+    return {
+      maxHp: Math.round(v.hp * hpScale),
+      attackMin: Math.round(v.attack.damage[0] * damageScale),
+      attackMax: Math.round(v.attack.damage[1] * damageScale),
+      abilityMin: Math.round(v.ability.damage[0] * damageScale),
+      abilityMax: Math.round(v.ability.damage[1] * damageScale),
+      armorReduction,
+      armorPercent: Math.round(armorReduction * 100),
+      damageMultiplier: 1 - armorReduction,
+      speed: Number((v.speed * speedScale).toFixed(2)),
+      attackCooldown: Number((v.attack.cooldown * attackSpeedScale).toFixed(2)),
+      abilityCooldown: Number((v.ability.cooldown * abilityCooldownScale).toFixed(2)),
+      attackRange: v.attack.range ?? null,
+    };
   }
 
   addXP(amount) {
