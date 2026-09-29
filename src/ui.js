@@ -125,24 +125,34 @@ export class UI {
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
-  showShop({ npcName, item, price, owned = 0, onBuy, onClose }) {
+  showShop({ npcName, stock = [], onBuy, onClose }) {
     if (!this.el.shop) return;
-    this.el.shopTitle.textContent = 'Comércio — ' + npcName;
-    this.el.shopSubtitle.textContent = 'Suprimentos para sua próxima jornada';
-    const icon = item.sprite
-      ? '<img class="shop-icon" alt="">'
-      : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
-    this.el.shopItem.innerHTML =
-      '<div class="shop-item-card">' +
+    this.el.shopTitle.textContent = 'Loja — ' + npcName;
+    this.el.shopSubtitle.textContent = 'Escolha um item para comprar';
+    this.el.shopItem.innerHTML = stock.map((entry) => {
+      const item = entry.item;
+      const price = entry.price;
+      const owned = entry.owned;
+      const icon = item.sprite
+        ? '<img class="shop-icon" alt="">'
+        : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
+      return '<div class="shop-item-card" data-shop-item="' + item.id + '">' +
         icon +
         '<div class="shop-item-info"><div class="shop-item-name"></div><div class="shop-item-desc"></div><div class="shop-item-owned">Você possui: ' + owned + '</div></div>' +
-        '<div class="shop-price">' + price + '<small>ouro</small></div>' +
+        '<div class="shop-buy-col"><div class="shop-price">' + price + '<small>ouro</small></div><button class="shop-buy-item" type="button">Comprar</button></div>' +
       '</div>';
-    this.el.shopItem.querySelector('.shop-item-name').textContent = item.name;
-    this.el.shopItem.querySelector('.shop-item-desc').textContent = item.description;
-    if (item.sprite) this.el.shopItem.querySelector('.shop-icon').src = item.sprite;
-    this.el.shopBuy.textContent = 'Comprar · ' + price + ' ouro';
-    this.el.shopBuy.onclick = onBuy;
+    }).join('');
+
+    for (const entry of stock) {
+      const card = this.el.shopItem.querySelector('[data-shop-item="' + entry.item.id + '"]');
+      if (!card) continue;
+      card.querySelector('.shop-item-name').textContent = entry.item.name;
+      card.querySelector('.shop-item-desc').textContent = entry.item.description;
+      if (entry.item.sprite) card.querySelector('.shop-icon').src = entry.item.sprite;
+      card.querySelector('.shop-buy-item').onclick = () => onBuy(entry.item.id, entry.price);
+    }
+
+    this.el.shopBuy.classList.add('hidden');
     this.el.shopClose.onclick = onClose;
     this.el.shopCancel.onclick = onClose;
     this.el.shop.classList.remove('hidden');
