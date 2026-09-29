@@ -52,6 +52,68 @@ export const ITEMS = {
     description: 'Um anel simples que amplifica a energia do portador.', category: 'equipamento', maxStack: 1, value: 120,
     equipment: { slot: 'ring' }, stats: { maxHp: 8, abilityMin: 2, abilityMax: 3 }, icon: '○',
   },
+
+  worn_cap: {
+    id: 'worn_cap', sprite: null, name: 'Capuz Gasto',
+    description: 'Um capuz velho, melhor que enfrentar a floresta de cabeça descoberta.',
+    category: 'equipamento', maxStack: 1, value: 18,
+    equipment: { slot: 'head' }, stats: { maxHp: 2, armorPercent: 0.004 }, icon: '⌒',
+  },
+  worn_leggings: {
+    id: 'worn_leggings', sprite: null, name: 'Calças Gastas',
+    description: 'Tecido remendado que oferece uma proteção mínima.',
+    category: 'equipamento', maxStack: 1, value: 22,
+    equipment: { slot: 'legs' }, stats: { maxHp: 3, armorPercent: 0.003 }, icon: '∥',
+  },
+  worn_boots: {
+    id: 'worn_boots', sprite: null, name: 'Botas Gasta',
+    description: 'Botas velhas, mas ainda firmes o bastante para a estrada.',
+    category: 'equipamento', maxStack: 1, value: 20,
+    equipment: { slot: 'boots' }, stats: { speed: 0.03 }, icon: '◢',
+  },
+  simple_amulet: {
+    id: 'simple_amulet', sprite: null, name: 'Amuleto Simples',
+    description: 'Um pequeno amuleto sem grande poder, encontrado entre os restos da floresta.',
+    category: 'equipamento', maxStack: 1, value: 28,
+    equipment: { slot: 'amulet' }, stats: { maxHp: 4 }, icon: '◇',
+  },
+  crude_buckler: {
+    id: 'crude_buckler', sprite: null, name: 'Broquel Rústico',
+    description: 'Um escudo pequeno e mal acabado, mas ainda útil.',
+    category: 'equipamento', maxStack: 1, value: 32,
+    equipment: { slot: 'shield', vocations: ['knight', 'paladin'] }, stats: { armorPercent: 0.007 }, icon: '⬟',
+  },
+
+  leather_cap: {
+    id: 'leather_cap', sprite: null, name: 'Capuz de Couro',
+    description: 'Um capuz simples, bem melhor acabado que os trapos encontrados na floresta.',
+    category: 'equipamento', maxStack: 1, value: 65,
+    equipment: { slot: 'head' }, stats: { maxHp: 5, armorPercent: 0.009 }, icon: '⌒',
+  },
+  reinforced_leggings: {
+    id: 'reinforced_leggings', sprite: null, name: 'Calças Reforçadas',
+    description: 'Calças resistentes para atravessar as ruínas com um pouco mais de proteção.',
+    category: 'equipamento', maxStack: 1, value: 72,
+    equipment: { slot: 'legs' }, stats: { maxHp: 7, armorPercent: 0.007 }, icon: '∥',
+  },
+  leather_boots: {
+    id: 'leather_boots', sprite: null, name: 'Botas de Couro',
+    description: 'Botas confortáveis que melhoram discretamente a mobilidade.',
+    category: 'equipamento', maxStack: 1, value: 68,
+    equipment: { slot: 'boots' }, stats: { speed: 0.06 }, icon: '◢',
+  },
+  warding_amulet: {
+    id: 'warding_amulet', sprite: null, name: 'Amuleto de Proteção',
+    description: 'Um amuleto simples preparado para resistir às energias das ruínas.',
+    category: 'equipamento', maxStack: 1, value: 85,
+    equipment: { slot: 'amulet' }, stats: { maxHp: 9, armorPercent: 0.004 }, icon: '◇',
+  },
+  iron_buckler: {
+    id: 'iron_buckler', sprite: null, name: 'Broquel de Ferro',
+    description: 'Um pequeno escudo de ferro, confiável sem ser uma peça de alto nível.',
+    category: 'equipamento', maxStack: 1, value: 95,
+    equipment: { slot: 'shield', vocations: ['knight', 'paladin'] }, stats: { armorPercent: 0.014, maxHp: 4 }, icon: '⬟',
+  },
   red_potion: {
     id: 'red_potion',
     sprite: 'assets/items/red-potion.svg',
@@ -130,9 +192,13 @@ export const ITEM_CATALOG = {
       druid: ['mystic_robe'],
       monk: ['traveler_garb'],
     },
-    accessories: ['moon_ring'],
+    accessories: ['moon_ring', 'simple_amulet', 'warding_amulet'],
+    head: ['worn_cap', 'leather_cap'],
+    legs: ['worn_leggings', 'reinforced_leggings'],
+    boots: ['worn_boots', 'leather_boots'],
+    shields: ['crude_buckler', 'iron_buckler'],
   },
-  plannedSlots: ['head', 'legs', 'boots', 'shield', 'amulet'],
+  plannedSlots: [],
 };
 
 export const EQUIPMENT_SLOT_META = {
