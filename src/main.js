@@ -13,6 +13,7 @@ import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js';
 import { Player } from './player.js';
 import { VOCATIONS } from './vocations.js';
+import { CharacterState } from './character-state.js';
 import { createArea1 } from './areas/area1.js';
 
 const FOG = 0x0b1220;
@@ -64,6 +65,7 @@ class Game {
 
     this.area = createArea1(this);
     this.player = null;
+    this.character = null;
 
     this.raycaster = new THREE.Raycaster();
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -111,6 +113,7 @@ class Game {
   // ---------- flow ----------
   preview(id) {
     this.player?.dispose();
+    this.character = new CharacterState(id);
     this.player = new Player(this, id);
     const s = this.area.spawn;
     this.player.place(s.x, s.z, 0);
@@ -126,15 +129,38 @@ class Game {
     this.rig.mode = 'follow';
     this.state = 'play';
     this.stats.start = this.time;
-    this.ui.showHud(this.player.voc);
+    this.player.character = this.character;
+    this.ui.showHud(this.player.voc, this.character);
     this.area.onStart();
   }
 
   addEnemy(e) { this.enemies.push(e); return e; }
 
   onEnemyKilled(e) {
-    if (!e.isBoss) this.stats.kills++;
+    if (!e.isBoss) {
+      this.stats.kills++;
+      const reward = e.rewards || { xp: 0, gold: 0 };
+      this.rewardCharacter(reward.xp, reward.gold);
+    }
     this.area.onEnemyKilled(e);
+  }
+
+  onBossDefeated(reward = { xp: 0, gold: 0 }) {
+    this.rewardCharacter(reward.xp, reward.gold);
+  }
+
+  rewardCharacter(xp, gold) {
+    if (!this.character) return;
+    const result = this.character.addXP(xp);
+    const coins = this.character.addGold(gold);
+    if (result.gained) {
+      this.ui.toast(`+${result.gained} XP`);
+      if (result.levels > 0) {
+        this.ui.banner(`LEVEL ${this.character.level}`, 'Seu personagem ficou mais experiente.', 'victory', 2.4);
+      }
+    }
+    if (coins) this.ui.toast(`+${coins} ouro`);
+    this.ui.setProgress(this.character);
   }
 
   onPlayerDied() {
