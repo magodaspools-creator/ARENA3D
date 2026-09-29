@@ -64,6 +64,11 @@ check(await ev(() => !!game.player && game.state === 'select'), 'select screen s
 await page.click('#start-btn');
 await sleep(1500);
 check((await state()).state === 'play', 'game started');
+const hpAtStart = await ev(() => game.player.hp);
+await ev(() => { game.player.hp = Math.max(1, Math.floor(game.player.maxHp * 0.5)); });
+await sleep(6500);
+check(await ev((before) => Math.abs(game.player.hp - before) < 0.01, hpAtStart), 'player does not regenerate HP while idle');
+await ev(() => { game.player.hp = hpAtStart; });
 await shot('02-start');
 
 // movement
@@ -97,22 +102,25 @@ await shot('04-npc-dialog');
 for (let i = 0; i < 12 && (await state()).stage === 'arrive'; i++) { await press('KeyE'); await sleep(500); }
 check((await state()).stage === 'braziers', 'talking to the NPC gives the Watchfire objective');
 
-// healer service: insufficient gold must be rejected, then a paid full heal must work
+// healer service: buy a portable healing potion, reject insufficient gold, and reject a full inventory
 await tp(4.8, 35.2);
 await sleep(500);
 await press('KeyE');
 await sleep(900);
-for (let i = 0; i < 2; i++) { await press('KeyE'); await sleep(500); }
-check(await ev(() => game.character.gold === 0), 'healer does not spend gold when the player cannot pay');
-await ev(() => { game.character.addGold(20); game.player.hp = Math.max(1, Math.floor(game.player.maxHp * 0.35)); });
-const hpBeforeHeal = await ev(() => game.player.hp);
+for (let i = 0; i < 3; i++) { await press('KeyE'); await sleep(500); }
+check(await ev(() => game.character.gold === 0 && game.character.getItemCount('red_potion') === 0), 'healer does not sell a potion when the player cannot pay');
+await ev(() => game.character.addGold(20));
 await press('KeyE');
 await sleep(900);
-for (let i = 0; i < 2; i++) { await press('KeyE'); await sleep(500); }
-const healerResult = await ev(() => ({ hp: game.player.hp, maxHp: game.player.maxHp, gold: game.character.gold }));
-check(hpBeforeHeal < healerResult.maxHp, 'healer test starts with missing HP');
-check(healerResult.hp === healerResult.maxHp, 'healer restores the player to full HP');
-check(healerResult.gold === 0, 'healer charges exactly 20 gold');
+for (let i = 0; i < 3; i++) { await press('KeyE'); await sleep(500); }
+const potionResult = await ev(() => ({ gold: game.character.gold, potions: game.character.getItemCount('red_potion') }));
+check(potionResult.potions === 1, 'healer sells one portable healing potion');
+check(potionResult.gold === 0, 'healer charges exactly 20 gold for the potion');
+await ev(() => { game.character.addGold(20); game.character.addItem('red_potion', 19, 20); });
+await press('KeyE');
+await sleep(900);
+for (let i = 0; i < 3; i++) { await press('KeyE'); await sleep(500); }
+check(await ev(() => game.character.getItemCount('red_potion') === 20 && game.character.gold === 20), 'healer fills the existing potion stack without spending extra gold');
 await shot('05-healer');
 
 // rune stone clue
