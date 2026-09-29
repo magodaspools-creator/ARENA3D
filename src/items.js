@@ -48,7 +48,7 @@ export const ITEMS = {
   },
 
   moon_ring: {
-    id: 'moon_ring', sprite: null, name: 'Anel Lunar',
+    id: 'moon_ring', sprite: 'assets/items/hollow-core.svg', name: 'Anel Lunar',
     description: 'Um anel simples que amplifica a energia do portador.', category: 'equipamento', maxStack: 1, value: 120,
     equipment: { slot: 'ring' }, stats: { maxHp: 8, abilityMin: 2, abilityMax: 3 }, icon: '○',
   },
