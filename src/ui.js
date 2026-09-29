@@ -153,22 +153,41 @@ export class UI {
   showProfile(character) {
     if (!character) return;
     const voc = this.game.player?.voc;
-    const next = character.xpForNextLevel;
+    const stats = character.stats;
+    const xpPct = Math.round(character.xpPercent * 100);
+    const attack = stats.attackMin === stats.attackMax ? stats.attackMin : stats.attackMin + '–' + stats.attackMax;
+    const ability = stats.abilityMin === stats.abilityMax ? stats.abilityMin : stats.abilityMin + '–' + stats.abilityMax;
+    const attackSpeed = (1 / Math.max(0.01, stats.attackCooldown)).toFixed(2);
+
     this.el.profileBody.innerHTML =
       '<div class="profile-identity">' +
         '<div class="profile-avatar" style="--vc:' + (voc?.color || '#888') + '">' + (voc?.name?.[0] || '?') + '</div>' +
-        '<div><div class="profile-vocation">' + (voc?.name || character.vocation) + '</div><div class="profile-title">' + (voc?.title || '') + '</div></div>' +
+        '<div><div class="profile-vocation">' + (voc?.name || character.vocation) + '</div><div class="profile-title">' + (voc?.title || '') + '</div>' +
+        '<div class="profile-level">Nível ' + character.level + '</div></div>' +
       '</div>' +
-      '<div class="profile-grid">' +
-        '<div><span>Nível</span><b>' + character.level + '</b></div>' +
+      '<div class="profile-section-title">Atributos</div>' +
+      '<div class="profile-grid profile-stats">' +
+        '<div><span>Vida máxima</span><b>' + stats.maxHp + '</b></div>' +
+        '<div><span>Ataque</span><b>' + attack + '</b></div>' +
+        '<div><span>Dano da habilidade</span><b>' + ability + '</b></div>' +
+        '<div><span>Defesa</span><b>' + stats.armorPercent + '%</b></div>' +
+        '<div><span>Velocidade</span><b>' + stats.speed + '</b></div>' +
+        '<div><span>Alcance</span><b>' + (stats.attackRange ? stats.attackRange.toFixed(1) : '—') + '</b></div>' +
+        '<div><span>Velocidade de ataque</span><b>' + attackSpeed + '/s</b></div>' +
         '<div><span>Ouro</span><b>' + character.gold + '</b></div>' +
-        '<div><span>XP</span><b>' + character.xpIntoLevel + ' / ' + next + '</b></div>' +
-        '<div><span>Inimigos derrotados</span><b>' + this.game.stats.kills + '</b></div>' +
+      '</div>' +
+      '<div class="profile-section-title">Progressão</div>' +
+      '<div class="profile-xp">' +
+        '<div class="profile-xp-head"><span>Experiência</span><b>' + character.xpIntoLevel + ' / ' + character.xpForNextLevel + ' XP</b></div>' +
+        '<div class="profile-xp-bar"><div style="width:' + xpPct + '%"></div></div>' +
+        '<div class="profile-xp-foot"><span>Nível ' + character.level + '</span><span>' + xpPct + '%</span><span>Próximo: ' + (character.level + 1) + '</span></div>' +
+      '</div>' +
+      '<div class="profile-section-title">Recursos</div>' +
+      '<div class="profile-grid profile-resources">' +
         '<div><span>Inventário</span><b>' + character.inventorySlots + ' / 24</b></div>' +
       '</div>';
     this.el.profile.classList.remove('hidden');
   }
-
   hideProfile() {
     this.el.profile.classList.add('hidden');
   }
