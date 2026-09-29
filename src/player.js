@@ -325,8 +325,16 @@ export class Player {
   revive(x, z, facing) {
     this.dead = false;
     this.hp = this.maxHp;
-    this.anim.revive();
+    this.attackCd = 0;
+    this.abilityCd = 0;
+    this.dashCd = 0;
     this.dashT = 0;
+    this.dashHits = null;
+    this.slowT = 0;
+    this.lastHurt = this.game.time;
+    this.vel.set(0, 0, 0);
+    this.anim.revive();
     this.place(x, z, facing);
+    this.game.ui.setHP(this.hp, this.maxHp);
   }
 }
