@@ -234,32 +234,13 @@ export function createArea1(game) {
     look: { skin: 0xd4a184, body: 0x40544a, legs: 0x293b35, robe: 0x566f68, hood: 0x31453f, head: 'hood', accent: 0x9ad6c4 },
     dialogue: () => ({
       lines: [
-        'Não posso te acompanhar pela floresta, mas posso preparar suprimentos para a viagem.',
-        `Poções Rubras custam ${potionCost} ouro cada. Elas recuperam 35% da sua vida.`,
-        'Leve algumas com você antes de enfrentar Morvhal.',
+        'Você vai entrar nas ruínas? Então leve algum tratamento para a viagem.',
+        `Tenho Poções Rubras por ${potionCost} ouro cada. Recuperam 35% da vida máxima.`,
+        'Se quiser comprar, veja a poção e confirme a quantidade. Se não quiser, basta fechar o comércio.',
       ],
     }),
     service: () => {
-      const character = game.character;
-      if (!character || game.player?.dead) return;
-
-      const added = character.addItem('red_potion', 1, 20);
-      if (!added.added) {
-        game.ui.toast('Você não tem espaço para outra Poção Rubra.');
-        return;
-      }
-
-      const payment = character.spendGold(potionCost);
-      if (!payment.ok) {
-        character.removeItem('red_potion', 1);
-        game.ui.toast(`Você precisa de ${potionCost} ouro para comprar uma Poção Rubra. (Possui ${character.gold})`);
-        return;
-      }
-
-      game.ui.setProgress(character);
-      game.ui.setInventory(character);
-      game.fx.ring(healer.pos, 0x9affdd, 1.2, 0.55, 0.7);
-      game.ui.toast(`Poção Rubra comprada: -${potionCost} ouro`);
+      game.openPotionShop({ npcName: 'Eira, a Curandeira', itemId: 'red_potion', price: potionCost });
     },
   });
   healer.setMarker(0x6ae0ff);
