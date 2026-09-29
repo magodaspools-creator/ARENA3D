@@ -259,6 +259,8 @@ button:hover { filter: brightness(1.1); }
   filter: drop-shadow(0 2px 5px rgba(0,0,0,.55));
 }
 .inv-slot:hover .inv-icon { transform: scale(1.08); }
+.inv-glyph { display: grid; place-items: center; font-size: 30px; height: 42px; }
+.equip-slot { cursor: pointer; }
 
 /* ---------- profile ---------- */
 #profile {
