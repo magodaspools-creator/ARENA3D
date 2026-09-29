@@ -136,7 +136,7 @@ export class UI {
       el.className = 'inv-slot' + (item.effect ? ' usable' : '');
       el.type = 'button';
       el.title = item.name + ' — ' + item.description;
-      el.innerHTML = '<img class="inv-icon" alt=""><span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
+      el.innerHTML = (item.sprite ? '<img class="inv-icon" alt="">' : '<span class="inv-icon inv-glyph">' + (item.icon || '◆') + '</span>') + '<span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
       if (item.sprite) el.querySelector('.inv-icon').src = item.sprite;
       el.querySelector('.inv-name').textContent = item.name;
       el.onclick = () => this.game.equipItem(slot.id) || this.game.useItem(slot.id);
