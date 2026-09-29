@@ -113,6 +113,20 @@ export class Effects {
     this.emit(pos, { count: 4, color: 0xffffff, speed: 2, life: 0.2, size: 0.5 });
   }
 
+  damageImpact(pos, { color = 0xffffff, type = 'physical', crit = false } = {}) {
+    const palette = type === 'magic'
+      ? { core: 0xc98cff, accent: color }
+      : { core: 0xffe8b0, accent: color };
+    const count = crit ? 26 : 14;
+    this.emit(pos, { count, color: palette.accent, speed: crit ? 8 : 6, life: crit ? 0.5 : 0.32, size: crit ? 0.36 : 0.25, drag: 4 });
+    this.emit(pos, { count: crit ? 8 : 4, color: palette.core, speed: crit ? 3 : 2, life: 0.22, size: crit ? 0.55 : 0.42 });
+    if (type === 'magic') this.ring(pos, palette.accent, crit ? 1.25 : 0.8, crit ? 0.42 : 0.25, 0.35);
+    if (crit) {
+      this.ring(pos, 0xffd45c, 1.5, 0.5, 0.4);
+      this.emit(pos, { count: 10, color: 0xffd45c, speed: 5, up: 2, life: 0.55, size: 0.3, gravity: 3, drag: 3 });
+    }
+  }
+
   add(obj, life, update) {
     this.scene.add(obj);
     const item = { obj, t: 0, life, update };
