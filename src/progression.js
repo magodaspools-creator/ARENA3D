@@ -25,6 +25,7 @@ export class Progression {
     const s = this.stages[this.index];
     const text = typeof s.text === 'function' ? s.text(this.counters) : s.text;
     if (pulse || text !== this.lastText) this.game.ui.setObjective(text, s.hint);
+    this.game.ui.setQuestTimeline?.(this.stages, this.index);
     this.lastText = text;
   }
 }
