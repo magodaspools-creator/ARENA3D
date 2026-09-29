@@ -1,4 +1,5 @@
 import { VOCATIONS } from './vocations.js';
+import { getItem } from './items.js';
 
 const STORAGE_PREFIX = 'arena.character.v1';
 
@@ -54,7 +55,7 @@ export class CharacterState {
         level: Math.max(1, Math.floor(saved.level || 1)),
         xp: Math.max(0, Math.floor(saved.xp || 0)),
         gold: Math.max(0, Math.floor(saved.gold || 0)),
-        equipment: this.sanitizeEquipment(saved.equipment),
+        equipment: this.sanitizeEquipment(saved),
         inventory: Array.isArray(saved.inventory)
           ? saved.inventory
               .filter((item) => item && typeof item.id === 'string')
@@ -71,13 +72,13 @@ export class CharacterState {
   }
 
   sanitizeEquipment(saved) {
-    const equipment = {};
-    for (const slot of EQUIPMENT_SLOTS) {
-      const id = saved && typeof saved[slot] === 'string' ? saved[slot] : saved?.[slot];
-      if (typeof id === 'string') equipment[slot] = id;
+    if (saved && Object.prototype.hasOwnProperty.call(saved, 'equipment')) {
+      const source = saved.equipment;
+      const equipment = {};
+      for (const slot of EQUIPMENT_SLOTS) if (typeof source?.[slot] === 'string') equipment[slot] = source[slot];
+      return equipment;
     }
-    if (!Object.keys(equipment).length) Object.assign(equipment, STARTER_EQUIPMENT[this.vocation] || {});
-    return equipment;
+    return { ...(STARTER_EQUIPMENT[this.vocation] || {}) };
   }
 
   get level() { return this.data.level; }
@@ -142,12 +143,12 @@ export class CharacterState {
 
   getEquipmentBonus(itemId) {
     const item = this.data.equipment && itemId ? itemId : null;
-    const def = globalThis.game?.getItem?.(item);
+    const def = getItem(item);
     return def?.stats || {};
   }
 
   equip(itemId) {
-    const def = globalThis.game?.getItem?.(itemId);
+    const def = getItem(itemId);
     if (!def?.equipment?.slot) return { ok: false, reason: 'not_equipment' };
     if (def.equipment.vocations && !def.equipment.vocations.includes(this.vocation)) return { ok: false, reason: 'wrong_vocation' };
     const slot = def.equipment.slot;
@@ -155,7 +156,7 @@ export class CharacterState {
     const removed = this.removeItem(itemId, 1);
     if (!removed) return { ok: false, reason: 'missing' };
     this.data.equipment[slot] = itemId;
-    if (previous) this.addItem(previous, 1, globalThis.game?.getItem?.(previous)?.maxStack || 1);
+    if (previous) this.addItem(previous, 1, getItem(previous)?.maxStack || 1);
     this.save();
     return { ok: true, slot, previous };
   }
@@ -164,7 +165,7 @@ export class CharacterState {
     if (!EQUIPMENT_SLOTS.includes(slot)) return { ok: false };
     const itemId = this.data.equipment[slot];
     if (!itemId) return { ok: false };
-    const def = globalThis.game?.getItem?.(itemId);
+    const def = getItem(itemId);
     const result = this.addItem(itemId, 1, def?.maxStack || 1);
     if (!result.added) return { ok: false, reason: 'inventory_full' };
     delete this.data.equipment[slot];
