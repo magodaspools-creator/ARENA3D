@@ -1,6 +1,52 @@
 // Central item definitions for the RPG inventory and loot systems.
 
 export const ITEMS = {
+  iron_sword: {
+    id: 'iron_sword', sprite: 'assets/items/iron-sword.svg', name: 'Espada de Ferro',
+    description: 'Uma lâmina simples, mas confiável.', category: 'equipamento', maxStack: 1, value: 80,
+    equipment: { slot: 'weapon', vocations: ['knight'] }, stats: { attackMin: 4, attackMax: 7 },
+  },
+  hunter_bow: {
+    id: 'hunter_bow', sprite: 'assets/items/hunter-bow.svg', name: 'Arco de Caça',
+    description: 'Arco leve usado por caçadores da fronteira.', category: 'equipamento', maxStack: 1, value: 80,
+    equipment: { slot: 'weapon', vocations: ['paladin'] }, stats: { attackMin: 4, attackMax: 7, attackSpeed: 0.02 },
+  },
+  ember_staff: {
+    id: 'ember_staff', sprite: 'assets/items/ember-staff.svg', name: 'Cajado da Brasa',
+    description: 'Um foco simples para canalizar magia.', category: 'equipamento', maxStack: 1, value: 80,
+    equipment: { slot: 'weapon', vocations: ['sorcerer'] }, stats: { attackMin: 5, attackMax: 8, abilityMin: 6, abilityMax: 10 },
+  },
+  verdant_staff: {
+    id: 'verdant_staff', sprite: 'assets/items/verdant-staff.svg', name: 'Cajado Verdejante',
+    description: 'Madeira viva que ainda guarda energia da floresta.', category: 'equipamento', maxStack: 1, value: 80,
+    equipment: { slot: 'weapon', vocations: ['druid'] }, stats: { attackMin: 4, attackMax: 7, abilityMin: 5, abilityMax: 9 },
+  },
+  iron_wraps: {
+    id: 'iron_wraps', sprite: 'assets/items/iron-wraps.svg', name: 'Bandagens Reforçadas',
+    description: 'Faixas pesadas para proteger os punhos.', category: 'equipamento', maxStack: 1, value: 70,
+    equipment: { slot: 'weapon', vocations: ['monk'] }, stats: { attackMin: 3, attackMax: 5, attackSpeed: 0.015 },
+  },
+  iron_armor: {
+    id: 'iron_armor', sprite: 'assets/items/iron-armor.svg', name: 'Armadura de Ferro',
+    description: 'Proteção básica de placas.', category: 'equipamento', maxStack: 1, value: 90,
+    equipment: { slot: 'armor', vocations: ['knight'] }, stats: { maxHp: 18, armorPercent: 0.02 },
+  },
+  leather_armor: {
+    id: 'leather_armor', sprite: 'assets/items/leather-armor.svg', name: 'Armadura de Couro',
+    description: 'Leve e flexível, ideal para combate à distância.', category: 'equipamento', maxStack: 1, value: 75,
+    equipment: { slot: 'armor', vocations: ['paladin'] }, stats: { maxHp: 12, armorPercent: 0.015 },
+  },
+  mystic_robe: {
+    id: 'mystic_robe', sprite: 'assets/items/mystic-robe.svg', name: 'Manto Místico',
+    description: 'Tecido encantado que protege sem limitar os movimentos.', category: 'equipamento', maxStack: 1, value: 75,
+    equipment: { slot: 'armor', vocations: ['sorcerer', 'druid'] }, stats: { maxHp: 10, abilityMin: 3, abilityMax: 5 },
+  },
+  traveler_garb: {
+    id: 'traveler_garb', sprite: 'assets/items/traveler-garb.svg', name: 'Traje do Viajante',
+    description: 'Roupa leve para quem depende da mobilidade.', category: 'equipamento', maxStack: 1, value: 70,
+    equipment: { slot: 'armor', vocations: ['monk'] }, stats: { maxHp: 14, speed: 0.15 },
+  },
+
   red_potion: {
     id: 'red_potion',
     sprite: 'assets/items/red-potion.svg',
