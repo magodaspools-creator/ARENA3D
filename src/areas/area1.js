@@ -227,37 +227,39 @@ export function createArea1(game) {
   });
   game.npcs.push(maren);
 
-  const healerCost = 20;
+  const potionCost = 20;
   const healer = new NPC(game, {
     name: 'Eira, a Curandeira',
     x: 4.8, z: 35.2, facing: -0.6,
     look: { skin: 0xd4a184, body: 0x40544a, legs: 0x293b35, robe: 0x566f68, hood: 0x31453f, head: 'hood', accent: 0x9ad6c4 },
     dialogue: () => ({
       lines: [
-        'Não precisa seguir ferido pela floresta. Eu ainda consigo aliviar suas dores.',
-        `Uma cura completa custa ${healerCost} ouro.`,
+        'Não posso te acompanhar pela floresta, mas posso preparar suprimentos para a viagem.',
+        `Poções Rubras custam ${potionCost} ouro cada. Elas recuperam 35% da sua vida.`,
+        'Leve algumas com você antes de enfrentar Morvhal.',
       ],
     }),
     service: () => {
-      const player = game.player;
       const character = game.character;
-      if (!player || !character || player.dead) return;
-      if (player.hp >= player.maxHp) {
-        game.ui.toast('Sua vida já está cheia.');
+      if (!character || game.player?.dead) return;
+
+      const added = character.addItem('red_potion', 1, 20);
+      if (!added.added) {
+        game.ui.toast('Você não tem espaço para outra Poção Rubra.');
         return;
       }
 
-      const payment = character.spendGold(healerCost);
+      const payment = character.spendGold(potionCost);
       if (!payment.ok) {
-        game.ui.toast(`Você precisa de ${healerCost} ouro para a cura. (Possui ${character.gold})`);
+        character.removeItem('red_potion', 1);
+        game.ui.toast(`Você precisa de ${potionCost} ouro para comprar uma Poção Rubra. (Possui ${character.gold})`);
         return;
       }
 
-      player.heal(player.maxHp, true);
       game.ui.setProgress(character);
-      game.fx.beam(player.pos, 0x6ae0ff, 4, 0.8, 1);
-      game.fx.ring(player.pos, 0x9affdd, 1.8, 0.7, 0.9);
-      game.ui.toast(`Cura completa: -${healerCost} ouro`);
+      game.ui.setInventory(character);
+      game.fx.ring(healer.pos, 0x9affdd, 1.2, 0.55, 0.7);
+      game.ui.toast(`Poção Rubra comprada: -${potionCost} ouro`);
     },
   });
   healer.setMarker(0x6ae0ff);
