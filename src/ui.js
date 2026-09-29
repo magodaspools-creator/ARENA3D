@@ -334,10 +334,7 @@ export class UI {
         '<div class="profile-xp-bar"><div style="width:' + xpPct + '%"></div></div>' +
         '<div class="profile-xp-foot"><span>Nível ' + character.level + '</span><span>' + xpPct + '%</span><span>Próximo: ' + (character.level + 1) + '</span></div>' +
       '</div>' +
-      '<div class="profile-section-title">Recursos</div>' +
-      '<div class="profile-grid profile-resources">' +
-        '<div><span>Ouro</span><b>' + character.gold + '</b></div>' +
-      '</div>';
+      '';
     this.el.profile.classList.remove('hidden');
   }
   hideProfile() {
