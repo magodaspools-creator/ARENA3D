@@ -227,28 +227,9 @@ export function createArea1(game) {
   });
   game.npcs.push(maren);
 
-  const potionCost = 20;
-  const healer = new NPC(game, {
-    name: 'Eira, a Curandeira',
-    x: 4.8, z: 35.2, facing: -0.6,
-    look: { skin: 0xd4a184, body: 0x40544a, legs: 0x293b35, robe: 0x566f68, hood: 0x31453f, head: 'hood', accent: 0x9ad6c4 },
-    dialogue: () => ({
-      lines: [
-        'Você vai entrar nas ruínas? Então leve algum tratamento para a viagem.',
-        `Tenho Poções Rubras por ${potionCost} ouro cada. Recuperam 35% da vida máxima.`,
-        'Se quiser comprar, veja a poção e confirme a quantidade. Se não quiser, basta fechar o comércio.',
-      ],
-    }),
-    service: () => {
-      game.openPotionShop({ npcName: 'Eira, a Curandeira', itemId: 'red_potion', price: potionCost });
-    },
-  });
-  healer.setMarker(0x6ae0ff);
-  game.npcs.push(healer);
-
   const merchant = new NPC(game, {
     name: 'Doran, o Mercador',
-    x: 8.8, z: 35.2, facing: -0.9,
+    x: 4.8, z: 35.2, facing: -0.6,
     look: { skin: 0xb98268, body: 0x5a4636, legs: 0x30271f, robe: 0x6a5542, hood: 0x46372c, head: 'hood', accent: 0xd0a45f },
     dialogue: () => ({
       lines: [
