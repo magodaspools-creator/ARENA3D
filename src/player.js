@@ -150,7 +150,7 @@ export class Player {
     if (!locked) {
       const mouseAtk = input.mouse.left;
       if ((mouseAtk || input.down('Space')) && this.attackCd <= 0) this.attack(this.aimTarget(mouseAtk));
-      if ((input.wasPressed('KeyQ') || input.wasPressed('Digit1')) && this.abilityCd <= 0) this.useAbility();
+      if (input.wasPressed('KeyQ') && this.abilityCd <= 0) this.useAbility();
     }
 
     this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
