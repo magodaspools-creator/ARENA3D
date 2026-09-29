@@ -1,0 +1,300 @@
+import * as THREE from 'three';
+import { VOCATIONS } from './vocations.js';
+import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+
+const V = new THREE.Vector3();
+const F = new THREE.Vector3();
+const R = new THREE.Vector3();
+const RED = new THREE.Color(0xff2020);
+
+const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
+
+export class Player {
+  constructor(game, vocId) {
+    this.game = game;
+    this.voc = VOCATIONS[vocId];
+    const look = { ...this.voc.look };
+    if (look.weapon === 'fists') look.fistGlow = look.glow;
+    this.rig = createHumanoid(look);
+    if (look.weapon !== 'fists') {
+      this.weapon = createWeapon(look.weapon, look);
+      (look.weapon === 'bow' ? this.rig.handL : this.rig.handR).add(this.weapon);
+    }
+    if (look.offhand) this.rig.handL.add(createWeapon(look.offhand, look));
+
+    this.root = this.rig.root;
+    this.pos = this.root.position;
+    this.mats = uniqueMaterials(this.root);
+    this.anim = new HumanoidAnimator(this.rig);
+
+    // vocation-coloured ring under the feet: identity + readability in the dark
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.68, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: look.glow, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false }),
+    );
+    ring.position.y = 0.04;
+    this.ring = ring;
+    this.root.add(ring);
+    this.light = new THREE.PointLight(0xffe2b8, 9, 9, 1.4);
+    this.light.position.set(0, 3, 0.5);
+    this.root.add(this.light);
+
+    game.scene.add(this.root);
+
+    this.radius = 0.45;
+    this.maxHp = this.voc.hp;
+    this.hp = this.maxHp;
+    this.vel = new THREE.Vector3();
+    this.facing = 0;
+    this.attackCd = 0; this.abilityCd = 0; this.dashCd = 0;
+    this.dashT = 0; this.dashDir = new THREE.Vector3(); this.dashHits = null;
+    this.aimFaceT = 0; this.aimAngle = 0; this.slowT = 0;
+    this.lastHurt = -99;
+    this.flash = 0;
+    this.dead = false;
+  }
+
+  get invulnerable() { return this.dashT > 0; }
+
+  dispose() { this.game.scene.remove(this.root); }
+
+  place(x, z, facing) {
+    this.pos.set(x, 0, z);
+    this.facing = facing;
+    this.root.rotation.y = facing;
+    this.vel.set(0, 0, 0);
+  }
+
+  aimDir(target) {
+    V.set(target.x - this.pos.x, 0, target.z - this.pos.z);
+    if (V.lengthSq() < 0.01) V.set(Math.sin(this.facing), 0, Math.cos(this.facing));
+    return V.normalize().clone();
+  }
+
+  /** Nearest living enemy within `range`, used by Space and auto-aim. */
+  nearestEnemy(range) {
+    let best = null, bd = range;
+    for (const e of this.game.enemies) {
+      if (!e.targetable) continue;
+      const d = Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z) - e.radius;
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  aimTarget(useMouse) {
+    if (useMouse) return this.game.aimPoint();
+    const a = this.voc.attack;
+    const e = this.nearestEnemy(a.kind === 'melee' ? a.range + 2.5 : a.range);
+    if (e) return e.pos.clone();
+    return this.pos.clone().add(V.set(Math.sin(this.facing), 0, Math.cos(this.facing)).multiplyScalar(5));
+  }
+
+  update(dt) {
+    const g = this.game, input = g.input;
+    this.attackCd -= dt; this.abilityCd -= dt; this.dashCd -= dt; this.aimFaceT -= dt; this.slowT -= dt;
+
+    if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
+    this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
+
+    if (this.dead) { this.anim.update(dt, 0); return; }
+    const locked = g.inputLocked || g.state !== 'play';
+
+    // --- movement (camera relative) ---
+    let mx = 0, mz = 0;
+    if (!locked) {
+      if (input.down('KeyW') || input.down('ArrowUp')) mz += 1;
+      if (input.down('KeyS') || input.down('ArrowDown')) mz -= 1;
+      if (input.down('KeyD') || input.down('ArrowRight')) mx += 1;
+      if (input.down('KeyA') || input.down('ArrowLeft')) mx -= 1;
+    }
+    g.rig.forward(F); g.rig.right(R);
+    const dir = new THREE.Vector3().addScaledVector(F, mz).addScaledVector(R, mx);
+    if (dir.lengthSq() > 0) dir.normalize();
+
+    if (!locked && (input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight')) && this.dashCd <= 0) {
+      this.dashDir.copy(dir.lengthSq() > 0 ? dir : V.set(Math.sin(this.facing), 0, Math.cos(this.facing)));
+      this.startDash(0.2, 17, 1.1);
+    }
+
+    if (this.dashT > 0) {
+      this.dashT -= dt;
+      this.vel.copy(this.dashDir).multiplyScalar(this.dashSpeed);
+      if (Math.random() < 0.7) g.fx.emit(V.copy(this.pos).setY(0.2), { count: 1, color: 0x8a7a66, speed: 1, life: 0.5, size: 0.5, drag: 2 });
+      if (this.dashHits) g.combat.aoe(this.pos, 1.7, this.voc.ability.damage, this.voc.ability.color, this.dashHits);
+      if (this.dashT <= 0) this.dashHits = null;
+    } else {
+      const speed = this.voc.speed * (this.slowT > 0 ? 0.55 : 1);
+      this.vel.lerp(V.copy(dir).multiplyScalar(speed), 1 - Math.exp(-12 * dt));
+    }
+    g.collision.move(this.pos, this.vel.x * dt, this.vel.z * dt, this.radius);
+
+    // --- facing ---
+    let want = null;
+    if (this.aimFaceT > 0) want = this.aimAngle;
+    else if (this.vel.lengthSq() > 0.5) want = Math.atan2(this.vel.x, this.vel.z);
+    if (want !== null) this.facing = lerpAngle(this.facing, want, 1 - Math.exp(-18 * dt));
+    this.root.rotation.y = this.facing;
+
+    // --- combat ---
+    if (!locked) {
+      const mouseAtk = input.mouse.left;
+      if ((mouseAtk || input.down('Space')) && this.attackCd <= 0) this.attack(this.aimTarget(mouseAtk));
+      if ((input.wasPressed('KeyQ') || input.wasPressed('Digit1')) && this.abilityCd <= 0) this.useAbility();
+    }
+
+    // out-of-combat regeneration
+    if (g.time - this.lastHurt > 5 && this.hp < this.maxHp) this.heal(this.maxHp * 0.07 * dt, false);
+
+    this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / this.voc.speed);
+    g.ui.setHP(this.hp, this.maxHp);
+    g.ui.setCooldown('attack', this.attackCd / this.voc.attack.cooldown);
+    g.ui.setCooldown('ability', this.abilityCd / this.voc.ability.cooldown);
+    g.ui.setCooldown('dash', this.dashCd / 1.1);
+  }
+
+  startDash(duration, speed, cooldown) {
+    this.dashT = duration;
+    this.dashSpeed = speed;
+    this.dashCd = Math.max(this.dashCd, cooldown);
+    this.game.fx.emit(V.copy(this.pos).setY(0.3), { count: 12, color: 0xbba88a, speed: 3, life: 0.5, size: 0.5, flat: true });
+  }
+
+  face(dir, t = 0.35) {
+    this.aimAngle = Math.atan2(dir.x, dir.z);
+    this.aimFaceT = t;
+    this.facing = lerpAngle(this.facing, this.aimAngle, 0.6);
+  }
+
+  muzzle(dir) {
+    return this.pos.clone().addScaledVector(dir, 0.7);
+  }
+
+  attack(target) {
+    const g = this.game, a = this.voc.attack;
+    this.attackCd = a.cooldown;
+    const dir = this.aimDir(target);
+    this.face(dir);
+    this.slowT = 0.25;
+    this.anim.attack(a.style, a.style === 'punch' ? 0.26 : a.style === 'slash' ? 0.5 : 0.42);
+    if (a.kind === 'melee') {
+      g.schedule(a.style === 'punch' ? 0.07 : 0.16, () => {
+        if (this.dead) return;
+        g.fx.slash(this.pos, dir, a.range, a.arc, a.color);
+        g.combat.meleeArc(this.pos, dir, a.range, a.arc, a.damage, a.color);
+      });
+    } else {
+      g.schedule(0.14, () => {
+        if (this.dead) return;
+        g.combat.spawn({ team: 'player', pos: this.muzzle(dir), dir, speed: a.speed, range: a.range, damage: a.damage, visual: a.visual, color: a.color, splash: a.splash });
+      });
+    }
+  }
+
+  useAbility() {
+    const g = this.game, ab = this.voc.ability;
+    this.abilityCd = ab.cooldown;
+    const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
+    const dir = this.aimDir(target);
+    switch (ab.kind) {
+      case 'whirl':
+        this.anim.attack('whirl', 0.5);
+        g.schedule(0.15, () => {
+          g.fx.ring(this.pos, ab.color, ab.radius, 0.45, 1);
+          g.fx.ring(this.pos, 0xffffff, ab.radius * 0.8, 0.3, 0.6);
+          g.fx.emit(V.copy(this.pos).setY(1), { count: 40, color: ab.color, speed: 9, life: 0.4, flat: true, size: 0.35, drag: 5 });
+          if (g.combat.aoe(this.pos, ab.radius, ab.damage, ab.color)) g.hitstop = 0.08;
+          g.rig.shake(0.3);
+        });
+        break;
+      case 'volley':
+        this.face(dir, 0.5);
+        this.anim.attack('shoot', 0.45);
+        g.schedule(0.14, () => {
+          for (let i = 0; i < ab.count; i++) {
+            const ang = Math.atan2(dir.x, dir.z) + (i / (ab.count - 1) - 0.5) * ab.spread;
+            const d = new THREE.Vector3(Math.sin(ang), 0, Math.cos(ang));
+            g.combat.spawn({ team: 'player', pos: this.muzzle(d), dir: d, speed: 30, range: 20, damage: ab.damage, visual: 'arrow', color: ab.color });
+          }
+          g.fx.emit(V.copy(this.pos).setY(1.3), { count: 20, color: ab.color, speed: 3, life: 0.5 });
+        });
+        break;
+      case 'meteor': {
+        this.face(dir, 0.6);
+        this.anim.attack('cast', 0.7);
+        const t = target.clone().setY(0);
+        const off = t.clone().sub(this.pos);
+        if (off.length() > 15) t.copy(this.pos).addScaledVector(off.normalize(), 15);
+        g.fx.telegraphCircle(t, ab.radius, ab.delay, 0xff7a1a);
+        const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 1), new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xff5a10, emissiveIntensity: 3, flatShading: true }));
+        g.fx.add(rock, ab.delay, (it, p) => {
+          rock.position.set(t.x - 6 * (1 - p), 18 * (1 - p) + 0.5, t.z - 3 * (1 - p));
+          rock.rotation.x += 0.2;
+          g.fx.particles.spawn(rock.position.x, rock.position.y, rock.position.z, 0, 1, 0, 0xff7a1a, 0.5, 1.1, 0, 1);
+        });
+        g.schedule(ab.delay, () => {
+          g.fx.ring(t, 0xff7a1a, ab.radius * 1.2, 0.6);
+          g.fx.emit(V.copy(t).setY(0.5), { count: 80, color: 0xff6a1a, speed: 11, up: 3, life: 0.8, size: 0.6, gravity: 8, drag: 2 });
+          g.fx.emit(V.copy(t).setY(0.5), { count: 20, color: 0x442211, speed: 3, up: 2, life: 1.6, size: 1.2, drag: 1 });
+          g.combat.aoe(t, ab.radius, ab.damage, ab.color);
+          g.rig.shake(0.7);
+        });
+        break;
+      }
+      case 'bloom':
+        this.anim.attack('cast', 0.7);
+        this.heal(this.maxHp * ab.heal, true);
+        g.fx.beam(this.pos, ab.color, 6, 1.0, 1.0);
+        g.fx.ring(this.pos, ab.color, ab.radius, 0.7);
+        g.fx.emit(V.copy(this.pos).setY(0.5), { count: 50, color: ab.color, speed: 4, up: 2.5, life: 1.2, size: 0.4, drag: 2 });
+        g.combat.aoe(this.pos, ab.radius, ab.damage, ab.color);
+        break;
+      case 'dash':
+        this.face(dir, 0.3);
+        this.anim.attack('punch', 0.3);
+        this.dashDir.copy(dir);
+        this.dashHits = new Set();
+        this.startDash(ab.distance / 26, 26, 0);
+        g.fx.emit(V.copy(this.pos).setY(1), { count: 20, color: ab.color, speed: 5, life: 0.4 });
+        break;
+    }
+  }
+
+  heal(amount, show) {
+    const before = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    if (show && this.hp > before) this.game.ui.floatText(V.copy(this.pos).setY(2.3), `+${Math.round(this.hp - before)}`, 'heal', 1.1);
+  }
+
+  takeDamage(amount, from) {
+    if (this.dead || this.game.state !== 'play') return;
+    if (this.invulnerable) { this.game.ui.floatText(V.copy(this.pos).setY(2.2), 'Esquiva!', 'info'); return; }
+    amount = Math.round(amount * this.voc.armor);
+    this.hp -= amount;
+    this.lastHurt = this.game.time;
+    this.flash = 1;
+    this.anim.hit();
+    this.game.ui.damageNumber(V.copy(this.pos).setY(2.2), amount, 'player');
+    this.game.ui.hurtFlash();
+    this.game.rig.shake(0.25);
+    if (from) {
+      const k = V.set(this.pos.x - from.x, 0, this.pos.z - from.z).normalize().multiplyScalar(0.35);
+      this.game.collision.move(this.pos, k.x, k.z, this.radius);
+    }
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.dead = true;
+      this.anim.die();
+      this.game.ui.setHP(0, this.maxHp);
+      this.game.onPlayerDied();
+    }
+  }
+
+  revive(x, z, facing) {
+    this.dead = false;
+    this.hp = this.maxHp;
+    this.anim.revive();
+    this.dashT = 0;
+    this.place(x, z, facing);
+  }
+}

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Arena — Protótipo Vertical</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="ui">
+    <div id="vignette"></div>
+    <div id="world-layer"></div>
+
+    <div id="hud" class="hidden">
+      <div id="player-panel">
+        <div id="portrait"></div>
+        <div class="pinfo">
+          <div id="pname"></div>
+          <div class="bar hp"><div id="hp-fill"></div><span id="hp-text"></span></div>
+          <div id="skills">
+            <div class="skill" id="sk-attack"><div class="cd"></div><span class="key">LMB</span><span class="label"></span></div>
+            <div class="skill" id="sk-ability"><div class="cd"></div><span class="key">Q</span><span class="label"></span></div>
+            <div class="skill" id="sk-dash"><div class="cd"></div><span class="key">Shift</span><span class="label">Esquiva</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="objective"><div class="otitle">Objetivo</div><div id="obj-text"></div><div id="obj-hint"></div></div>
+
+      <div id="boss-bar" class="hidden">
+        <div id="boss-name"></div>
+        <div class="bar"><div id="boss-fill"></div></div>
+      </div>
+
+      <div id="toasts"></div>
+
+      <div id="help">
+        <b>WASD</b> mover · <b>Mouse</b> mirar · <b>LMB / Espaço</b> atacar · <b>Q</b> habilidade ·
+        <b>Shift</b> esquiva · <b>E</b> interagir · <b>Botão direito + arrastar</b> girar câmera · <b>Scroll</b> zoom · <b>H</b> ocultar
+      </div>
+    </div>
+
+    <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
+
+    <div id="select">
+      <div class="select-panel">
+        <div class="logo">ARENA</div>
+        <div class="logo-sub">Protótipo Vertical · Área 1 — Floresta de Vhal</div>
+        <div id="voc-list"></div>
+        <div id="voc-desc"></div>
+        <button id="start-btn">Entrar na floresta</button>
+        <div id="record"></div>
+      </div>
+    </div>
+
+    <div id="death" class="hidden"><div class="dtitle">Você caiu...</div><div class="dsub">A chama da fogueira te traz de volta.</div></div>
+
+    <div id="complete" class="hidden">
+      <div class="ctitle">ÁREA 1 CONCLUÍDA</div>
+      <div class="csub">A Floresta de Vhal respira novamente.</div>
+      <div id="stats"></div>
+      <div class="next">Próxima área: <b>Área 2 — As Criptas Submersas</b> <span>(em breve)</span></div>
+      <div class="cbtns"><button id="again-btn">Jogar novamente</button><button id="stay-btn">Continuar explorando</button></div>
+    </div>
+
+    <div id="fade"></div>
+    <div id="loading">Carregando…</div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
