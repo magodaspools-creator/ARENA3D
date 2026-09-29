@@ -416,7 +416,12 @@ export class UI {
 
   // ---------- vocation select ----------
   showSelect(vocations, onPreview, onStart) {
+    const select = $('select');
     const list = $('voc-list'), desc = $('voc-desc');
+    select.classList.remove('hidden');
+    list.innerHTML = '';
+    desc.innerHTML = '';
+    $('record').textContent = '';
     let current = null;
     const pick = (id) => {
       current = id;
