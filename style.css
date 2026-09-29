@@ -313,6 +313,15 @@ button:hover { filter: brightness(1.1); }
 }
 .profile-vocation { font: 24px Georgia, serif; color: #f0d9a8; }
 .profile-title { color: #a99f88; font-size: 12px; margin-top: 3px; }
+.profile-level { color: #e8c77a; font-size: 12px; margin-top: 6px; }
+.profile-section-title { margin-top: 18px; margin-bottom: 7px; color: #e8c77a; font: 12px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; }
+.profile-xp { padding: 12px; border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.025); border-radius: 5px; }
+.profile-xp-head, .profile-xp-foot { display: flex; justify-content: space-between; align-items: center; color: #8f8672; font-size: 11px; }
+.profile-xp-head b { color: #e8e2d4; font-weight: normal; }
+.profile-xp-bar { height: 8px; margin: 9px 0 6px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+.profile-xp-bar > div { height: 100%; background: linear-gradient(#7bb8ff, #3268b5); transition: width .2s; }
+.profile-stats b { color: #f0d9a8; }
+.profile-resources { grid-template-columns: 1fr; }
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
