@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
-  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign,
+  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest,
 } from '../world.js';
 import { NPC } from '../npc.js';
 import { Enemy } from '../enemy.js';
@@ -177,6 +177,7 @@ export function createArea1(game) {
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
+  const chest = createChest(game, 15.5, 10.5, 0.2);
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
   const gate = createGate(game, 0, -20);
   const portal = createPortal(game, 0, -55.5);
@@ -223,6 +224,24 @@ export function createArea1(game) {
 
   const lit = () => braziers.filter((b) => b.lit).length;
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
+
+  if (prog.counters.chestOpened) chest.restoreOpen();
+
+  game.interaction.add({
+    pos: chest.pos, radius: 2.5, height: 2.0,
+    label: () => chest.opened ? 'Baú vazio' : 'Abrir baú antigo',
+    enabled: () => !chest.opened,
+    onInteract: () => {
+      chest.open();
+      prog.setCounter('chestOpened', true);
+      game.rewardCharacter(0, 35);
+      game.spawnGroundLoot([
+        { itemId: 'red_potion', amount: 2 },
+        { itemId: 'iron_scrap', amount: 3 },
+      ], chest.pos);
+      game.ui.toast('Baú aberto: 35 ouro e alguns suprimentos.');
+    },
+  });
 
   game.interaction.add({
     pos: runeStone.pos, radius: 2.8, height: 3.4, label: 'Ler pedra rúnica',
