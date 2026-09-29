@@ -74,6 +74,8 @@ export class GroundLoot {
     if (distance <= 1.7) {
       const result = this.game.collectGroundLoot(this);
       if (result) return;
+      this.game.ui.showAnchor(this.anchor, this.root.position.clone().setY(0.95), '<b>Inventário cheio</b>');
+      return;
     }
 
     if (distance <= 5.5) {
