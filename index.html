@@ -112,10 +112,16 @@
           </div>
           <button id="inventory-close" class="overlay-close" type="button" aria-label="Fechar inventário">×</button>
         </div>
-        <div class="equipment-title">Equipamento</div>
-        <div id="equipment-grid"></div>
-        <div class="equipment-title">Mochila</div>
-        <div id="inventory-grid"></div>
+        <div class="inventory-layout">
+          <section class="inventory-backpack">
+            <div class="equipment-title">Mochila</div>
+            <div id="inventory-grid"></div>
+          </section>
+          <section class="inventory-paperdoll">
+            <div class="equipment-title">Equipamento</div>
+            <div id="equipment-grid"></div>
+          </section>
+        </div>
         <div class="inventory-hint">Clique em um equipamento da mochila para equipá-lo. Clique em um item equipado para desequipá-lo.</div>
       </div>
     </div>
