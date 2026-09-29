@@ -188,12 +188,12 @@ export function createArea1(game) {
 
   // ---------- quest ----------
   const prog = new Progression(game, [
-    { id: 'arrive', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E' },
-    { id: 'braziers', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
-    { id: 'shrine', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
-    { id: 'boss', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
-    { id: 'portal', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
-    { id: 'complete', text: 'Área 1 concluída!' },
+    { id: 'arrive', timeline: 'Conhecer Maren', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E' },
+    { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
+    { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
+    { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
+    { id: 'portal', timeline: 'Abrir o caminho adiante', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
+    { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
   ]);
 
   const maren = new NPC(game, {
@@ -235,7 +235,7 @@ export function createArea1(game) {
   braziers.forEach((b, i) => {
     game.interaction.add({
       pos: b.pos, radius: 2.6, height: 3.2, label: 'Acender Chama-Vigia',
-      enabled: () => !b.lit,
+      enabled: () => prog.reached('braziers') && !b.lit,
       onInteract: () => {
         if (hostileNear(b.pos, 10)) {
           game.ui.toast('A chama se recusa a acender... há Ocos por perto!');
@@ -247,7 +247,6 @@ export function createArea1(game) {
         game.rig.shake(0.3);
         const n = lit();
         prog.setCounter('lit', n);
-        prog.advance('braziers'); // if the player skipped the NPC
         game.ui.toast(`Chama-Vigia acesa (${n}/3)`);
         if (n === 3) openGate();
       },
