@@ -61,10 +61,24 @@
             <div class="inventory-title">Inventário</div>
             <div id="inventory-count">0 / 24 espaços</div>
           </div>
-          <button id="inventory-close" type="button">Fechar [I]</button>
+          <button id="inventory-close" class="overlay-close" type="button" aria-label="Fechar inventário">×</button>
         </div>
         <div id="inventory-grid"></div>
         <div class="inventory-hint">Consumíveis podem ser usados diretamente. Materiais serão utilizados em sistemas futuros.</div>
+      </div>
+    </div>
+
+    <div id="profile" class="hidden">
+      <div class="profile-panel">
+        <div class="overlay-head">
+          <div>
+            <div class="profile-heading">Perfil</div>
+            <div class="profile-subtitle">Informações do personagem</div>
+          </div>
+          <button id="profile-close" class="overlay-close" type="button" aria-label="Fechar perfil">×</button>
+        </div>
+        <div id="profile-body"></div>
+        <div class="profile-hint">Pressione <b>P</b> ou <b>Esc</b> para fechar.</div>
       </div>
     </div>
 
