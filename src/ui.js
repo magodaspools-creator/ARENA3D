@@ -27,6 +27,7 @@ export class UI {
     this.bubble = this.anchor('bubble');
     this.bubble.el.innerHTML = '<div class="bname"></div><div class="btext"></div><div class="bhint">[E] continuar</div>';
     this.bannerTimer = null;
+    this.actionBarFlashT = null;
   }
 
   // ---------- world anchored ----------
@@ -187,16 +188,19 @@ export class UI {
     for (let i = 0; i < 6; i++) {
       const itemId = slots[i];
       const qty = itemId ? character.getItemCount(itemId) : 0;
-      if (itemId && qty <= 0) {
-        character.setActionBarSlot(i, null);
-      }
+      if (itemId && qty <= 0) character.setActionBarSlot(i, null);
+
       const item = itemId && qty > 0 ? this.game.getItem(itemId) : null;
       const slot = document.createElement('button');
       slot.type = 'button';
       slot.className = 'action-slot' + (item ? '' : ' empty');
       slot.dataset.index = String(i);
-      slot.title = item ? item.name : 'Arraste um item do inventário para cá';
-      slot.innerHTML = '<span class="action-key">' + (i + 1) + '</span>';
+      slot.title = item
+        ? item.name + ' — tecla ' + (i + 1) + (item.effect ? ' · clique para usar' : '')
+        : 'Arraste um item do inventário para cá';
+      slot.innerHTML =
+        '<span class="action-key">' + (i + 1) + '</span>' +
+        '<span class="action-keycap">' + (i + 1) + '</span>';
 
       if (item) {
         const icon = item.sprite
@@ -204,8 +208,19 @@ export class UI {
           : '<span class="action-icon action-glyph">' + (item.icon || '◆') + '</span>';
         slot.insertAdjacentHTML('beforeend', icon);
         if (item.sprite) slot.querySelector('.action-icon').src = item.sprite;
-        if (qty > 0) slot.insertAdjacentHTML('beforeend', '<span class="action-qty">x' + qty + '</span>');
+        slot.insertAdjacentHTML('beforeend', '<span class="action-qty">x' + qty + '</span>');
+        slot.insertAdjacentHTML('beforeend', '<span class="action-name">' + item.name + '</span>');
+        slot.addEventListener('click', () => {
+          if (this.game.useActionBarSlot(i)) this.flashActionBarSlot(i);
+        });
       }
+
+      slot.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        if (!character.actionBar?.[i]) return;
+        character.setActionBarSlot(i, null);
+        this.setActionBar(character);
+      });
 
       slot.addEventListener('dragover', (event) => {
         event.preventDefault();
@@ -226,6 +241,16 @@ export class UI {
 
       this.el.actionBar.appendChild(slot);
     }
+  }
+
+  flashActionBarSlot(index) {
+    const slot = this.el.actionBar?.querySelector('[data-index="' + index + '"]');
+    if (!slot) return;
+    slot.classList.remove('used');
+    void slot.offsetWidth;
+    slot.classList.add('used');
+    clearTimeout(this.actionBarFlashT);
+    this.actionBarFlashT = setTimeout(() => slot.classList.remove('used'), 180);
   }
 
   showProfile(character) {
