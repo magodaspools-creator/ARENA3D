@@ -249,19 +249,35 @@ button:hover { filter: brightness(1.1); }
   font-size: 12px;
 }
 .shop-item-card {
-  min-height: 120px;
+  min-height: 96px;
   display: grid;
-  grid-template-columns: 86px 1fr auto;
-  gap: 14px;
+  grid-template-columns: 70px 1fr auto;
+  gap: 12px;
   align-items: center;
-  padding: 14px;
+  padding: 11px;
   border: 1px solid rgba(232,199,122,.18);
   border-radius: 7px;
   background: rgba(255,255,255,.025);
 }
-.shop-icon {
-  width: 76px;
-  height: 76px;
+.shop-item-card + .shop-item-card { margin-top: 7px; }
+.shop-buy-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+.shop-buy-item {
+  padding: 7px 11px;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.shop-buy-item:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+ .shop-icon {
+  width: 62px;
+  height: 62px;
   object-fit: contain;
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,.7));
