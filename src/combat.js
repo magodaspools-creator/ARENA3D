@@ -40,11 +40,12 @@ export class Combat {
     return { amount: Math.round(n), crit };
   }
 
-  resolveDamage(range, { target = null, damageType = 'physical', critChance = 0.12, critMultiplier = 1.6 } = {}) {
+  resolveDamage(range, { target = null, damageType = 'physical', critChance = 0.12, critMultiplier = 1.6, bonus = 0 } = {}) {
     const rolled = this.roll(range, critChance, critMultiplier);
     const resistance = Math.max(0, Math.min(0.9, Number(target?.resistances?.[damageType] ?? 0)));
+    const rawAmount = Math.max(1, rolled.amount + Number(bonus || 0));
     return {
-      amount: Math.max(1, Math.round(rolled.amount * (1 - resistance))),
+      amount: Math.max(1, Math.round(rawAmount * (1 - resistance))),
       crit: rolled.crit,
       damageType,
       resistance,
