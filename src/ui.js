@@ -21,6 +21,7 @@ export class UI {
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
+      actionBar: $('action-bar'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -112,6 +113,7 @@ export class UI {
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
     this.el.skAbility.querySelector('.label').textContent = voc.ability.name;
     this.setProgress(character);
+    this.setActionBar(character);
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
@@ -153,6 +155,13 @@ export class UI {
       const el = document.createElement('button');
       el.className = 'inv-slot' + (item.effect ? ' usable' : '');
       el.type = 'button';
+      el.draggable = true;
+      el.addEventListener('dragstart', (event) => {
+        event.dataTransfer?.setData('text/plain', item.id);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+        el.classList.add('dragging');
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
       el.title = item.name + ' — ' + item.description;
       el.innerHTML = (item.sprite ? '<img class="inv-icon" alt="">' : '<span class="inv-icon inv-glyph">' + (item.icon || '◆') + '</span>') + '<span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
       if (item.sprite) el.querySelector('.inv-icon').src = item.sprite;
@@ -161,10 +170,56 @@ export class UI {
       grid.appendChild(el);
     }
 
+    this.setActionBar(character);
+
     for (let i = slots.length; i < 24; i++) {
       const empty = document.createElement('div');
       empty.className = 'inv-slot empty';
       grid.appendChild(empty);
+    }
+  }
+
+  setActionBar(character) {
+    if (!character || !this.el.actionBar) return;
+    const slots = Array.isArray(character.actionBar) ? character.actionBar : Array(6).fill(null);
+    this.el.actionBar.innerHTML = '';
+
+    for (let i = 0; i < 6; i++) {
+      const itemId = slots[i];
+      const item = itemId ? this.game.getItem(itemId) : null;
+      const slot = document.createElement('button');
+      slot.type = 'button';
+      slot.className = 'action-slot' + (item ? '' : ' empty');
+      slot.dataset.index = String(i);
+      slot.title = item ? item.name : 'Arraste um item do inventário para cá';
+      slot.innerHTML = '<span class="action-key">' + (i + 1) + '</span>';
+
+      if (item) {
+        const icon = item.sprite
+          ? '<img class="action-icon" alt="">'
+          : '<span class="action-icon action-glyph">' + (item.icon || '◆') + '</span>';
+        slot.insertAdjacentHTML('beforeend', icon);
+        if (item.sprite) slot.querySelector('.action-icon').src = item.sprite;
+        const qty = character.getItemCount(item.id);
+        if (qty > 0) slot.insertAdjacentHTML('beforeend', '<span class="action-qty">x' + qty + '</span>');
+      }
+
+      slot.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        slot.classList.add('drag-over');
+      });
+      slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+      slot.addEventListener('drop', (event) => {
+        event.preventDefault();
+        slot.classList.remove('drag-over');
+        const itemIdFromDrag = event.dataTransfer?.getData('text/plain');
+        if (!itemIdFromDrag || !this.game.getItem(itemIdFromDrag)) return;
+        character.setActionBarSlot(i, itemIdFromDrag);
+        this.setActionBar(character);
+        this.setInventory(character);
+      });
+
+      this.el.actionBar.appendChild(slot);
     }
   }
 
