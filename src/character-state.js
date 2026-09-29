@@ -19,6 +19,7 @@ function fresh(vocation) {
     level: 1,
     xp: 0,
     gold: 0,
+    inventory: [],
   };
 }
 
@@ -40,6 +41,11 @@ export class CharacterState {
         level: Math.max(1, Math.floor(saved.level || 1)),
         xp: Math.max(0, Math.floor(saved.xp || 0)),
         gold: Math.max(0, Math.floor(saved.gold || 0)),
+        inventory: Array.isArray(saved.inventory)
+          ? saved.inventory
+              .filter((item) => item && typeof item.id === 'string')
+              .map((item) => ({ id: item.id, qty: Math.max(1, Math.floor(item.qty || 1)) }))
+          : [],
       };
     } catch {
       return fresh(this.vocation);
@@ -95,6 +101,62 @@ export class CharacterState {
     this.data.gold += gained;
     this.save();
     return gained;
+  }
+
+  get inventory() {
+    return this.data.inventory;
+  }
+
+  get inventorySlots() {
+    return this.data.inventory.length;
+  }
+
+  addItem(itemId, amount = 1, maxStack = 99) {
+    const qty = Math.max(0, Math.floor(amount || 0));
+    if (!itemId || !qty) return { added: 0, remaining: qty };
+
+    let remaining = qty;
+    for (const slot of this.data.inventory) {
+      if (slot.id !== itemId || slot.qty >= maxStack) continue;
+      const space = maxStack - slot.qty;
+      const add = Math.min(space, remaining);
+      slot.qty += add;
+      remaining -= add;
+      if (!remaining) break;
+    }
+
+    if (remaining) {
+      this.data.inventory.push({ id: itemId, qty: remaining });
+      remaining = 0;
+    }
+
+    this.save();
+    return { added: qty, remaining };
+  }
+
+  removeItem(itemId, amount = 1) {
+    let remaining = Math.max(0, Math.floor(amount || 0));
+    const requested = remaining;
+    if (!itemId || !remaining) return 0;
+
+    for (let i = this.data.inventory.length - 1; i >= 0 && remaining > 0; i--) {
+      const slot = this.data.inventory[i];
+      if (slot.id !== itemId) continue;
+      const take = Math.min(slot.qty, remaining);
+      slot.qty -= take;
+      remaining -= take;
+      if (slot.qty <= 0) this.data.inventory.splice(i, 1);
+    }
+
+    const removed = requested - remaining;
+    if (removed) this.save();
+    return removed;
+  }
+
+  getItemCount(itemId) {
+    return this.data.inventory
+      .filter((slot) => slot.id === itemId)
+      .reduce((sum, slot) => sum + slot.qty, 0);
   }
 
   save() {
