@@ -42,7 +42,7 @@ export class Player {
     game.scene.add(this.root);
 
     this.radius = 0.45;
-    this.maxHp = this.voc.hp;
+    this.maxHp = this.game.character?.stats.maxHp ?? this.voc.hp;
     this.hp = this.maxHp;
     this.vel = new THREE.Vector3();
     this.facing = 0;
@@ -92,6 +92,13 @@ export class Player {
 
   update(dt) {
     const g = this.game, input = g.input;
+    const characterStats = this.game.character?.stats;
+    if (characterStats && characterStats.maxHp !== this.maxHp) {
+      const hpDelta = characterStats.maxHp - this.maxHp;
+      this.maxHp = characterStats.maxHp;
+      if (hpDelta > 0 && !this.dead) this.hp += hpDelta;
+      this.hp = Math.min(this.hp, this.maxHp);
+    }
     this.attackCd -= dt; this.abilityCd -= dt; this.dashCd -= dt; this.aimFaceT -= dt; this.slowT -= dt;
 
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
@@ -124,7 +131,7 @@ export class Player {
       if (this.dashHits) g.combat.aoe(this.pos, 1.7, this.voc.ability.damage, this.voc.ability.color, this.dashHits);
       if (this.dashT <= 0) this.dashHits = null;
     } else {
-      const speed = this.voc.speed * (this.slowT > 0 ? 0.55 : 1);
+      const speed = (characterStats?.speed ?? this.voc.speed) * (this.slowT > 0 ? 0.55 : 1);
       this.vel.lerp(V.copy(dir).multiplyScalar(speed), 1 - Math.exp(-12 * dt));
     }
     g.collision.move(this.pos, this.vel.x * dt, this.vel.z * dt, this.radius);
@@ -146,10 +153,10 @@ export class Player {
     // out-of-combat regeneration
     if (g.time - this.lastHurt > 5 && this.hp < this.maxHp) this.heal(this.maxHp * 0.07 * dt, false);
 
-    this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / this.voc.speed);
+    this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
     g.ui.setHP(this.hp, this.maxHp);
-    g.ui.setCooldown('attack', this.attackCd / this.voc.attack.cooldown);
-    g.ui.setCooldown('ability', this.abilityCd / this.voc.ability.cooldown);
+    g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
+    g.ui.setCooldown('ability', this.abilityCd / (characterStats?.abilityCooldown ?? this.voc.ability.cooldown));
     g.ui.setCooldown('dash', this.dashCd / 1.1);
   }
 
@@ -171,8 +178,8 @@ export class Player {
   }
 
   attack(target) {
-    const g = this.game, a = this.voc.attack;
-    this.attackCd = a.cooldown;
+    const g = this.game, a = this.voc.attack, s = g.character?.stats;
+    this.attackCd = s?.attackCooldown ?? a.cooldown;
     const dir = this.aimDir(target);
     this.face(dir);
     this.slowT = 0.25;
@@ -180,20 +187,24 @@ export class Player {
     if (a.kind === 'melee') {
       g.schedule(a.style === 'punch' ? 0.07 : 0.16, () => {
         if (this.dead) return;
-        g.fx.slash(this.pos, dir, a.range, a.arc, a.color);
-        g.combat.meleeArc(this.pos, dir, a.range, a.arc, a.damage, a.color);
+        const range = s?.attackRange ?? a.range;
+        const damage = s ? [s.attackMin, s.attackMax] : a.damage;
+        g.fx.slash(this.pos, dir, range, a.arc, a.color);
+        g.combat.meleeArc(this.pos, dir, range, a.arc, damage, a.color);
       });
     } else {
       g.schedule(0.14, () => {
         if (this.dead) return;
-        g.combat.spawn({ team: 'player', pos: this.muzzle(dir), dir, speed: a.speed, range: a.range, damage: a.damage, visual: a.visual, color: a.color, splash: a.splash });
+        const range = s?.attackRange ?? a.range;
+        const damage = s ? [s.attackMin, s.attackMax] : a.damage;
+        g.combat.spawn({ team: 'player', pos: this.muzzle(dir), dir, speed: a.speed, range, damage, visual: a.visual, color: a.color, splash: a.splash });
       });
     }
   }
 
   useAbility() {
-    const g = this.game, ab = this.voc.ability;
-    this.abilityCd = ab.cooldown;
+    const g = this.game, ab = this.voc.ability, s = g.character?.stats;
+    this.abilityCd = s?.abilityCooldown ?? ab.cooldown;
     const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
     const dir = this.aimDir(target);
     switch (ab.kind) {
@@ -203,7 +214,7 @@ export class Player {
           g.fx.ring(this.pos, ab.color, ab.radius, 0.45, 1);
           g.fx.ring(this.pos, 0xffffff, ab.radius * 0.8, 0.3, 0.6);
           g.fx.emit(V.copy(this.pos).setY(1), { count: 40, color: ab.color, speed: 9, life: 0.4, flat: true, size: 0.35, drag: 5 });
-          if (g.combat.aoe(this.pos, ab.radius, ab.damage, ab.color)) g.hitstop = 0.08;
+          if (g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color)) g.hitstop = 0.08;
           g.rig.shake(0.3);
         });
         break;
@@ -214,7 +225,7 @@ export class Player {
           for (let i = 0; i < ab.count; i++) {
             const ang = Math.atan2(dir.x, dir.z) + (i / (ab.count - 1) - 0.5) * ab.spread;
             const d = new THREE.Vector3(Math.sin(ang), 0, Math.cos(ang));
-            g.combat.spawn({ team: 'player', pos: this.muzzle(d), dir: d, speed: 30, range: 20, damage: ab.damage, visual: 'arrow', color: ab.color });
+            g.combat.spawn({ team: 'player', pos: this.muzzle(d), dir: d, speed: 30, range: 20, damage: s ? [s.abilityMin, s.abilityMax] : ab.damage, visual: 'arrow', color: ab.color });
           }
           g.fx.emit(V.copy(this.pos).setY(1.3), { count: 20, color: ab.color, speed: 3, life: 0.5 });
         });
@@ -236,7 +247,7 @@ export class Player {
           g.fx.ring(t, 0xff7a1a, ab.radius * 1.2, 0.6);
           g.fx.emit(V.copy(t).setY(0.5), { count: 80, color: 0xff6a1a, speed: 11, up: 3, life: 0.8, size: 0.6, gravity: 8, drag: 2 });
           g.fx.emit(V.copy(t).setY(0.5), { count: 20, color: 0x442211, speed: 3, up: 2, life: 1.6, size: 1.2, drag: 1 });
-          g.combat.aoe(t, ab.radius, ab.damage, ab.color);
+          g.combat.aoe(t, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color);
           g.rig.shake(0.7);
         });
         break;
@@ -247,7 +258,7 @@ export class Player {
         g.fx.beam(this.pos, ab.color, 6, 1.0, 1.0);
         g.fx.ring(this.pos, ab.color, ab.radius, 0.7);
         g.fx.emit(V.copy(this.pos).setY(0.5), { count: 50, color: ab.color, speed: 4, up: 2.5, life: 1.2, size: 0.4, drag: 2 });
-        g.combat.aoe(this.pos, ab.radius, ab.damage, ab.color);
+        g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color);
         break;
       case 'dash':
         this.face(dir, 0.3);
@@ -269,7 +280,7 @@ export class Player {
   takeDamage(amount, from) {
     if (this.dead || this.game.state !== 'play') return;
     if (this.invulnerable) { this.game.ui.floatText(V.copy(this.pos).setY(2.2), 'Esquiva!', 'info'); return; }
-    amount = Math.round(amount * this.voc.armor);
+    amount = Math.round(amount * (this.game.character?.stats.damageMultiplier ?? this.voc.armor));
     this.hp -= amount;
     this.lastHurt = this.game.time;
     this.flash = 1;
