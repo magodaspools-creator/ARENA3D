@@ -62,6 +62,26 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 #objective .otitle { font-family: Georgia, serif; font-size: 12px; letter-spacing: 3px; color: #e8c77a; text-transform: uppercase; }
 #obj-text { font-size: 15px; margin-top: 2px; text-shadow: 0 1px 3px #000; }
 #obj-hint { font-size: 12px; color: #a99f88; margin-top: 3px; }
+#quest-timeline {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: grid;
+  gap: 4px;
+}
+.quest-step {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  font: 11px Georgia, serif;
+  color: rgba(235,235,235,.38);
+}
+.quest-step-icon { width: 14px; text-align: center; font-weight: 700; }
+.quest-step.done { color: rgba(130,230,170,.75); }
+.quest-step.current { color: #f1d39a; text-shadow: 0 0 8px rgba(241,211,154,.22); }
+.quest-step.current .quest-step-icon { color: #ffd06a; }
+.quest-step.locked { opacity: .48; }
 #objective.pulse { animation: pulse 1.2s; }
 @keyframes pulse { 0% { transform: translateX(30px); opacity: 0; } 30% { transform: none; opacity: 1; background-color: rgba(232,199,122,.18); } }
 #boss-bar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); text-align: center; }
