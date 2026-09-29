@@ -315,41 +315,61 @@ class Game {
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
   }
 
-  openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
-    if (!this.character || this.player?.dead) return;
-    const item = getItem(itemId);
-    if (!item) return;
+  openShop({ npcName, stock = [] }) {
+    if (!this.character || this.player?.dead || !stock.length) return;
     this.state = 'shop';
     this.inputLocked = true;
+
     const render = () => {
+      const available = stock
+        .map((entry) => ({ ...entry, item: getItem(entry.itemId), owned: this.character.getItemCount(entry.itemId) }))
+        .filter((entry) => entry.item);
+
       this.ui.showShop({
         npcName,
-        item,
-        price,
-        owned: this.character.getItemCount(itemId),
-        onBuy: () => {
-          const added = this.character.addItem(itemId, 1, price);
+        stock: available,
+        onBuy: (itemId, price) => {
+          const item = getItem(itemId);
+          if (!item) return;
+
+          const cost = Math.max(0, Math.floor(price || 0));
+          if (this.character.gold < cost) {
+            this.ui.toast('Você precisa de ' + cost + ' ouro. Você possui ' + this.character.gold + '.');
+            return;
+          }
+
+          const added = this.character.addItem(itemId, 1, item.maxStack || 99);
           if (!added.added) {
             this.ui.toast('Você não tem espaço para outra ' + item.name + '.');
             return;
           }
-          const payment = this.character.spendGold(price);
+
+          const payment = this.character.spendGold(cost);
           if (!payment.ok) {
             this.character.removeItem(itemId, 1);
-            this.ui.toast('Você precisa de ' + price + ' ouro. Você possui ' + this.character.gold + '.');
+            this.ui.toast('A compra não pôde ser concluída.');
             return;
           }
+
           this.ui.setProgress(this.character);
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
-          this.ui.toast(item.name + ' comprada: -' + price + ' ouro');
+          this.ui.toast(item.name + ' comprada: -' + cost + ' ouro');
           this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
           render();
         },
         onClose: () => this.closeShop(),
       });
     };
+
     render();
+  }
+
+  openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
+    this.openShop({
+      npcName,
+      stock: [{ itemId, price }],
+    });
   }
 
   closeShop() {
