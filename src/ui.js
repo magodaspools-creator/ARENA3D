@@ -22,6 +22,7 @@ export class UI {
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
+      pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
     this.prompt = this.anchor('prompt');
@@ -119,6 +120,10 @@ export class UI {
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
+  showPause() { this.el.pause?.classList.remove('hidden'); }
+  hidePause() { this.el.pause?.classList.add('hidden'); }
+  showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
+  hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
   showShop({ npcName, item, price, owned = 0, onBuy, onClose }) {
     if (!this.el.shop) return;
@@ -270,6 +275,7 @@ export class UI {
         slot.classList.remove('drag-over');
         const itemIdFromDrag = event.dataTransfer?.getData('text/plain');
         if (!itemIdFromDrag || !this.game.getItem(itemIdFromDrag)) return;
+        const inventorySource = event.dataTransfer?.getData('application/x-arena-inventory') === '1';
         const sourceIndexRaw = event.dataTransfer?.getData('application/x-arena-action-slot');
         const sourceIndex = Number(sourceIndexRaw);
         const hasActionSource = Number.isInteger(sourceIndex) && sourceIndex >= 0 && sourceIndex < 6;
