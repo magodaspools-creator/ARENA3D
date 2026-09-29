@@ -402,72 +402,127 @@ button:hover { filter: brightness(1.1); }
 #action-bar {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: 14px;
   transform: translateX(-50%);
   display: grid;
-  grid-template-columns: repeat(6, 58px);
-  gap: 6px;
+  grid-template-columns: repeat(6, 62px);
+  gap: 5px;
   z-index: 50;
   pointer-events: auto;
+  padding: 5px;
+  border: 1px solid rgba(232,199,122,.24);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(13,15,22,.94), rgba(5,7,12,.96));
+  box-shadow: 0 8px 30px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.05);
+  backdrop-filter: blur(5px);
 }
 .action-slot {
   position: relative;
-  width: 58px;
-  height: 58px;
+  width: 62px;
+  height: 62px;
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(232,199,122,.38);
+  border: 1px solid rgba(255,255,255,.13);
   border-radius: 6px;
-  background: linear-gradient(145deg, rgba(20,22,30,.92), rgba(7,9,14,.92));
+  background: linear-gradient(145deg, rgba(29,31,40,.95), rgba(9,11,17,.98));
   color: #e8e2d4;
-  box-shadow: 0 4px 18px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.025);
+  box-shadow: inset 0 1px rgba(255,255,255,.04), inset 0 -3px rgba(0,0,0,.3);
   cursor: pointer;
   overflow: hidden;
+  transition: transform .08s, border-color .12s, filter .12s;
 }
 .action-slot:hover,
 .action-slot.drag-over {
-  border-color: rgba(232,199,122,.85);
-  background: linear-gradient(145deg, rgba(40,37,42,.96), rgba(10,11,17,.96));
+  border-color: rgba(232,199,122,.8);
+  filter: brightness(1.15);
 }
-.action-slot .action-key {
-  position: absolute;
-  top: 3px;
-  left: 5px;
-  color: #e8c77a;
-  font: 700 10px "Segoe UI", sans-serif;
-  text-shadow: 0 1px 3px #000;
+.action-slot:active,
+.action-slot.used {
+  transform: translateY(1px) scale(.96);
 }
-.action-slot .action-icon {
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,.65));
+.action-slot.used {
+  border-color: rgba(255,232,154,.95);
+  box-shadow: 0 0 16px rgba(232,199,122,.28), inset 0 0 12px rgba(232,199,122,.12);
 }
-.action-slot .action-glyph {
-  font-size: 26px;
-  color: #e8c77a;
-}
-.action-slot .action-qty {
-  position: absolute;
-  right: 4px;
-  bottom: 3px;
-  color: #e8c77a;
-  font: 700 10px "Segoe UI", sans-serif;
-  text-shadow: 0 1px 3px #000;
+.action-slot.empty {
+  cursor: default;
+  background: linear-gradient(145deg, rgba(19,21,28,.72), rgba(6,8,13,.82));
 }
 .action-slot.empty::after {
-  content: "—";
-  color: rgba(255,255,255,.12);
-  font-size: 18px;
+  content: "";
+  width: 23px;
+  height: 23px;
+  border: 1px dashed rgba(255,255,255,.09);
+  border-radius: 4px;
 }
+.action-slot .action-key { display: none; }
+.action-keycap {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 3px;
+  background: rgba(0,0,0,.55);
+  color: #d8d0bf;
+  font: 700 9px "Segoe UI", sans-serif;
+  line-height: 1;
+  z-index: 2;
+}
+.action-slot .action-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.7));
+  transition: transform .1s;
+}
+.action-slot:hover .action-icon { transform: scale(1.07); }
+.action-slot .action-glyph { font-size: 27px; color: #e8c77a; }
+.action-slot .action-qty {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  min-width: 17px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: rgba(0,0,0,.72);
+  color: #f2dfad;
+  font: 700 10px "Segoe UI", sans-serif;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+  z-index: 2;
+}
+.action-slot .action-name {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(3px);
+  pointer-events: none;
+  color: #f0d9a8;
+  font: 9px Georgia, serif;
+  text-shadow: 0 1px 3px #000;
+  transition: opacity .12s, transform .12s;
+}
+.action-slot:hover .action-name { opacity: 1; transform: none; }
 @media (max-width: 700px) {
   #action-bar {
-    bottom: 12px;
-    grid-template-columns: repeat(6, 48px);
+    bottom: 10px;
+    grid-template-columns: repeat(6, 50px);
     gap: 4px;
+    padding: 4px;
   }
-  .action-slot { width: 48px; height: 48px; }
-  .action-slot .action-icon { width: 32px; height: 32px; }
+  .action-slot { width: 50px; height: 50px; }
+  .action-slot .action-icon { width: 34px; height: 34px; }
+  .action-slot .action-name { display: none; }
 }
