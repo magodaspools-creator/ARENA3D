@@ -175,10 +175,7 @@ class Game {
 
   collectGroundLoot(drop) {
     const result = drop.collect();
-    if (!result) {
-      this.ui.toast('Inventário cheio — não foi possível coletar.', 2.5);
-      return false;
-    }
+    if (!result) return false;
     this.groundLoot = this.groundLoot.filter((item) => item !== drop && !item.dead);
     return true;
   }
