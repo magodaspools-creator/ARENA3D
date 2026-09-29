@@ -75,6 +75,8 @@ class Game {
     addEventListener('keydown', (e) => {
       if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
       if (e.code === 'KeyI' && (this.state === 'play' || this.state === 'inventory')) this.toggleInventory();
+      if (e.code === 'KeyP' && (this.state === 'play' || this.state === 'profile')) this.toggleProfile();
+      if (e.code === 'Escape' && (this.state === 'inventory' || this.state === 'profile')) this.closeOverlay();
     });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
@@ -87,7 +89,8 @@ class Game {
       this.inputLocked = false;
     };
     document.getElementById('inventory-btn').onclick = () => this.toggleInventory();
-    document.getElementById('inventory-close').onclick = () => this.toggleInventory();
+    document.getElementById('inventory-close').onclick = () => this.closeOverlay();
+    document.getElementById('profile-close').onclick = () => this.closeOverlay();
 
     this.clock = new THREE.Clock();
     document.getElementById('loading').remove();
@@ -190,15 +193,33 @@ class Game {
   }
 
   toggleInventory() {
+    if (this.state === 'profile') this.ui.hideProfile();
     if (this.state === 'play') {
       this.state = 'inventory';
       this.inputLocked = true;
       this.ui.showInventory(this.character);
     } else if (this.state === 'inventory') {
-      this.state = 'play';
-      this.inputLocked = false;
-      this.ui.hideInventory();
+      this.closeOverlay();
     }
+  }
+
+  toggleProfile() {
+    if (this.state === 'inventory') this.ui.hideInventory();
+    if (this.state === 'play') {
+      this.state = 'profile';
+      this.inputLocked = true;
+      this.ui.showProfile(this.character);
+    } else if (this.state === 'profile') {
+      this.closeOverlay();
+    }
+  }
+
+  closeOverlay() {
+    if (this.state !== 'inventory' && this.state !== 'profile') return;
+    this.ui.hideInventory();
+    this.ui.hideProfile();
+    this.state = 'play';
+    this.inputLocked = false;
   }
 
   rewardCharacter(xp, gold) {
