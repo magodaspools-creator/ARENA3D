@@ -19,6 +19,7 @@ export class Boss {
     this.onDefeated = onDefeated;
     this.onSummon = onSummon;
     this.isBoss = true;
+    this.resistances = { physical: 0.12, magic: 0.08 };
     this.rig = createHumanoid({
       skin: 0x3c4248, body: 0x23262c, legs: 0x1a1c20, accent: 0x5a5f68, boots: 0x121316,
       head: 'crown', eyes: 0x9dffe0, shoulder: true, cape: 0x3a1420,
@@ -295,7 +296,7 @@ export class Boss {
     for (let i = 0; i < n; i++) {
       const a = ((i + offset) / n) * Math.PI * 2;
       const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-      g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 1.5), dir, speed: 7.5, range: 22, damage: [12, 16], visual: 'bigOrb', color: 0xff5a3a, radius: 0.45 });
+      g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 1.5), dir, speed: 7.5, range: 22, damage: [12, 16], damageType: 'magic', visual: 'bigOrb', color: 0xff5a3a, radius: 0.45 });
     }
     g.rig.shake(0.4);
     g.fx.ring(this.pos, 0xff5a3a, 4, 0.4);
