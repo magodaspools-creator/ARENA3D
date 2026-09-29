@@ -167,7 +167,7 @@ export class UI {
       '</div>' +
       '<div class="profile-section-title">Equipamentos</div>' +
       '<div class="profile-grid profile-equipment">' +
-        ['head','armor','legs','boots','weapon','shield','amulet','ring'].map(slot => '<div><span>' + slot + '</span><b>' + (character.equipment?.[slot] ? (this.game.getItem(character.equipment[slot])?.name || '—') : '—') + '</b></div>').join('') +
+        [['head','Cabeça'],['armor','Armadura'],['legs','Pernas'],['boots','Botas'],['weapon','Arma'],['shield','Escudo'],['amulet','Amuleto'],['ring','Anel']].map(([slot,label]) => '<div><span>' + label + '</span><b>' + (character.equipment?.[slot] ? (this.game.getItem(character.equipment[slot])?.name || '—') : '—') + '</b></div>').join('') +
       '</div>' +
       '<div class="profile-section-title">Atributos</div>' +
       '<div class="profile-grid profile-stats">' +
