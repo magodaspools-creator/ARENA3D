@@ -47,6 +47,11 @@ export const ITEMS = {
     equipment: { slot: 'armor', vocations: ['monk'] }, stats: { maxHp: 14, speed: 0.15 }, icon: '◆',
   },
 
+  moon_ring: {
+    id: 'moon_ring', sprite: null, name: 'Anel Lunar',
+    description: 'Um anel simples que amplifica a energia do portador.', category: 'equipamento', maxStack: 1, value: 120,
+    equipment: { slot: 'ring' }, stats: { maxHp: 8, abilityMin: 2, abilityMax: 3 }, icon: '○',
+  },
   red_potion: {
     id: 'red_potion',
     sprite: 'assets/items/red-potion.svg',
