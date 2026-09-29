@@ -105,6 +105,47 @@ export const ITEMS = {
   },
 };
 
+/*
+ * Catálogo de equipamentos.
+ * O catálogo descreve a progressão disponível no projeto sem liberar esses
+ * itens automaticamente em lojas ou recompensas.
+ */
+export const ITEM_CATALOG = {
+  starter: [
+    'iron_sword', 'hunter_bow', 'ember_staff', 'verdant_staff', 'iron_wraps',
+    'iron_armor', 'leather_armor', 'mystic_robe', 'traveler_garb', 'moon_ring',
+  ],
+  area1: {
+    weapons: {
+      knight: ['iron_sword'],
+      paladin: ['hunter_bow'],
+      sorcerer: ['ember_staff'],
+      druid: ['verdant_staff'],
+      monk: ['iron_wraps'],
+    },
+    armor: {
+      knight: ['iron_armor'],
+      paladin: ['leather_armor'],
+      sorcerer: ['mystic_robe'],
+      druid: ['mystic_robe'],
+      monk: ['traveler_garb'],
+    },
+    accessories: ['moon_ring'],
+  },
+  plannedSlots: ['head', 'legs', 'boots', 'shield', 'amulet'],
+};
+
+export const EQUIPMENT_SLOT_META = {
+  head: { name: 'Cabeça', glyph: '◉' },
+  armor: { name: 'Armadura', glyph: '♜' },
+  legs: { name: 'Pernas', glyph: '∥' },
+  boots: { name: 'Botas', glyph: '◢' },
+  weapon: { name: 'Arma', glyph: '⚔' },
+  shield: { name: 'Escudo', glyph: '⬟' },
+  amulet: { name: 'Amuleto', glyph: '◇' },
+  ring: { name: 'Anel', glyph: '○' },
+};
+
 export function getItem(id) {
   return ITEMS[id] ?? null;
 }
