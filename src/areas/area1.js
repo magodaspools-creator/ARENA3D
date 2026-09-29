@@ -227,6 +227,42 @@ export function createArea1(game) {
   });
   game.npcs.push(maren);
 
+  const healerCost = 20;
+  const healer = new NPC(game, {
+    name: 'Eira, a Curandeira',
+    x: 4.8, z: 35.2, facing: -0.6,
+    look: { skin: 0xd4a184, body: 0x40544a, legs: 0x293b35, robe: 0x566f68, hood: 0x31453f, head: 'hood', accent: 0x9ad6c4 },
+    dialogue: () => ({
+      lines: [
+        'Não precisa seguir ferido pela floresta. Eu ainda consigo aliviar suas dores.',
+        `Uma cura completa custa ${healerCost} ouro.`,
+      ],
+    }),
+    service: () => {
+      const player = game.player;
+      const character = game.character;
+      if (!player || !character || player.dead) return;
+      if (player.hp >= player.maxHp) {
+        game.ui.toast('Sua vida já está cheia.');
+        return;
+      }
+
+      const payment = character.spendGold(healerCost);
+      if (!payment.ok) {
+        game.ui.toast(`Você precisa de ${healerCost} ouro para a cura. (Possui ${character.gold})`);
+        return;
+      }
+
+      player.heal(player.maxHp, true);
+      game.ui.setProgress(character);
+      game.fx.beam(player.pos, 0x6ae0ff, 4, 0.8, 1);
+      game.fx.ring(player.pos, 0x9affdd, 1.8, 0.7, 0.9);
+      game.ui.toast(`Cura completa: -${healerCost} ouro`);
+    },
+  });
+  healer.setMarker(0x6ae0ff);
+  game.npcs.push(healer);
+
   const lit = () => braziers.filter((b) => b.lit).length;
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
