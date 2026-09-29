@@ -15,6 +15,7 @@ import { Player } from './player.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
+import { GroundLoot } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 
 const FOG = 0x0b1220;
@@ -63,6 +64,7 @@ class Game {
     this.dialogue = new Dialogue(this);
     this.enemies = [];
     this.npcs = [];
+    this.groundLoot = [];
 
     this.area = createArea1(this);
     this.player = null;
@@ -150,14 +152,35 @@ class Game {
       this.stats.kills++;
       const reward = e.rewards || { xp: 0, gold: 0 };
       this.rewardCharacter(reward.xp, reward.gold);
-      this.grantLoot(loot);
+      this.spawnGroundLoot(loot, e.pos);
     }
     this.area.onEnemyKilled(e);
   }
 
   onBossDefeated(reward = { xp: 0, gold: 0, loot: [] }) {
     this.rewardCharacter(reward.xp, reward.gold);
-    this.grantLoot(reward.loot || []);
+    this.spawnGroundLoot(reward.loot || [], this.player?.pos);
+  }
+
+  spawnGroundLoot(drops = [], pos) {
+    if (!pos) return;
+    for (const drop of drops) {
+      const amount = Math.max(1, Math.floor(drop.amount || 1));
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 0.35 + Math.random() * 0.65;
+      const dropPos = { x: pos.x + Math.cos(angle) * distance, z: pos.z + Math.sin(angle) * distance };
+      this.groundLoot.push(new GroundLoot(this, drop.itemId, amount, dropPos));
+    }
+  }
+
+  collectGroundLoot(drop) {
+    const result = drop.collect();
+    if (!result) {
+      this.ui.toast('Inventário cheio — não foi possível coletar.', 2.5);
+      return false;
+    }
+    this.groundLoot = this.groundLoot.filter((item) => item !== drop && !item.dead);
+    return true;
   }
 
   grantLoot(drops = []) {
@@ -345,6 +368,8 @@ class Game {
       }
     }
     if (this.state === 'play') {
+      for (const drop of this.groundLoot) drop.update(dt);
+      this.groundLoot = this.groundLoot.filter((drop) => !drop.dead);
       for (const e of this.enemies) e.update(dt);
       this.enemies = this.enemies.filter((e) => !e.removed);
       this.resolveBodies();
