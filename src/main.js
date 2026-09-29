@@ -76,6 +76,9 @@ class Game {
 
     addEventListener('resize', () => this.resize());
     addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.state === 'play') { e.preventDefault(); this.pauseGame(); return; }
+      if (e.code === 'Escape' && this.state === 'pause-controls') { e.preventDefault(); this.showPauseMenu(); return; }
+      if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resumeGame(); return; }
       if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
       if (e.code.startsWith('Digit') && this.state === 'play') {
         const slot = Number(e.code.slice(5));
@@ -260,6 +263,52 @@ class Game {
     const used = this.useItem(itemId);
     if (used) this.ui.flashActionBarSlot(index);
     return used;
+  }
+
+  pauseGame() {
+    if (this.state !== 'play') return;
+    this.state = 'pause';
+    this.inputLocked = true;
+    this.ui.showPause();
+  }
+
+  resumeGame() {
+    if (this.state !== 'pause' && this.state !== 'pause-controls') return;
+    this.ui.hidePauseControls();
+    this.ui.hidePause();
+    this.state = 'play';
+    this.inputLocked = false;
+  }
+
+  showPauseControls() {
+    if (this.state !== 'pause') return;
+    this.state = 'pause-controls';
+    this.ui.showPauseControls();
+  }
+
+  showPauseMenu() {
+    this.ui.hidePauseControls();
+    this.state = 'pause';
+    this.ui.showPause();
+  }
+
+  returnToCharacterSelect() {
+    this.ui.hidePauseControls();
+    this.ui.hidePause();
+    this.ui.hideInventory();
+    this.ui.hideProfile();
+    this.ui.hideShop();
+    this.state = 'select';
+    this.inputLocked = false;
+    this.player?.dispose();
+    this.player = null;
+    this.character = null;
+    this.enemies = [];
+    this.npcs = [];
+    this.groundLoot = [];
+    this.deathBackpacks = [];
+    this.ui.el.hud.classList.add('hidden');
+    this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
   }
 
   openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
