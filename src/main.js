@@ -282,6 +282,10 @@ class Game {
   }
 
   onPlayerDied() {
+    if (this.state === 'dead' || this.player?.dead !== true) return;
+
+    this.state = 'dead';
+    this.inputLocked = true;
     this.stats.deaths++;
     this.combat.clearEnemyProjectiles();
 
@@ -297,13 +301,17 @@ class Game {
     this.schedule(1.0, () => this.ui.showDeath(true));
     this.schedule(2.8, () => this.ui.fade(true));
     this.schedule(3.7, () => {
+      if (!this.player?.dead) return;
       const c = this.area.checkpoint;
       this.area.onRespawn();
-      for (const e of this.enemies) if (!e.isBoss && e.alive && e.state !== 'idle') { e.state = 'return'; }
+      for (const e of this.enemies) if (!e.isBoss && e.alive && e.state !== 'idle') e.state = 'return';
       this.player.revive(c.x, c.z, c.facing);
       this.rig.snap(this.player.pos);
+      this.state = 'play';
+      this.inputLocked = false;
       this.ui.showDeath(false);
       this.ui.fade(false);
+      this.ui.setProgress(this.character);
       this.ui.toast('Você desperta junto ao último ponto seguro.');
     });
   }
