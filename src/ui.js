@@ -14,7 +14,7 @@ export class UI {
     this.anchors = new Set();
     this.el = {
       hud: $('hud'), level: $('level'), xpFill: $('xp-fill'), xpText: $('xp-text'), gold: $('gold'), hpFill: $('hp-fill'), hpText: $('hp-text'), pname: $('pname'), portrait: $('portrait'),
-      objective: $('objective'), objText: $('obj-text'), objHint: $('obj-hint'),
+      objective: $('objective'), objText: $('obj-text'), objHint: $('obj-hint'), questTimeline: $('quest-timeline'),
       bossBar: $('boss-bar'), bossName: $('boss-name'), bossFill: $('boss-fill'),
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
@@ -239,6 +239,16 @@ export class UI {
     clearTimeout(this.hurtT);
     this.hurtT = setTimeout(() => this.el.vignette.classList.remove('hurt'), 160);
   }
+  setQuestTimeline(stages, currentIndex) {
+    if (!this.el.questTimeline) return;
+    this.el.questTimeline.innerHTML = stages.map((stage, i) => {
+      const state = i < currentIndex ? 'done' : i === currentIndex ? 'current' : 'locked';
+      const label = typeof stage.timeline === 'string' ? stage.timeline : stage.id;
+      const icon = state === 'done' ? '✓' : state === 'current' ? '◆' : '○';
+      return '<div class="quest-step ' + state + '"><span class="quest-step-icon">' + icon + '</span><span>' + label + '</span></div>';
+    }).join('');
+  }
+
   setObjective(text, hint = '') {
     this.el.objText.textContent = text;
     this.el.objHint.textContent = hint;
