@@ -177,6 +177,32 @@ class Game {
     return getItem(itemId);
   }
 
+  equipItem(itemId) {
+    if (!this.character) return;
+    const result = this.character.equip(itemId);
+    if (!result.ok) {
+      if (result.reason === 'wrong_vocation') this.ui.toast('Esse equipamento não pertence à sua vocação.');
+      return;
+    }
+    this.ui.toast('Equipado: ' + (getItem(itemId)?.name || itemId));
+    this.ui.setInventory(this.character);
+    this.ui.setProgress(this.character);
+    if (this.state === 'profile') this.ui.showProfile(this.character);
+  }
+
+  unequipItem(slot) {
+    if (!this.character) return;
+    const result = this.character.unequip(slot);
+    if (!result.ok) {
+      if (result.reason === 'inventory_full') this.ui.toast('Sem espaço no inventário.');
+      return;
+    }
+    this.ui.toast('Desequipado: ' + (getItem(result.itemId)?.name || result.itemId));
+    this.ui.setInventory(this.character);
+    this.ui.setProgress(this.character);
+    if (this.state === 'profile') this.ui.showProfile(this.character);
+  }
+
   useItem(itemId) {
     if (!this.character || !this.player || this.player.dead) return;
     const item = getItem(itemId);
