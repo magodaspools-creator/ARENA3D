@@ -157,9 +157,9 @@ class Game {
     this.area.onEnemyKilled(e);
   }
 
-  onBossDefeated(reward = { xp: 0, gold: 0, loot: [] }) {
+  onBossDefeated(reward = { xp: 0, gold: 0, loot: [] }, dropPos = this.player?.pos) {
     this.rewardCharacter(reward.xp, reward.gold);
-    this.spawnGroundLoot(reward.loot || [], this.player?.pos);
+    this.spawnGroundLoot(reward.loot || [], dropPos);
   }
 
   spawnGroundLoot(drops = [], pos) {
