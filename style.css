@@ -344,3 +344,19 @@ button:hover { filter: brightness(1.1); }
 @media (max-width: 600px) {
   .profile-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ---------- ground loot ---------- */
+.loot-drop {
+  pointer-events: none;
+  padding: 4px 8px;
+  border: 1px solid rgba(232,199,122,.38);
+  border-radius: 5px;
+  background: rgba(5,7,12,.78);
+  color: #f0d9a8;
+  font: 12px Georgia, serif;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px #000;
+  box-shadow: 0 0 14px rgba(232,199,122,.16);
+}
+.loot-drop b { font-weight: normal; }
