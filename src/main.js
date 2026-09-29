@@ -87,6 +87,7 @@ class Game {
       if (e.code === 'KeyI' && (this.state === 'play' || this.state === 'inventory')) this.toggleInventory();
       if (e.code === 'KeyP' && (this.state === 'play' || this.state === 'profile')) this.toggleProfile();
       if (e.code === 'Escape' && (this.state === 'inventory' || this.state === 'profile')) this.closeOverlay();
+      if (e.code === 'Escape' && this.state === 'shop') this.closeShop();
     });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
@@ -101,6 +102,8 @@ class Game {
     document.getElementById('inventory-btn').onclick = () => this.toggleInventory();
     document.getElementById('inventory-close').onclick = () => this.closeOverlay();
     document.getElementById('profile-close').onclick = () => this.closeOverlay();
+    document.getElementById('shop-close').onclick = () => this.closeShop();
+    document.getElementById('shop-cancel').onclick = () => this.closeShop();
 
     this.clock = new THREE.Clock();
     document.getElementById('loading').remove();
@@ -257,6 +260,50 @@ class Game {
     const used = this.useItem(itemId);
     if (used) this.ui.flashActionBarSlot(index);
     return used;
+  }
+
+  openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
+    if (!this.character || this.player?.dead) return;
+    const item = getItem(itemId);
+    if (!item) return;
+    this.state = 'shop';
+    this.inputLocked = true;
+    const render = () => {
+      this.ui.showShop({
+        npcName,
+        item,
+        price,
+        owned: this.character.getItemCount(itemId),
+        onBuy: () => {
+          const added = this.character.addItem(itemId, 1, price);
+          if (!added.added) {
+            this.ui.toast('Você não tem espaço para outra ' + item.name + '.');
+            return;
+          }
+          const payment = this.character.spendGold(price);
+          if (!payment.ok) {
+            this.character.removeItem(itemId, 1);
+            this.ui.toast('Você precisa de ' + price + ' ouro. Você possui ' + this.character.gold + '.');
+            return;
+          }
+          this.ui.setProgress(this.character);
+          this.ui.setInventory(this.character);
+          this.ui.setActionBar(this.character);
+          this.ui.toast(item.name + ' comprada: -' + price + ' ouro');
+          this.ui.fx?.ring?.(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
+          render();
+        },
+        onClose: () => this.closeShop(),
+      });
+    };
+    render();
+  }
+
+  closeShop() {
+    if (this.state !== 'shop') return;
+    this.ui.hideShop();
+    this.state = 'play';
+    this.inputLocked = false;
   }
 
   toggleInventory() {
