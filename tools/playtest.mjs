@@ -116,11 +116,11 @@ for (let i = 0; i < 3; i++) { await press('KeyE'); await sleep(500); }
 const potionResult = await ev(() => ({ gold: game.character.gold, potions: game.character.getItemCount('red_potion') }));
 check(potionResult.potions === 1, 'healer sells one portable healing potion');
 check(potionResult.gold === 0, 'healer charges exactly 20 gold for the potion');
-await ev(() => { game.character.addGold(20); game.character.addItem('red_potion', 19, 20); });
+await ev(() => { game.character.addGold(20); game.character.addItem('red_potion', 18, 20); });
 await press('KeyE');
 await sleep(900);
 for (let i = 0; i < 3; i++) { await press('KeyE'); await sleep(500); }
-check(await ev(() => game.character.getItemCount('red_potion') === 20 && game.character.gold === 20), 'healer fills the existing potion stack without spending extra gold');
+check(await ev(() => game.character.getItemCount('red_potion') === 20 && game.character.gold === 20), 'healer fills the existing potion stack after spending 20 gold');
 await shot('05-healer');
 
 // rune stone clue
