@@ -246,6 +246,32 @@ export function createArea1(game) {
   healer.setMarker(0x6ae0ff);
   game.npcs.push(healer);
 
+  const merchant = new NPC(game, {
+    name: 'Doran, o Mercador',
+    x: 8.8, z: 35.2, facing: -0.9,
+    look: { skin: 0xb98268, body: 0x5a4636, legs: 0x30271f, robe: 0x6a5542, hood: 0x46372c, head: 'hood', accent: 0xd0a45f },
+    dialogue: () => ({
+      lines: [
+        'Tenho algumas mercadorias úteis para quem pretende atravessar as ruínas.',
+        'Não espere pechincha: a estrada até Vhal está cada vez mais perigosa.',
+        'Escolha o que precisar e pague em ouro. Volte quando quiser reabastecer.',
+      ],
+    }),
+    service: () => {
+      game.openShop({
+        npcName: 'Doran, o Mercador',
+        stock: [
+          { itemId: 'red_potion', price: 20 },
+          { itemId: 'iron_scrap', price: 12 },
+          { itemId: 'wisp_essence', price: 25 },
+          { itemId: 'moon_herb', price: 40 },
+        ],
+      });
+    },
+  });
+  merchant.setMarker(0xe8b95b);
+  game.npcs.push(merchant);
+
   const lit = () => braziers.filter((b) => b.lit).length;
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
