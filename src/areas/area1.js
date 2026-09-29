@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
-  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest,
+  createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest, createSecretGate,
 } from '../world.js';
 import { NPC } from '../npc.js';
 import { Enemy } from '../enemy.js';
@@ -26,6 +26,8 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 45);   // forest entrance
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
+  // Hidden east passage: once opened, it reconnects the ruined courtyard to the entrance.
+  collision.addRectZone(14, 31, 7.5, 12.5);
   collision.addCircleZone(ARENA.x, ARENA.z, ARENA.r);
   // courtyard south wall (with a gap for the path)
   collision.addBox(-23, -6.2, 12.9, 14.3);
@@ -99,7 +101,8 @@ export function createArea1(game) {
   decor.wall(-23, -20.9, -4.9, -20.9, 4.5, r, { minH: 0.7 });
   decor.wall(4.9, -20.9, 23, -20.9, 4.5, r, { minH: 0.7 });
   decor.wall(-23, -21, -23, 13.6, 3.8, r, { minH: 0.3 });
-  decor.wall(23, -21, 23, 13.6, 3.8, r, { minH: 0.3 });
+  decor.wall(23, -21, 23, 7.2, 3.8, r, { minH: 0.3 });
+  decor.wall(23, 12.8, 23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
   decor.wall(6.6, 13.6, 23, 13.6, 2.6, r, { minH: 0.35 });
   decor.column(-6.4, 13.6, 5.5, r);
@@ -177,7 +180,9 @@ export function createArea1(game) {
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
+  const secretLever = createRuneStone(game, 19.2, 9.0);
   const chest = createChest(game, 15.5, 10.5, 0.2);
+  const secretGate = createSecretGate(game, 23, 10.0, Math.PI / 2, 3.0);
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
   const gate = createGate(game, 0, -20);
   const portal = createPortal(game, 0, -55.5);
@@ -226,6 +231,7 @@ export function createArea1(game) {
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
   if (prog.counters.chestOpened) chest.restoreOpen();
+  if (prog.counters.secretOpened) secretGate.restoreOpen();
 
   game.interaction.add({
     pos: chest.pos, radius: 2.5, height: 2.0,
@@ -249,6 +255,18 @@ export function createArea1(game) {
       '"Três chamas vigiam o portão. Enquanto arderem juntas, o selo não se fecha."',
       '"Mas a chama não obedece enquanto os mortos respiram ao seu redor."',
     ], runeStone.anchor),
+  });
+
+  game.interaction.add({
+    pos: secretLever.pos, radius: 2.5, height: 3.4,
+    label: () => prog.counters.secretOpened ? 'Mecanismo desativado' : 'Examinar mecanismo oculto',
+    enabled: () => !prog.counters.secretOpened,
+    onInteract: () => {
+      prog.setCounter('secretOpened', true);
+      secretGate.openGate();
+      game.ui.toast('Um mecanismo antigo se move... uma passagem se abre na muralha.');
+      game.ui.banner('ATALHO DESCOBERTO', 'A passagem lateral reconecta as ruínas à entrada.', 'victory', 3.2);
+    },
   });
 
   braziers.forEach((b, i) => {
@@ -357,7 +375,7 @@ export function createArea1(game) {
     progression: prog,
     spawn: { x: 0.5, z: 42, facing: Math.PI },
     checkpoint: { x: 0.5, z: 38, facing: Math.PI },
-    boss, braziers, gate, portal,
+    boss, braziers, gate, portal, secretGate,
 
     onStart() {
       const restored = prog.load();
@@ -399,6 +417,7 @@ export function createArea1(game) {
       campfire.update(dt, t);
       braziers.forEach((b) => b.update(dt, t));
       gate.update(dt, t);
+      secretGate.update(dt, t);
       portal.update(dt, t);
       const p = game.player;
       barrierMat.opacity += ((barrierCol.enabled ? 0.45 + Math.sin(t * 4) * 0.1 : 0) - barrierMat.opacity) * Math.min(1, dt * 4);
