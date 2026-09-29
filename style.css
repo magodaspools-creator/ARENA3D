@@ -362,3 +362,14 @@ button:hover { filter: brightness(1.1); }
   box-shadow: 0 0 14px rgba(232,199,122,.16);
 }
 .loot-drop b { font-weight: normal; }
+
+.equipment-title { margin: 12px 0 7px; color: #e8c77a; font: 12px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; }
+#equipment-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.equip-slot { min-width: 0; height: 68px; padding: 5px; display: grid; grid-template-columns: 1fr; grid-template-rows: 15px 1fr 16px; align-items: center; justify-items: center; border: 1px solid rgba(232,199,122,.18); border-radius: 5px; background: rgba(255,255,255,.025); color: #e8e2d4; box-shadow: none; cursor: pointer; }
+.equip-slot.filled { border-color: rgba(232,199,122,.38); background: rgba(232,199,122,.045); }
+.equip-slot:hover { border-color: rgba(232,199,122,.55); background: rgba(255,255,255,.07); }
+.equip-slot-label { color: #8f8672; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; }
+.equip-slot-icon { font-size: 23px; line-height: 1; color: #e8c77a; }
+.equip-slot-item { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.equip-slot-empty { color: #555; font-size: 18px; }
+@media (max-width: 700px) { #equipment-grid { grid-template-columns: repeat(4, 1fr); } .equip-slot { height: 62px; } }
