@@ -34,6 +34,7 @@ function fresh(vocation) {
     gold: 0,
     inventory: [],
     equipment: { ...(STARTER_EQUIPMENT[vocation] || {}) },
+    actionBar: Array(6).fill(null),
     deathDrops: [],
     progression: {},
   };
