@@ -308,7 +308,7 @@ export class CharacterState {
     return { ok: true, restoredGold, restoredItems };
   }
 
-  get inventory {
+  get inventory() {
     return this.data.inventory;
   }
 
