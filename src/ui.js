@@ -186,7 +186,11 @@ export class UI {
 
     for (let i = 0; i < 6; i++) {
       const itemId = slots[i];
-      const item = itemId ? this.game.getItem(itemId) : null;
+      const qty = itemId ? character.getItemCount(itemId) : 0;
+      if (itemId && qty <= 0) {
+        character.setActionBarSlot(i, null);
+      }
+      const item = itemId && qty > 0 ? this.game.getItem(itemId) : null;
       const slot = document.createElement('button');
       slot.type = 'button';
       slot.className = 'action-slot' + (item ? '' : ' empty');
@@ -200,7 +204,6 @@ export class UI {
           : '<span class="action-icon action-glyph">' + (item.icon || '◆') + '</span>';
         slot.insertAdjacentHTML('beforeend', icon);
         if (item.sprite) slot.querySelector('.action-icon').src = item.sprite;
-        const qty = character.getItemCount(item.id);
         if (qty > 0) slot.insertAdjacentHTML('beforeend', '<span class="action-qty">x' + qty + '</span>');
       }
 
@@ -214,6 +217,8 @@ export class UI {
         slot.classList.remove('drag-over');
         const itemIdFromDrag = event.dataTransfer?.getData('text/plain');
         if (!itemIdFromDrag || !this.game.getItem(itemIdFromDrag)) return;
+        const previousIndex = character.actionBar.findIndex((assignedId, index) => assignedId === itemIdFromDrag && index !== i);
+        if (previousIndex >= 0) character.setActionBarSlot(previousIndex, null);
         character.setActionBarSlot(i, itemIdFromDrag);
         this.setActionBar(character);
         this.setInventory(character);
