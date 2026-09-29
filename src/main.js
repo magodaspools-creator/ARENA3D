@@ -77,6 +77,13 @@ class Game {
     addEventListener('resize', () => this.resize());
     addEventListener('keydown', (e) => {
       if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
+      if (e.code.startsWith('Digit') && this.state === 'play') {
+        const slot = Number(e.code.slice(5));
+        if (slot >= 1 && slot <= 6) {
+          e.preventDefault();
+          this.useActionBarSlot(slot - 1);
+        }
+      }
       if (e.code === 'KeyI' && (this.state === 'play' || this.state === 'inventory')) this.toggleInventory();
       if (e.code === 'KeyP' && (this.state === 'play' || this.state === 'profile')) this.toggleProfile();
       if (e.code === 'Escape' && (this.state === 'inventory' || this.state === 'profile')) this.closeOverlay();
@@ -223,18 +230,31 @@ class Game {
   }
 
   useItem(itemId) {
-    if (!this.character || !this.player || this.player.dead) return;
+    if (!this.character || !this.player || this.player.dead) return false;
     const item = getItem(itemId);
-    if (!item?.effect) return;
+    if (!item?.effect) {
+      this.ui.toast('Esse item não pode ser usado agora.');
+      return false;
+    }
     if (item.effect.type === 'healPercent') {
       if (this.player.hp >= this.player.maxHp) {
         this.ui.toast('Sua vida já está cheia.');
-        return;
+        return false;
       }
-      if (!this.character.removeItem(itemId, 1)) return;
+      if (!this.character.removeItem(itemId, 1)) return false;
       this.player.heal(this.player.maxHp * item.effect.value, true);
       this.ui.setInventory(this.character);
+      this.ui.setActionBar(this.character);
+      return true;
     }
+    return false;
+  }
+
+  useActionBarSlot(index) {
+    if (!this.character || !this.player || this.player.dead) return false;
+    const itemId = this.character.actionBar?.[index];
+    if (!itemId) return false;
+    return this.useItem(itemId);
   }
 
   toggleInventory() {
