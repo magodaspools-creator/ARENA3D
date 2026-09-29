@@ -66,7 +66,7 @@ export const ITEMS = {
     equipment: { slot: 'legs' }, stats: { maxHp: 3, armorPercent: 0.003 }, icon: '∥',
   },
   worn_boots: {
-    id: 'worn_boots', sprite: null, name: 'Botas Gasta',
+    id: 'worn_boots', sprite: null, name: 'Botas Gastas',
     description: 'Botas velhas, mas ainda firmes o bastante para a estrada.',
     category: 'equipamento', maxStack: 1, value: 20,
     equipment: { slot: 'boots' }, stats: { speed: 0.03 }, icon: '◢',
