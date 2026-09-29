@@ -180,18 +180,6 @@ class Game {
     return true;
   }
 
-  grantLoot(drops = []) {
-    if (!this.character) return;
-    for (const drop of drops) {
-      const item = getItem(drop.itemId);
-      if (!item) continue;
-      const amount = Math.max(1, Math.floor(drop.amount || 1));
-      const result = this.character.addItem(item.id, amount, item.maxStack);
-      if (result.added) this.ui.toast('+' + result.added + ' ' + item.name, 2.5);
-      if (result.remaining) this.ui.toast('Inventário cheio — parte do loot foi perdida.', 3);
-    }
-    this.ui.setInventory(this.character);
-  }
 
   getItem(itemId) {
     return getItem(itemId);
