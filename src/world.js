@@ -577,3 +577,56 @@ export function createSecretGate(game, x, z, rot = 0, width = 2.8) {
   };
   return gate;
 }
+
+
+/** Small physical lever used to reveal hidden passages. */
+export function createLever(game, x, z, rot = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rot;
+
+  const stone = mat(0x4a4e55, { rough: 0.9 });
+  const iron = mat(0x25282c, { metal: 0.8, rough: 0.35 });
+  const glowMat = glow(0x7ad7ff, 1.6);
+
+  g.add(mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.32, 8), stone, 0, 0.16, 0));
+  const shaft = mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.25, 6), iron, 0, 0.72, 0);
+  shaft.rotation.z = -0.45;
+  g.add(shaft);
+
+  const grip = mesh(new THREE.SphereGeometry(0.14, 8, 6), glowMat, 0.28, 1.23, 0);
+  g.add(grip);
+
+  const rune = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 6), glowMat);
+  rune.position.set(0, 0.34, 0);
+  rune.rotation.x = Math.PI / 2;
+  g.add(rune);
+
+  game.scene.add(g);
+  game.collision.addCircle(x, z, 0.6);
+
+  return {
+    pos: new THREE.Vector3(x, 0, z),
+    anchor: new THREE.Vector3(x, 1.5, z),
+    pulled: false,
+    pull() {
+      if (this.pulled) return;
+      this.pulled = true;
+      shaft.rotation.z = 0.45;
+      grip.position.y = 1.12;
+      grip.position.x = -0.28;
+      rune.visible = false;
+      game.fx.emit(new THREE.Vector3(x, 1.0, z), { count: 28, color: 0x7ad7ff, speed: 4, up: 1.5, life: 0.7, size: 0.3 });
+    },
+    restorePulled() {
+      this.pulled = true;
+      shaft.rotation.z = 0.45;
+      grip.position.y = 1.12;
+      grip.position.x = -0.28;
+      rune.visible = false;
+    },
+    update(t) {
+      if (!this.pulled) rune.rotation.z = t * 1.2;
+    },
+  };
+}
