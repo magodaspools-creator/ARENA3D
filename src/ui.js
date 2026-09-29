@@ -238,6 +238,16 @@ export class UI {
         if (item.sprite) slot.querySelector('.action-icon').src = item.sprite;
         slot.insertAdjacentHTML('beforeend', '<span class="action-qty">x' + qty + '</span>');
         slot.insertAdjacentHTML('beforeend', '<span class="action-name">' + item.name + '</span>');
+        slot.draggable = true;
+        slot.addEventListener('dragstart', (event) => {
+          event.dataTransfer?.setData('text/plain', item.id);
+          event.dataTransfer?.setData('application/x-arena-action-slot', String(i));
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+          }
+          slot.classList.add('dragging');
+        });
+        slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
         slot.addEventListener('click', () => {
           if (this.game.useActionBarSlot(i)) this.flashActionBarSlot(i);
         });
@@ -260,8 +270,19 @@ export class UI {
         slot.classList.remove('drag-over');
         const itemIdFromDrag = event.dataTransfer?.getData('text/plain');
         if (!itemIdFromDrag || !this.game.getItem(itemIdFromDrag)) return;
-        const previousIndex = character.actionBar.findIndex((assignedId, index) => assignedId === itemIdFromDrag && index !== i);
-        if (previousIndex >= 0) character.setActionBarSlot(previousIndex, null);
+        const sourceIndexRaw = event.dataTransfer?.getData('application/x-arena-action-slot');
+        const sourceIndex = Number(sourceIndexRaw);
+        const hasActionSource = Number.isInteger(sourceIndex) && sourceIndex >= 0 && sourceIndex < 6;
+
+        if (hasActionSource) {
+          // Dragging directly between action slots: move the item without opening the inventory.
+          character.setActionBarSlot(sourceIndex, null);
+        } else {
+          // Dragging from the inventory keeps the existing duplicate-prevention behavior.
+          const previousIndex = character.actionBar.findIndex((assignedId, index) => assignedId === itemIdFromDrag && index !== i);
+          if (previousIndex >= 0) character.setActionBarSlot(previousIndex, null);
+        }
+
         character.setActionBarSlot(i, itemIdFromDrag);
         this.setActionBar(character);
         this.setInventory(character);
@@ -296,10 +317,6 @@ export class UI {
         '<div><div class="profile-vocation">' + (voc?.name || character.vocation) + '</div><div class="profile-title">' + (voc?.title || '') + '</div>' +
         '<div class="profile-level">Nível ' + character.level + '</div></div>' +
       '</div>' +
-      '<div class="profile-section-title">Equipamentos</div>' +
-      '<div class="profile-grid profile-equipment">' +
-        [['head','Cabeça'],['armor','Armadura'],['legs','Pernas'],['boots','Botas'],['weapon','Arma'],['shield','Escudo'],['amulet','Amuleto'],['ring','Anel']].map(([slot,label]) => '<div><span>' + label + '</span><b>' + (character.equipment?.[slot] ? (this.game.getItem(character.equipment[slot])?.name || '—') : '—') + '</b></div>').join('') +
-      '</div>' +
       '<div class="profile-section-title">Atributos</div>' +
       '<div class="profile-grid profile-stats">' +
         '<div><span>Vida máxima</span><b>' + stats.maxHp + '</b></div>' +
@@ -317,11 +334,9 @@ export class UI {
         '<div class="profile-xp-bar"><div style="width:' + xpPct + '%"></div></div>' +
         '<div class="profile-xp-foot"><span>Nível ' + character.level + '</span><span>' + xpPct + '%</span><span>Próximo: ' + (character.level + 1) + '</span></div>' +
       '</div>' +
-      '<div class="profile-section-title">Equipamento</div>' +
-      '<div class="profile-grid profile-resources"><div><span>Arma</span><b>' + (character.equipment?.weapon ? (this.game.getItem(character.equipment.weapon)?.name || '—') : '—') + '</b></div><div><span>Armadura</span><b>' + (character.equipment?.armor ? (this.game.getItem(character.equipment.armor)?.name || '—') : '—') + '</b></div></div>' +
       '<div class="profile-section-title">Recursos</div>' +
       '<div class="profile-grid profile-resources">' +
-        '<div><span>Inventário</span><b>' + character.inventorySlots + ' / 24</b></div>' +
+        '<div><span>Ouro</span><b>' + character.gold + '</b></div>' +
       '</div>';
     this.el.profile.classList.remove('hidden');
   }
