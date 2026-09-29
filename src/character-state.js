@@ -111,7 +111,7 @@ export class CharacterState {
     return this.data.inventory.length;
   }
 
-  addItem(itemId, amount = 1, maxStack = 99) {
+  addItem(itemId, amount = 1, maxStack = 99, maxSlots = 24) {
     const qty = Math.max(0, Math.floor(amount || 0));
     if (!itemId || !qty) return { added: 0, remaining: qty };
 
@@ -125,13 +125,15 @@ export class CharacterState {
       if (!remaining) break;
     }
 
-    if (remaining) {
-      this.data.inventory.push({ id: itemId, qty: remaining });
-      remaining = 0;
+    if (remaining && this.data.inventory.length < maxSlots) {
+      const add = Math.min(maxStack, remaining);
+      this.data.inventory.push({ id: itemId, qty: add });
+      remaining -= add;
     }
 
-    this.save();
-    return { added: qty, remaining };
+    const added = qty - remaining;
+    if (added) this.save();
+    return { added, remaining };
   }
 
   removeItem(itemId, amount = 1) {
