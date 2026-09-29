@@ -56,7 +56,9 @@ export class Combat {
     const { amount, crit } = this.resolveDamage(dmg, { target: e, ...context });
     e.takeDamage(amount, from, crit);
     const impactPos = V.copy(e.pos).setY(e.height * 0.55);
-    this.game.ui.damageNumber(V.copy(e.pos).setY(e.height), amount, crit ? 'crit' : '');
+    const typeClass = context.damageType === 'magic' ? 'magic' : 'physical';
+    const damageClass = `${typeClass}${crit ? ' crit' : ''}`;
+    this.game.ui.damageNumber(V.copy(e.pos).setY(e.height), amount, damageClass);
     this.game.fx.damageImpact(impactPos, { color, type: context.damageType || 'physical', crit });
     this.game.stats.damage += amount;
     return amount;
