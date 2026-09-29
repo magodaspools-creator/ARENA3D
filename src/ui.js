@@ -72,7 +72,11 @@ export class UI {
     this.layer.appendChild(el);
     this.floaters.push({ el, pos: pos.clone(), t: 0, life, dx: (Math.random() - 0.5) * 30 });
   }
-  damageNumber(pos, amount, cls) { this.floatText(pos, String(amount), cls, cls === 'crit' ? 1.1 : 0.85); }
+  damageNumber(pos, amount, cls = '') {
+    const classes = String(cls || '').trim().split(/\\s+/).filter(Boolean);
+    const life = classes.includes('crit') ? 1.1 : 0.85;
+    this.floatText(pos, String(amount), classes.join(' '), life);
+  }
 
   project(pos) {
     v.copy(pos).project(this.game.camera);
