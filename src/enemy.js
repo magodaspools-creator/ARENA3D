@@ -10,7 +10,7 @@ const WHITE = new THREE.Color(0xffffff);
 const V = new THREE.Vector3();
 
 export const ENEMY_TYPES = {
-  hollow: { name: 'Oco', hp: 90, speed: 3.3, resistances: { physical: 0.08, magic: 0 }, rewards: { xp: 35, gold: 12 }, loot: [{ itemId: 'iron_scrap', chance: 0.65, min: 1, max: 2 }, { itemId: 'red_potion', chance: 0.14 }], aggro: 8.5, range: 1.7, damage: [12, 16], windup: 0.5, cooldown: 1.6, radius: 0.5, height: 2.0, knock: 5 },
+  hollow: { name: 'Oco', hp: 90, speed: 3.3, resistances: { physical: 0.08, magic: 0 }, rewards: { xp: 35, gold: 12 }, loot: [{ itemId: 'iron_scrap', chance: 0.65, min: 1, max: 2 }, { itemId: 'red_potion', chance: 0.05 }], aggro: 8.5, range: 1.7, damage: [12, 16], windup: 0.5, cooldown: 1.6, radius: 0.5, height: 2.0, knock: 5 },
   wisp: { name: 'Fogo-Fátuo', hp: 55, speed: 2.8, resistances: { physical: 0.18, magic: 0.04 }, rewards: { xp: 28, gold: 16 }, loot: [{ itemId: 'wisp_essence', chance: 0.65, min: 1, max: 2 }, { itemId: 'moon_herb', chance: 0.2 }], aggro: 11, range: 9, keep: 6.5, damage: [10, 13], windup: 0.75, cooldown: 2.3, radius: 0.45, height: 2.1, ranged: true, knock: 7 },
 };
 
