@@ -342,6 +342,35 @@ export function createArea1(game) {
 
     onStart() {
       const restored = prog.load();
+
+      if (restored) {
+        const savedLit = Array.isArray(prog.counters.litIndices)
+          ? prog.counters.litIndices
+          : Array.from({ length: Math.min(3, Number(prog.counters.lit) || 0) }, (_, index) => index);
+
+        savedLit.forEach((index) => {
+          if (braziers[index] && !braziers[index].lit) braziers[index].restoreLit();
+        });
+
+        if (prog.reached('shrine')) {
+          gate.restoreOpen();
+        }
+
+        if (prog.id === 'boss') {
+          barrierCol.enabled = true;
+          boss.awaken();
+        } else if (prog.reached('portal')) {
+          barrierCol.enabled = false;
+          boss.alive = false;
+          boss.state = 'dead';
+          boss.root.visible = false;
+          boss.tele?.forEach((telegraph) => game.fx.remove(telegraph));
+          boss.tele = [];
+          portal.restoreActive();
+          runeMat.color.set(0xffc36a);
+        }
+      }
+
       prog.apply();
       game.ui.banner('FLORESTA DE VHAL', restored ? 'Progresso restaurado' : 'Área 1', '', 3.2);
       game.schedule(3.5, () => game.ui.toast('Use WASD para andar. Há uma luz perto da fogueira...'));
