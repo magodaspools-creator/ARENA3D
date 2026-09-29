@@ -20,6 +20,7 @@ export class UI {
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), inventoryCount: $('inventory-count'),
+      profile: $('profile'), profileBody: $('profile-body'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -135,8 +136,8 @@ export class UI {
       el.className = 'inv-slot' + (item.effect ? ' usable' : '');
       el.type = 'button';
       el.title = item.name + ' — ' + item.description;
-      el.innerHTML = '<span class="inv-icon"></span><span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
-      el.querySelector('.inv-icon').textContent = item.icon;
+      el.innerHTML = '<img class="inv-icon" alt=""><span class="inv-name"></span><span class="inv-qty">x' + slot.qty + '</span>';
+      el.querySelector('.inv-icon').src = item.sprite;
       el.querySelector('.inv-name').textContent = item.name;
       el.onclick = () => this.game.useItem(slot.id);
       grid.appendChild(el);
@@ -147,6 +148,29 @@ export class UI {
       empty.className = 'inv-slot empty';
       grid.appendChild(empty);
     }
+  }
+
+  showProfile(character) {
+    if (!character) return;
+    const voc = this.game.player?.voc;
+    const next = character.xpForNextLevel;
+    this.el.profileBody.innerHTML =
+      '<div class="profile-identity">' +
+        '<div class="profile-avatar" style="--vc:' + (voc?.color || '#888') + '">' + (voc?.name?.[0] || '?') + '</div>' +
+        '<div><div class="profile-vocation">' + (voc?.name || character.vocation) + '</div><div class="profile-title">' + (voc?.title || '') + '</div></div>' +
+      '</div>' +
+      '<div class="profile-grid">' +
+        '<div><span>Nível</span><b>' + character.level + '</b></div>' +
+        '<div><span>Ouro</span><b>' + character.gold + '</b></div>' +
+        '<div><span>XP</span><b>' + character.xpIntoLevel + ' / ' + next + '</b></div>' +
+        '<div><span>Inimigos derrotados</span><b>' + this.game.stats.kills + '</b></div>' +
+        '<div><span>Inventário</span><b>' + character.inventorySlots + ' / 24</b></div>' +
+      '</div>';
+    this.el.profile.classList.remove('hidden');
+  }
+
+  hideProfile() {
+    this.el.profile.classList.add('hidden');
   }
 
   setProgress(character) {
