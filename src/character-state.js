@@ -34,6 +34,7 @@ function fresh(vocation) {
     gold: 0,
     inventory: [],
     equipment: { ...(STARTER_EQUIPMENT[vocation] || {}) },
+    deathDrops: [],
   };
 }
 
@@ -60,6 +61,21 @@ export class CharacterState {
           ? saved.inventory
               .filter((item) => item && typeof item.id === 'string')
               .map((item) => ({ id: item.id, qty: Math.max(1, Math.floor(item.qty || 1)) }))
+          : [],
+        deathDrops: Array.isArray(saved.deathDrops)
+          ? saved.deathDrops
+              .filter((drop) => drop && typeof drop.id === 'string')
+              .map((drop) => ({
+                id: drop.id,
+                gold: Math.max(0, Math.floor(drop.gold || 0)),
+                x: Number(drop.x) || 0,
+                z: Number(drop.z) || 0,
+                items: Array.isArray(drop.items)
+                  ? drop.items
+                      .filter((item) => item && typeof item.id === 'string')
+                      .map((item) => ({ id: item.id, qty: Math.max(1, Math.floor(item.qty || 1)) }))
+                  : [],
+              }))
           : [],
       };
     } catch {
@@ -200,7 +216,68 @@ export class CharacterState {
     return gained;
   }
 
-  get inventory() {
+  loseXP(percent = 0.1) {
+    const rate = Math.max(0, Math.min(1, Number(percent) || 0));
+    const beforeXP = this.data.xp;
+    const beforeLevel = this.level;
+    const lost = Math.min(beforeXP, Math.floor(beforeXP * rate));
+    this.data.xp = Math.max(0, beforeXP - lost);
+    while (this.data.level > 1 && this.data.xp < this.levelStartXP) this.data.level--;
+    this.save();
+    return { lost, oldLevel: beforeLevel, level: this.level };
+  }
+
+  createDeathDrop(pos = { x: 0, z: 0 }) {
+    const items = this.data.inventory.map((item) => ({ id: item.id, qty: item.qty }));
+    const gold = this.data.gold;
+    if (!items.length && !gold) return null;
+
+    const drop = {
+      id: 'death-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+      gold,
+      x: Number(pos?.x) || 0,
+      z: Number(pos?.z) || 0,
+      items,
+    };
+    this.data.inventory = [];
+    this.data.gold = 0;
+    this.data.deathDrops.push(drop);
+    this.save();
+    return drop;
+  }
+
+  get deathDrops() {
+    return this.data.deathDrops;
+  }
+
+  claimDeathDrop(dropId) {
+    const index = this.data.deathDrops.findIndex((drop) => drop.id === dropId);
+    if (index < 0) return { ok: false, reason: 'missing' };
+    const drop = this.data.deathDrops[index];
+    const remaining = [];
+    let restoredItems = 0;
+
+    for (const item of drop.items) {
+      const def = getItem(item.id);
+      const result = this.addItem(item.id, item.qty, def?.maxStack ?? 99);
+      restoredItems += result.added;
+      if (result.remaining > 0) remaining.push({ id: item.id, qty: result.remaining });
+    }
+
+    if (remaining.length) {
+      drop.items = remaining;
+      this.save();
+      return { ok: false, reason: 'inventory_full', restoredGold: 0, restoredItems };
+    }
+
+    this.data.gold += drop.gold;
+    const restoredGold = drop.gold;
+    this.data.deathDrops.splice(index, 1);
+    this.save();
+    return { ok: true, restoredGold, restoredItems };
+  }
+
+  get inventory {
     return this.data.inventory;
   }
 
