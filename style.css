@@ -19,7 +19,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 /* ---------- world-anchored ---------- */
 #world-layer > * { position: absolute; left: 0; top: 0; will-change: transform; }
 .dmg { font-weight: 800; font-size: 19px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px rgba(0,0,0,.8); white-space: nowrap; }
-.dmg.crit { color: #ffd24a; font-size: 27px; }
+.dmg.physical { color: #f4e7c7; }
+.dmg.magic { color: #cfa0ff; text-shadow: 0 0 8px rgba(170,100,255,.55), 0 2px 0 #000; }
+.dmg.crit { color: #ffd24a; font-size: 27px; text-shadow: 0 0 10px rgba(255,190,50,.7), 0 2px 0 #000; }
+.dmg.magic.crit { color: #ffe17a; text-shadow: 0 0 12px rgba(190,100,255,.8), 0 0 8px rgba(255,190,50,.55), 0 2px 0 #000; }
 .dmg.player { color: #ff6060; }
 .dmg.heal { color: #7dff9a; }
 .dmg.info { color: #cfe3ff; font-size: 15px; font-weight: 600; }
