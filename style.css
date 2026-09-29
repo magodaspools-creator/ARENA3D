@@ -372,7 +372,7 @@ button:hover { filter: brightness(1.1); }
   pointer-events: auto;
 }
 .inventory-panel {
-  width: min(620px, calc(100vw - 32px));
+  width: min(900px, calc(100vw - 32px));
   padding: 20px;
   background: linear-gradient(145deg, rgba(20,20,27,.98), rgba(9,11,17,.98));
   border: 1px solid rgba(232,199,122,.45);
@@ -400,9 +400,33 @@ button:hover { filter: brightness(1.1); }
   padding: 7px 12px;
   font-size: 12px;
 }
+
+.inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 18px;
+  align-items: start;
+}
+.inventory-backpack,
+.inventory-paperdoll {
+  min-width: 0;
+}
+.inventory-paperdoll {
+  padding-left: 18px;
+  border-left: 1px solid rgba(232,199,122,.16);
+}
+.equipment-title {
+  margin-bottom: 9px;
+  color: #b8aa91;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
 #inventory-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 7px;
 }
 .inv-slot {
@@ -450,6 +474,71 @@ button:hover { filter: brightness(1.1); }
   color: #e8c77a;
   font-size: 10px;
 }
+
+/* Paper-doll: oito slots, cada um representando visualmente uma parte do corpo. */
+#equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.equip-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 92px;
+  padding: 7px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  background: rgba(255,255,255,.035);
+  color: #e8e2d4;
+  box-shadow: none;
+}
+.equip-slot:hover {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(232,199,122,.45);
+}
+.equip-slot-label {
+  color: #7f7667;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+.equip-slot-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: #a99b82;
+  font-size: 28px;
+  line-height: 1;
+}
+.equip-body-glyph {
+  opacity: .6;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+.equip-item-sprite {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.55));
+}
+.equip-slot.filled {
+  border-color: rgba(232,199,122,.25);
+}
+.equip-slot-item {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d6c8ad;
+  font-family: Georgia, serif;
+  font-size: 9px;
+}
 .inventory-hint {
   margin-top: 12px;
   color: #8f8672;
@@ -457,11 +546,12 @@ button:hover { filter: brightness(1.1); }
   text-align: center;
 }
 @media (max-width: 700px) {
+  .inventory-panel { width: min(620px, calc(100vw - 24px)); padding: 14px; }
+  .inventory-layout { grid-template-columns: 1fr; gap: 14px; }
+  .inventory-paperdoll { padding-left: 0; border-left: 0; border-top: 1px solid rgba(232,199,122,.16); padding-top: 12px; }
   #inventory-grid { grid-template-columns: repeat(4, 1fr); }
-  .inventory-panel { padding: 14px; }
   #inventory-btn { bottom: 44px; right: 10px; }
 }
-
 /* ---------- overlay controls / item sprites ---------- */
 .overlay-close {
   width: 36px;
