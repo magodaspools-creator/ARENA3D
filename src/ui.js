@@ -22,6 +22,7 @@ export class UI {
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
+      shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -118,6 +119,33 @@ export class UI {
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
+
+  showShop({ npcName, item, price, owned = 0, onBuy, onClose }) {
+    if (!this.el.shop) return;
+    this.el.shopTitle.textContent = 'Comércio — ' + npcName;
+    this.el.shopSubtitle.textContent = 'Suprimentos para sua próxima jornada';
+    const icon = item.sprite
+      ? '<img class="shop-icon" alt="">'
+      : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
+    this.el.shopItem.innerHTML =
+      '<div class="shop-item-card">' +
+        icon +
+        '<div class="shop-item-info"><div class="shop-item-name"></div><div class="shop-item-desc"></div><div class="shop-item-owned">Você possui: ' + owned + '</div></div>' +
+        '<div class="shop-price">' + price + '<small>ouro</small></div>' +
+      '</div>';
+    this.el.shopItem.querySelector('.shop-item-name').textContent = item.name;
+    this.el.shopItem.querySelector('.shop-item-desc').textContent = item.description;
+    if (item.sprite) this.el.shopItem.querySelector('.shop-icon').src = item.sprite;
+    this.el.shopBuy.textContent = 'Comprar · ' + price + ' ouro';
+    this.el.shopBuy.onclick = onBuy;
+    this.el.shopClose.onclick = onClose;
+    this.el.shopCancel.onclick = onClose;
+    this.el.shop.classList.remove('hidden');
+  }
+
+  hideShop() {
+    this.el.shop?.classList.add('hidden');
+  }
 
   showInventory(character) {
     this.el.inventory.classList.remove('hidden');
