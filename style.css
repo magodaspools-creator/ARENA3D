@@ -104,6 +104,80 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 #banner.fade { opacity: 0; }
 @keyframes bannerin { from { opacity: 0; letter-spacing: 30px; } }
 
+/* ---------- pause ---------- */
+#pause,
+#pause-controls {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(2,4,8,.78);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+  z-index: 120;
+}
+.pause-panel {
+  width: min(390px, calc(100vw - 32px));
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(20,20,27,.99), rgba(7,9,14,.99));
+  border: 1px solid rgba(232,199,122,.48);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.75), 0 0 35px rgba(232,199,122,.08);
+}
+.pause-kicker {
+  color: #8f8672;
+  font-size: 10px;
+  letter-spacing: 4px;
+}
+.pause-title {
+  margin-bottom: 14px;
+  color: #f0d9a8;
+  font: 30px Georgia, serif;
+  letter-spacing: 5px;
+}
+.pause-panel button {
+  width: 100%;
+  padding: 11px 18px;
+  font-size: 14px;
+}
+.pause-panel button + button {
+  margin-top: 2px;
+}
+.controls-panel {
+  width: min(500px, calc(100vw - 32px));
+}
+.control-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.control-list div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 5px;
+  background: rgba(255,255,255,.025);
+  color: #a99f88;
+  font-size: 12px;
+}
+.control-list b {
+  color: #e8c77a;
+}
+#pause-menu,
+#controls-back {
+  background: transparent;
+  color: #e8c77a;
+  border: 1px solid rgba(232,199,122,.4);
+  box-shadow: none;
+}
+
 /* ---------- selection ---------- */
 #select { position: absolute; inset: 0; pointer-events: auto; background: linear-gradient(90deg, rgba(5,7,12,.93) 0%, rgba(5,7,12,.8) 38%, rgba(5,7,12,0) 62%); }
 .select-panel { position: absolute; left: 6%; top: 50%; transform: translateY(-50%); width: 430px; }
