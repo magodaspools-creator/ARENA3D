@@ -153,9 +153,6 @@ export class Player {
       if ((input.wasPressed('KeyQ') || input.wasPressed('Digit1')) && this.abilityCd <= 0) this.useAbility();
     }
 
-    // out-of-combat regeneration
-    if (g.time - this.lastHurt > 5 && this.hp < this.maxHp) this.heal(this.maxHp * 0.07 * dt, false);
-
     this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
     g.ui.setHP(this.hp, this.maxHp);
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
