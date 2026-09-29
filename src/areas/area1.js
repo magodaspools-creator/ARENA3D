@@ -379,7 +379,7 @@ export function createArea1(game) {
         e.respawnScheduled = true;
         game.schedule(18, () => {
           e.respawnScheduled = false;
-          if (game.state !== 'play' || prog.id === 'complete') return;
+          if (prog.id === 'complete') return;
           spawn(e.spawnData.type, e.spawnData.x, e.spawnData.z, e.spawnData.group, true);
         });
       }
