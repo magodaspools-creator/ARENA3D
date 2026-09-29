@@ -194,7 +194,7 @@ export function createArea1(game) {
     { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
     { id: 'portal', timeline: 'Abrir o caminho adiante', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
     { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
-  ]);
+  ], 'area1');
 
   const maren = new NPC(game, {
     name: 'Maren, a Vigia', x: -4.6, z: 35.2, facing: 0.6,
@@ -336,8 +336,9 @@ export function createArea1(game) {
     boss, braziers, gate, portal,
 
     onStart() {
+      const restored = prog.load();
       prog.apply();
-      game.ui.banner('FLORESTA DE VHAL', 'Área 1', '', 3.2);
+      game.ui.banner('FLORESTA DE VHAL', restored ? 'Progresso restaurado' : 'Área 1', '', 3.2);
       game.schedule(3.5, () => game.ui.toast('Use WASD para andar. Há uma luz perto da fogueira...'));
     },
 
