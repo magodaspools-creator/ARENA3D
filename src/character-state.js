@@ -35,6 +35,7 @@ function fresh(vocation) {
     inventory: [],
     equipment: { ...(STARTER_EQUIPMENT[vocation] || {}) },
     deathDrops: [],
+    progression: {},
   };
 }
 
@@ -62,6 +63,7 @@ export class CharacterState {
               .filter((item) => item && typeof item.id === 'string')
               .map((item) => ({ id: item.id, qty: Math.max(1, Math.floor(item.qty || 1)) }))
           : [],
+        progression: saved.progression && typeof saved.progression === 'object' ? saved.progression : {},
         deathDrops: Array.isArray(saved.deathDrops)
           ? saved.deathDrops
               .filter((drop) => drop && typeof drop.id === 'string')
@@ -248,6 +250,24 @@ export class CharacterState {
 
   get deathDrops() {
     return this.data.deathDrops;
+  }
+
+  getProgression(areaId) {
+    const saved = this.data.progression?.[areaId];
+    if (!saved || typeof saved !== 'object') return null;
+    return {
+      index: Math.max(0, Math.floor(saved.index || 0)),
+      counters: saved.counters && typeof saved.counters === 'object' ? { ...saved.counters } : {},
+    };
+  }
+
+  saveProgression(areaId, index, counters = {}) {
+    if (!areaId) return;
+    this.data.progression[areaId] = {
+      index: Math.max(0, Math.floor(index || 0)),
+      counters: { ...counters },
+    };
+    this.save();
   }
 
   claimDeathDrop(dropId) {
