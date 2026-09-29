@@ -259,6 +259,15 @@ export function createBrazier(game, x, z) {
       game.fx.ring(b.pos, 0xffa040, 7, 0.8);
       game.fx.beam(b.pos, 0xffc36a, 10, 1.5, 0.8);
     },
+    restoreLit() {
+      b.lit = true;
+      b.litT = 1;
+      fm.color.set(0xffa040);
+      fm.opacity = 0.9;
+      rune.material = glow(0xffb45a, 2.5);
+      light.color.set(0xff9a4a);
+      light.intensity = 30;
+    },
     update(dt, t) {
       if (b.lit) b.litT = Math.min(1, b.litT + dt * 2);
       const s = b.lit ? 0.4 + 0.6 * b.litT : 0.4;
@@ -314,6 +323,14 @@ export function createGate(game, x, z, width = 7) {
       gate.open = true;
       game.fx.emit(new THREE.Vector3(x, 3.4, z + 0.4), { count: 120, color: 0xb45aff, speed: 9, life: 1.2, size: 0.5 });
     },
+    restoreOpen() {
+      gate.open = true;
+      gate.openT = 1;
+      seal.scale.setScalar(0.001);
+      light.intensity = 0;
+      bars.position.y = -6.8;
+      collider.enabled = false;
+    },
     update(dt, t) {
       seal.rotation.z = t * 0.4;
       seal.children[1].rotation.z = -t * 0.9;
@@ -361,6 +378,14 @@ export function createPortal(game, x, z) {
   const portal = {
     pos: new THREE.Vector3(x, 0, z), active: false, riseT: 0, group: g,
     rise() { g.visible = true; portal.rising = true; },
+    restoreActive() {
+      g.visible = true;
+      portal.rising = false;
+      portal.riseT = 1;
+      portal.active = true;
+      g.position.y = 0;
+      light.intensity = 30;
+    },
     update(dt, t) {
       if (!g.visible) return;
       swirl.uniforms.uTime.value = t;
