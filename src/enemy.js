@@ -9,8 +9,8 @@ const WHITE = new THREE.Color(0xffffff);
 const V = new THREE.Vector3();
 
 export const ENEMY_TYPES = {
-  hollow: { name: 'Oco', hp: 90, speed: 3.3, aggro: 8.5, range: 1.7, damage: [12, 16], windup: 0.5, cooldown: 1.6, radius: 0.5, height: 2.0, knock: 5 },
-  wisp: { name: 'Fogo-Fátuo', hp: 55, speed: 2.8, aggro: 11, range: 9, keep: 6.5, damage: [10, 13], windup: 0.75, cooldown: 2.3, radius: 0.45, height: 2.1, ranged: true, knock: 7 },
+  hollow: { name: 'Oco', hp: 90, speed: 3.3, rewards: { xp: 35, gold: 12 }, aggro: 8.5, range: 1.7, damage: [12, 16], windup: 0.5, cooldown: 1.6, radius: 0.5, height: 2.0, knock: 5 },
+  wisp: { name: 'Fogo-Fátuo', hp: 55, speed: 2.8, rewards: { xp: 28, gold: 16 }, aggro: 11, range: 9, keep: 6.5, damage: [10, 13], windup: 0.75, cooldown: 2.3, radius: 0.45, height: 2.1, ranged: true, knock: 7 },
 };
 
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
@@ -20,6 +20,7 @@ export class Enemy {
     this.game = game;
     this.type = type;
     this.def = ENEMY_TYPES[type];
+    this.rewards = { ...this.def.rewards };
     this.group = opts.group ?? null;
     if (type === 'wisp') {
       this.model = createWispModel();
