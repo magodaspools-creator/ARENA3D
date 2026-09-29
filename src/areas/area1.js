@@ -246,7 +246,12 @@ export function createArea1(game) {
         b.light();
         game.rig.shake(0.3);
         const n = lit();
+        const litIndices = braziers.reduce((indices, brazier, index) => {
+          if (brazier.lit) indices.push(index);
+          return indices;
+        }, []);
         prog.setCounter('lit', n);
+        prog.setCounter('litIndices', litIndices);
         game.ui.toast(`Chama-Vigia acesa (${n}/3)`);
         if (n === 3) openGate();
       },
