@@ -15,7 +15,7 @@ import { Player } from './player.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
-import { GroundLoot } from './ground-loot.js';
+import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 
 const FOG = 0x0b1220;
@@ -65,6 +65,7 @@ class Game {
     this.enemies = [];
     this.npcs = [];
     this.groundLoot = [];
+    this.deathBackpacks = [];
 
     this.area = createArea1(this);
     this.player = null;
@@ -143,6 +144,7 @@ class Game {
     this.player.character = this.character;
     this.ui.showHud(this.player.voc, this.character);
     this.area.onStart();
+    this.spawnPendingDeathBackpacks();
   }
 
   addEnemy(e) { this.enemies.push(e); return e; }
@@ -178,6 +180,15 @@ class Game {
     if (!result) return false;
     this.groundLoot = this.groundLoot.filter((item) => item !== drop && !item.dead);
     return true;
+  }
+
+  spawnDeathBackpack(drop) {
+    if (!drop) return;
+    this.deathBackpacks.push(new DeathBackpack(this, drop));
+  }
+
+  spawnPendingDeathBackpacks() {
+    for (const drop of this.character?.deathDrops || []) this.spawnDeathBackpack(drop);
   }
 
 
@@ -273,6 +284,16 @@ class Game {
   onPlayerDied() {
     this.stats.deaths++;
     this.combat.clearEnemyProjectiles();
+
+    const xpLoss = this.character?.loseXP(0.10);
+    const deathDrop = this.character?.createDeathDrop(this.player?.pos);
+    if (deathDrop) this.spawnDeathBackpack(deathDrop);
+    this.ui.setProgress(this.character);
+    if (xpLoss?.lost) {
+      const levelText = xpLoss.level !== xpLoss.oldLevel ? ' · Nível ' + xpLoss.oldLevel + ' → ' + xpLoss.level : '';
+      this.ui.toast('Morte: -' + xpLoss.lost + ' XP' + levelText, 4);
+    }
+
     this.schedule(1.0, () => this.ui.showDeath(true));
     this.schedule(2.8, () => this.ui.fade(true));
     this.schedule(3.7, () => {
@@ -355,6 +376,8 @@ class Game {
     if (this.state === 'play') {
       for (const drop of this.groundLoot) drop.update(dt);
       this.groundLoot = this.groundLoot.filter((drop) => !drop.dead);
+      for (const backpack of this.deathBackpacks) backpack.update(dt);
+      this.deathBackpacks = this.deathBackpacks.filter((backpack) => !backpack.dead);
       for (const e of this.enemies) e.update(dt);
       this.enemies = this.enemies.filter((e) => !e.removed);
       this.resolveBodies();
