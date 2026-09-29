@@ -218,6 +218,17 @@ export class CharacterState {
     return gained;
   }
 
+  spendGold(amount) {
+    const cost = Math.max(0, Math.floor(amount || 0));
+    if (!cost) return { ok: true, spent: 0, remaining: this.data.gold };
+    if (this.data.gold < cost) {
+      return { ok: false, reason: 'insufficient_gold', cost, available: this.data.gold };
+    }
+    this.data.gold -= cost;
+    this.save();
+    return { ok: true, spent: cost, remaining: this.data.gold };
+  }
+
   loseXP(percent = 0.1) {
     const rate = Math.max(0, Math.min(1, Number(percent) || 0));
     const beforeXP = this.data.xp;
