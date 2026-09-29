@@ -271,8 +271,10 @@ button:hover { filter: brightness(1.1); }
   pointer-events: auto;
 }
 .profile-panel {
-  width: min(560px, calc(100vw - 32px));
-  padding: 22px;
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 16px;
   background: linear-gradient(145deg, rgba(20,20,27,.98), rgba(9,11,17,.98));
   border: 1px solid rgba(232,199,122,.45);
   border-radius: 10px;
@@ -282,11 +284,11 @@ button:hover { filter: brightness(1.1); }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .profile-heading {
   font-family: Georgia, serif;
-  font-size: 30px;
+  font-size: 24px;
   letter-spacing: 4px;
   color: #f0d9a8;
 }
@@ -301,14 +303,14 @@ button:hover { filter: brightness(1.1); }
   border-radius: 6px;
 }
 .profile-avatar {
-  width: 62px;
-  height: 62px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--vc, #888);
   color: #101010;
-  font: bold 28px Georgia, serif;
+  font: bold 23px Georgia, serif;
   box-shadow: 0 0 22px -4px var(--vc, #888);
 }
 .profile-vocation { font: 24px Georgia, serif; color: #f0d9a8; }
@@ -329,8 +331,8 @@ button:hover { filter: brightness(1.1); }
   margin-top: 12px;
 }
 .profile-grid > div {
-  min-height: 70px;
-  padding: 12px;
+  min-height: 58px;
+  padding: 9px;
   border: 1px solid rgba(255,255,255,.07);
   background: rgba(255,255,255,.025);
   border-radius: 5px;
