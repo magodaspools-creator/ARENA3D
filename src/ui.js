@@ -481,6 +481,16 @@ export class UI {
     while (this.el.toasts.children.length > 4) this.el.toasts.firstChild.remove();
     setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 500); }, dur * 1000);
   }
+
+  showShopFeedback(text, error = false) {
+    const el = this.el.shopFeedback;
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('error', !!error);
+    el.classList.add('show');
+    clearTimeout(this.shopFeedbackTimer);
+    this.shopFeedbackTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
   banner(title, sub = '', cls = '', dur = 3.5) {
     const b = this.el.banner;
     b.className = cls;
