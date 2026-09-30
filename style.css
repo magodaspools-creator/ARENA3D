@@ -109,3 +109,84 @@ button:hover { filter: brightness(1.1); }
 .cbtns { display: flex; gap: 14px; justify-content: center; }
 #stay-btn { background: transparent; color: #e8c77a; border: 1px solid #e8c77a; box-shadow: none; }
 @keyframes fadein { from { opacity: 0; } }
+
+
+/* ---------- item sprites ---------- */
+#items-panel {
+  position: absolute;
+  left: 18px;
+  bottom: 54px;
+  width: 330px;
+  padding: 10px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, rgba(10,12,18,.96), rgba(7,9,14,.94));
+  border: 1px solid rgba(232,199,122,.42);
+  border-radius: 7px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.55);
+}
+.items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 8px;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #e8c77a;
+}
+.items-head b {
+  font-family: "Segoe UI", sans-serif;
+  font-size: 11px;
+  border: 1px solid rgba(232,199,122,.4);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #cfc4ad;
+}
+#items-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+.item-slot {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 5px;
+}
+.item-slot:hover {
+  border-color: rgba(232,199,122,.65);
+  background: rgba(232,199,122,.08);
+}
+.item-slot img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.item-slot .item-name {
+  position: absolute;
+  left: 50%;
+  bottom: -28px;
+  z-index: 5;
+  width: max-content;
+  max-width: 150px;
+  padding: 4px 7px;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(7,9,14,.96);
+  border: 1px solid rgba(232,199,122,.35);
+  border-radius: 4px;
+  color: #e8e2d4;
+  font-size: 11px;
+  transition: opacity .12s;
+}
+.item-slot:hover .item-name { opacity: 1; }
+@media (max-width: 700px) {
+  #items-panel { left: 10px; bottom: 45px; width: 290px; }
+  #items-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+}
