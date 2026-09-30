@@ -23,7 +23,7 @@ export class UI {
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
       pause: $('pause'), pauseControls: $('pause-controls'),
-      shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
+      shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -125,39 +125,68 @@ export class UI {
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
-  showShop({ npcName, stock = [], onBuy, onClose }) {
+  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose }) {
     if (!this.el.shop) return;
-    this.el.shopTitle.textContent = 'Loja — ' + npcName;
-    this.el.shopSubtitle.textContent = 'Escolha um item para comprar';
-    this.el.shopItem.innerHTML = stock.map((entry) => {
-      const item = entry.item;
-      const price = entry.price;
-      const owned = entry.owned;
-      const icon = item.sprite
-        ? '<img class="shop-icon" alt="">'
-        : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
-      return '<div class="shop-item-card" data-shop-item="' + item.id + '">' +
-        icon +
-        '<div class="shop-item-info"><div class="shop-item-name"></div><div class="shop-item-desc"></div><div class="shop-item-owned">Você possui: ' + owned + '</div></div>' +
-        '<div class="shop-buy-col"><div class="shop-price">' + price + '<small>ouro</small></div><button class="shop-buy-item" type="button">Comprar</button></div>' +
-      '</div>';
-    }).join('');
 
-    for (const entry of stock) {
-      const card = this.el.shopItem.querySelector('[data-shop-item="' + entry.item.id + '"]');
-      if (!card) continue;
-      card.querySelector('.shop-item-name').textContent = entry.item.name;
-      card.querySelector('.shop-item-desc').textContent = entry.item.description;
-      if (entry.item.sprite) card.querySelector('.shop-icon').src = entry.item.sprite;
-      card.querySelector('.shop-buy-item').onclick = () => onBuy(entry.item.id, entry.price);
-    }
+    const renderMode = (mode) => {
+      const isSell = mode === 'sell';
+      const entries = isSell ? sellStock : stock;
+      this.el.shopTitle.textContent = 'Comércio — ' + npcName;
+      this.el.shopSubtitle.textContent = isSell
+        ? 'Venda itens encontrados ou equipamentos que não deseja mais'
+        : 'Escolha um item para comprar';
+
+      this.el.shopItem.innerHTML = entries.length
+        ? entries.map((entry) => {
+            const item = entry.item;
+            const price = entry.price;
+            const owned = entry.owned ?? 0;
+            const equipped = entry.equipped ?? 0;
+            const icon = item.sprite
+              ? '<img class="shop-icon" alt="">'
+              : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
+            const ownedText = isSell
+              ? 'Você possui: ' + owned + (equipped ? ' · Equipado: ' + equipped : '')
+              : 'Você possui: ' + owned;
+            const actionText = isSell ? 'Vender 1' : 'Comprar';
+            return '<div class="shop-item-card" data-shop-item="' + item.id + '">' +
+              icon +
+              '<div class="shop-item-info"><div class="shop-item-name"></div><div class="shop-item-desc"></div><div class="shop-item-owned">' + ownedText + '</div></div>' +
+              '<div class="shop-buy-col"><div class="shop-price">' + price + '<small>ouro</small></div><button class="shop-buy-item" type="button"' + (isSell && owned <= 0 ? ' disabled' : '') + '>' + actionText + '</button></div>' +
+            '</div>';
+          }).join('')
+        : '<div class="shop-empty">' + (isSell ? 'Você não possui itens que possam ser vendidos.' : 'Nenhuma mercadoria disponível.') + '</div>';
+
+      for (const entry of entries) {
+        const card = this.el.shopItem.querySelector('[data-shop-item="' + entry.item.id + '"]');
+        if (!card) continue;
+        card.querySelector('.shop-item-name').textContent = entry.item.name;
+        card.querySelector('.shop-item-desc').textContent = entry.item.description;
+        if (entry.item.sprite) card.querySelector('.shop-icon').src = entry.item.sprite;
+        const button = card.querySelector('.shop-buy-item');
+        if (isSell) {
+          button.onclick = () => onSell(entry.item.id, entry.price);
+        } else {
+          button.onclick = () => onBuy(entry.item.id, entry.price);
+        }
+      }
+
+      this.el.shopTabs?.querySelectorAll('button').forEach((button) => {
+        button.classList.toggle('active', button.dataset.mode === mode);
+      });
+    };
+
+    this.el.shopTabs?.querySelectorAll('button').forEach((button) => {
+      button.onclick = () => renderMode(button.dataset.mode || 'buy');
+    });
 
     this.el.shopBuy.classList.add('hidden');
     this.el.shopClose.onclick = onClose;
     this.el.shopCancel.onclick = onClose;
+    this.el.shopCancel.textContent = 'Fechar';
+    renderMode('buy');
     this.el.shop.classList.remove('hidden');
   }
-
   hideShop() {
     this.el.shop?.classList.add('hidden');
   }
