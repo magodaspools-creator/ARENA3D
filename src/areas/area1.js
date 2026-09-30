@@ -112,12 +112,11 @@ export function createArea1(game) {
   decor.wall(-39.5, 17.5, -27, 18, 3.0, r, { minH: 0.35 });
   decor.wall(-27, -16.5, -39.5, -16.5, 2.6, r, { minH: 0.25 });
   decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
-  // Deliberate entrance from the main connector into the Hanging Grove.
-  // The old continuous wall sealed the new area despite the walkable zones overlapping.
-  decor.wall(-27, 6, -27, 11.2, 2.8, r, { minH: 0.25 });
-  decor.wall(-27, 15.2, -27, 17.5, 2.8, r, { minH: 0.25 });
-  collision.addBox(-27.45, -26.55, 6, 11.2);
-  collision.addBox(-27.45, -26.55, 15.2, 17.5);
+  // Open entrance: the connector and grove zones already overlap here.
+  // Do not add a gameplay collider across this boundary; the old split-wall
+  // workaround still left decorative debris at the doorway and could trap the player.
+  // The side walls remain, but the actual entrance is intentionally unobstructed.
+  decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
   for (const [x, z, h, broken] of [
     [-35, 12, 4.2, true], [-30.5, 2, 3.1, false], [-34, -10, 4.6, true], [-26.5, -12.5, 3.3, true],
   ]) decor.column(x, z, h, r, broken);
@@ -132,10 +131,15 @@ export function createArea1(game) {
   decor.wall(6, 56.5, 17.5, 56.5, 3.2, r, { minH: 0.35 });
   decor.wall(-17.5, 45.5, -17.5, 56.5, 3.2, r, { minH: 0.35 });
   decor.wall(17.5, 45.5, 17.5, 56.5, 3.6, r, { minH: 0.3 });
-  decor.column(-12.5, 52.5, 4.8, r, false);
-  decor.column(11.5, 52.5, 3.6, r, true);
-  decor.column(-4.5, 55, 3.2, r, true);
-  decor.column(5.5, 47.5, 4.2, r, false);
+  for (const [x, z, h, broken] of [
+    [-12.5, 52.5, 4.8, false],
+    [11.5, 52.5, 3.6, true],
+    [-4.5, 55, 3.2, true],
+    [5.5, 47.5, 4.2, false],
+  ]) {
+    decor.column(x, z, h, r, broken);
+    collision.addCircle(x, z, 0.9);
+  }
   decor.blocks.add(-7, 0.4, 50.5, 4.5, 0.8, 2.0, 0.08, 0x45484e);
   decor.blocks.add(7.5, 0.3, 53.5, 2.6, 0.6, 1.5, -0.15, 0x505258);
 
