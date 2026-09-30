@@ -437,7 +437,7 @@ class Game {
           this.ui.showShopFeedback('Vendido tudo: ' + sold + 'x ' + item.name + ' · +' + totalValue + ' ouro');
           this.ui.showShopAmount('+' + totalValue, itemId);
           this.fx.ring(this.player.pos, 0xffd36a, 1.2, 0.55, 0.7);
-        },,
+        },
         onSell: (itemId, price, quantity = 1) => {
           const item = getItem(itemId);
           if (!item || item.category === 'quest' || item.sellable === false) return;
