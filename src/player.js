@@ -49,6 +49,7 @@ export class Player {
     this.attackCd = 0; this.abilityCd = 0; this.dashCd = 0;
     this.dashT = 0; this.dashDir = new THREE.Vector3(); this.dashHits = null;
     this.aimFaceT = 0; this.aimAngle = 0; this.slowT = 0;
+    this.poisonT = 0; this.poisonTickT = 0;
     this.lastHurt = -99;
     this.flash = 0;
     this.dead = false;
@@ -100,6 +101,16 @@ export class Player {
       this.hp = Math.min(this.hp, this.maxHp);
     }
     this.attackCd -= dt; this.abilityCd -= dt; this.dashCd -= dt; this.aimFaceT -= dt; this.slowT -= dt;
+    if (this.poisonT > 0) {
+      this.poisonT = Math.max(0, this.poisonT - dt);
+      this.poisonTickT -= dt;
+      if (this.poisonTickT <= 0 && !this.dead) {
+        this.poisonTickT = 1;
+        this.takeDamage(this.poisonDamage, this.poisonSource);
+        this.game.ui.floatText(V.copy(this.pos).setY(2.3), `-${this.poisonDamage}`, 'damage', 0.7);
+      }
+      if (this.poisonT <= 0) this.game.ui.toast('O envenenamento passou.');
+    }
 
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
@@ -289,6 +300,17 @@ export class Player {
     }
   }
 
+  applyPoison(effect, from) {
+    const duration = Number(effect?.duration ?? 5);
+    const damage = Math.max(1, Math.round((effect?.damage?.[0] ?? 3) + Math.random() * ((effect?.damage?.[1] ?? 5) - (effect?.damage?.[0] ?? 3))));
+    this.poisonT = Math.max(this.poisonT, duration);
+    this.poisonTickT = Math.min(this.poisonTickT || 0, 0.35);
+    this.poisonDamage = Math.max(this.poisonDamage || 0, damage);
+    this.poisonSource = from?.clone ? from.clone() : from;
+    this.game.fx.emit(V.copy(this.pos).setY(0.8), { count: 10, color: 0x65d66f, speed: 1.2, up: 1.2, life: 0.55, size: 0.22, drag: 2 });
+    this.game.ui.floatText(V.copy(this.pos).setY(2.5), 'ENVENENADO', 'damage', 0.9);
+  }
+
   heal(amount, show) {
     const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
@@ -328,6 +350,10 @@ export class Player {
     this.dashT = 0;
     this.dashHits = null;
     this.slowT = 0;
+    this.poisonT = 0;
+    this.poisonTickT = 0;
+    this.poisonDamage = 0;
+    this.poisonSource = null;
     this.lastHurt = this.game.time;
     this.vel.set(0, 0, 0);
     this.anim.revive();
