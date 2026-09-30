@@ -6,6 +6,7 @@ import {
 import { NPC } from '../npc.js';
 import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
+import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
 
 // Area 1 — Forest of Vhal.
@@ -648,134 +649,150 @@ scene.add(mineEntrance);
 // The future boss cave will extend north-east from the hub in a later stage.
 
 const undergroundZones = [
-  [107, 113, 96, 104],  // entrance tunnel / return route
-  [102, 118, 102, 116],  // central shaft hub
-  [96, 106, 108, 120],   // west extraction tunnel
-  [94, 108, 118, 127],   // west extraction chamber
-  [116, 124, 106, 116],  // east extraction tunnel
-  [120, 128, 112, 126],  // east extraction chamber
-  [104, 118, 114, 124],  // south connector
-  [102, 120, 122, 129],  // southern extraction chamber
-  [120, 126, 124, 129],  // collapsed south-east pocket
-  [116, 126, 126, 131],  // natural boss cave entrance
-  [110, 130, 129, 134],  // natural boss cave chamber
+  [106, 114, 82, 94],      // long entrance descent
+  [96, 124, 92, 108],      // central hub
+  [88, 101, 100, 108],     // west corridor
+  [72, 96, 104, 122],      // west chamber
+  [78, 98, 118, 134],      // west lower chamber
+  [119, 136, 99, 108],     // east corridor
+  [134, 151, 102, 123],    // east chamber
+  [126, 145, 116, 130],    // east lower chamber
+  [101, 126, 108, 121],    // south connector
+  [94, 128, 116, 136],     // south hall
+  [104, 130, 130, 139],    // deep corridor
+  [109, 143, 136, 150],    // natural boss cavern
+  [82, 103, 128, 142],     // forgotten side chamber
 ];
 
-// The zones overlap deliberately. This avoids zero-width seams where the
-// player's collision radius could otherwise get caught between walkable areas.
 for (const [minX, maxX, minZ, maxZ] of undergroundZones) {
   collision.addRectZone(minX, maxX, minZ, maxZ);
 }
 
-// Visual perimeter. Each segment is a simple box covered by rock clusters.
-// The floor is rectangular underneath, but the player only sees the irregular
-// rock boundary because every exposed edge is closed by continuous wall pieces.
-const mineWall = (x1, z1, x2, z2, h = 4.8) => {
-  const dx = x2 - x1;
-  const dz = z2 - z1;
+// The mine is deliberately larger than the old 30x40 pocket. It is built as
+// chambers connected by long corridors, not as one rectangular room.
+const mineWall = (x1, z1, x2, z2, h = 8.0) => {
+  const dx = x2 - x1, dz = z2 - z1;
   const len = Math.hypot(dx, dz);
   const angle = Math.atan2(dz, dx);
-  const m = mineBox(len, h, 1.5, (x1 + x2) * 0.5, h * 0.5 - 0.08, (z1 + z2) * 0.5, mineRockDarkMat, angle);
-  // Give the visible wall an actual gameplay collision envelope.
-  // The previous layout only collided with a few hand-written boxes, so
-  // several visible rock sections were pass-through.
-  const collisionRadius = 0.82;
-  const collisionCount = Math.max(2, Math.ceil(len / 1.35));
-  for (let i = 0; i < collisionCount; i++) {
-    const t = collisionCount === 1 ? 0.5 : i / (collisionCount - 1);
-    collision.addCircle(x1 + dx * t, z1 + dz * t, collisionRadius);
-  }
-  // Break the perfectly straight silhouette with a few low rock masses.
-  const count = Math.max(2, Math.ceil(len / 3.5));
+  mineBox(len + 0.5, h, 2.0, (x1 + x2) * 0.5, h * 0.5 - 0.08, (z1 + z2) * 0.5, mineRockDarkMat, angle);
+
+  // Collision is generated from the same authored wall path. Dense samples
+  // close the old gaps where the player could walk through visible rocks.
+  const count = Math.max(3, Math.ceil(len / 0.95));
   for (let i = 0; i < count; i++) {
-    const t = (i + 0.5) / count;
-    const x = x1 + dx * t;
-    const z = z1 + dz * t;
-    mineRock(x, z, 1.2 + (i % 2) * 0.35, 2.0 + (i % 3) * 0.35, 1.0 + (i % 2) * 0.25, angle + (i % 2 ? 0.2 : -0.15));
+    const t = i / (count - 1);
+    collision.addCircle(x1 + dx * t, z1 + dz * t, 0.95);
   }
-  return m;
+
+  const rocks = Math.max(2, Math.ceil(len / 3.2));
+  for (let i = 0; i < rocks; i++) {
+    const t = (i + 0.5) / rocks;
+    mineRock(
+      x1 + dx * t, z1 + dz * t,
+      1.35 + (i % 2) * 0.4,
+      2.4 + (i % 3) * 0.5,
+      1.15 + (i % 2) * 0.3,
+      angle + (i % 2 ? 0.25 : -0.2)
+    );
+  }
 };
 
-// Continuous perimeter with deliberate wider "bites" for natural rock shape.
-// There is no open outer edge that can expose the square floor.
+// Large irregular outside wall. Every branch terminates inside this boundary.
 const perimeter = [
-  [94, 95, 112, 95],
-  [112, 95, 125, 97],
-  [125, 97, 128, 105],
-  [128, 105, 128, 114],
-  [128, 114, 126, 124],
-  [126, 124, 118, 130],
-  [118, 130, 104, 130],
-  [104, 130, 96, 126],
-  [96, 126, 92, 117],
-  [92, 117, 92, 106],
-  [92, 106, 94, 95],
+  [104, 80, 116, 80],
+  [116, 80, 124, 84],
+  [124, 84, 138, 82],
+  [138, 82, 151, 91],
+  [151, 91, 154, 105],
+  [154, 105, 152, 119],
+  [152, 119, 146, 129],
+  [146, 129, 145, 138],
+  [145, 138, 151, 145],
+  [151, 145, 143, 153],
+  [143, 153, 124, 154],
+  [124, 154, 110, 151],
+  [110, 151, 99, 145],
+  [99, 145, 88, 145],
+  [88, 145, 78, 139],
+  [78, 139, 70, 129],
+  [70, 129, 69, 116],
+  [69, 116, 71, 103],
+  [71, 103, 78, 94],
+  [78, 94, 91, 87],
+  [91, 87, 104, 80],
 ];
 for (const segment of perimeter) mineWall(...segment);
 
-// ---------- Stage 2 authored route layout ----------
-// The player now has one clear entrance -> hub route and three distinct
-// extraction branches. Visual rock partitions match the collision openings:
-// no invisible maze walls and no branch that terminates against a blank edge.
+// Worked-mine corridors. Their bends create sightline breaks between chambers.
+for (const segment of [
+  [106, 94, 106, 87], [114, 94, 114, 87],
+  [96, 100, 88, 100], [96, 107, 88, 107],
+  [124, 100, 136, 100], [124, 107, 136, 107],
+  [95, 118, 88, 118], [95, 126, 88, 126],
+  [126, 118, 136, 118], [126, 126, 136, 126],
+  [105, 130, 105, 137], [124, 130, 124, 137],
+  [109, 139, 104, 143],
+  [143, 139, 138, 136],
+]) mineWall(...segment, 7.0);
 
-// West branch: narrow mouth, then a wider extraction chamber.
-mineWall(94, 107.2, 101.5, 107.2, 3.9);
-mineWall(94, 107.2, 96, 116.5, 3.8);
-mineWall(94, 116.5, 102, 116.5, 3.6);
-mineWall(102, 116.5, 102, 120, 3.5);
+// Heavy stone shoulders frame each doorway without blocking the corridors.
+for (const [x,z,sx,sy,sz,rot] of [
+  [104.5,96,1.8,3.2,1.5,0.1],[115.5,96,1.8,3.2,1.5,-0.1],
+  [98,99,1.5,3.0,1.4,0.3],[124,99,1.5,3.0,1.4,-0.3],
+  [96,118,1.7,3.4,1.4,0.1],[126,118,1.7,3.4,1.4,-0.1],
+  [106,131,1.8,3.8,1.5,0.2],[123,131,1.8,3.8,1.5,-0.2],
+]) mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat);
 
-// East branch: old supports frame the tunnel before it opens into the chamber.
-mineWall(119.5, 105.5, 127, 105.5, 3.8);
-mineWall(127, 105.5, 127, 112, 3.8);
+// Physical boundaries are intentionally generous and follow the authored
+// chambers. The walkable union handles the corridors; these stop wall bypasses.
+const wallCollider = (minX, maxX, minZ, maxZ) => collision.addBox(minX, maxX, minZ, maxZ);
+for (const box of [
+  [69,72,103,116],[69,72,116,130],[72,80,137,145],[80,99,143,146],
+  [99,111,149,152],[111,125,151,154],[125,143,151,154],
+  [143,153,145,148],[150,154,119,138],[151,154,101,120],
+  [149,153,91,105],[137,151,82,92],[123,139,81,85],[103,116,79,83],
+  [89,104,83,88],[77,92,88,94],
+  [106,108,87,94],[112,114,87,94],
+  [88,96,99,101],[88,96,106,108],
+  [136,138,99,108],[124,136,99,101],[124,136,106,108],
+  [88,95,117,119],[88,95,125,127],
+  [126,136,117,119],[126,136,125,127],
+  [104,106,130,138],[124,126,130,138],
+]) wallCollider(...box);
 
+// A full dark ceiling closes the cave visually. The old low walls let the
+// camera see the outside void from above; this makes the mine a true enclosed
+// underground space.
+const mineCeiling = new THREE.Mesh(
+  new THREE.PlaneGeometry(90, 82),
+  new THREE.MeshStandardMaterial({ color: 0x090807, roughness: 1, side: THREE.DoubleSide })
+);
+mineCeiling.rotation.x = Math.PI / 2;
+mineCeiling.position.set(110, 9.2, 118);
+mineCeiling.receiveShadow = true;
+mineGroup.add(mineCeiling);
 
-// South branch: broad central opening, then a tighter extraction gallery.
-mineWall(94, 120.5, 103, 120.5, 3.5);
-mineWall(119, 120.5, 128, 120.5, 3.5);
-mineWall(101.5, 129, 120, 129, 3.8);
-
-// Branch-mouth rock shoulders make the topology readable from the hub.
-for (const [x, z, sx, sy, sz, rot] of [
-  [103.5, 108.2, 1.4, 2.4, 1.2, 0.2],
-  [116.5, 108.2, 1.4, 2.4, 1.2, -0.2],
-  [103.0, 115.2, 1.5, 2.2, 1.3, -0.15],
-  [117.0, 115.2, 1.5, 2.2, 1.3, 0.15],
+// Ceiling ribs add depth and also make the corridors read as underground.
+for (const [x,z,len,rot] of [
+  [110,91,10,0],[92,104,10,Math.PI/2],[136,104,12,Math.PI/2],
+  [94,122,12,Math.PI/2],[128,122,12,Math.PI/2],[114,136,16,0],[128,144,15,0],
 ]) {
-  mineRock(x, z, sx, sy, sz, rot);
+  const rib = mineBox(len,0.55,0.65,x,8.55,z,mineRockDarkMat,rot);
+  rib.scale.y = 1;
 }
 
-// Physical wall colliders mirror the visual perimeter and the new branch
-// partitions. The openings remain deliberately wider than the player capsule.
-const wallCollider = (minX, maxX, minZ, maxZ) => collision.addBox(minX, maxX, minZ, maxZ);
+// Larger floor so no exterior background leaks into the playable perimeter.
+mineFloor.geometry.dispose();
+mineFloor.geometry = new THREE.PlaneGeometry(88, 78);
+mineFloor.position.set(110, -0.04, 118);
 
-wallCollider(92, 94, 95, 106);
-wallCollider(92, 94, 106, 117);
-wallCollider(92, 96, 117, 126);
-wallCollider(96, 104, 126, 131);
-wallCollider(104, 118, 128, 131);
-wallCollider(118, 127, 124, 131);
-wallCollider(126, 130, 114, 125);
-wallCollider(126, 130, 104, 115);
-wallCollider(124, 130, 96, 106);
-wallCollider(112, 125, 94, 98);
-wallCollider(94, 113, 94, 98);
-
-// West branch boundaries. The gap x=102..106 remains the branch mouth.
-wallCollider(94, 102, 106.6, 108.0);
-wallCollider(94, 96.0, 108.0, 116.8);
-wallCollider(94, 102, 116.0, 117.8);
-wallCollider(101.3, 102.7, 116.5, 121);
-
-// East branch boundaries. The gap x=116..120 remains open from the hub.
-wallCollider(119, 127.8, 104.9, 106.3);
-wallCollider(126.5, 128.2, 105.5, 112.0);
-wallCollider(119, 128, 125.0, 127.0);
-wallCollider(119.2, 120.8, 120.5, 126);
-
-// South chamber side walls leave a broad central connection x=103..119.
-wallCollider(94, 103, 119.8, 121.2);
-wallCollider(119, 128, 119.8, 121.2);
-wallCollider(101.0, 121.0, 128.2, 130.2);
+// Deep chambers get different visual anchors.
+for (const [x,z,s] of [
+  [83,114,1.1],[88,132,0.9],[143,111,1.2],[139,123,0.95],
+  [112,143,1.0],[132,143,1.2],[126,146,0.8],
+]) {
+  mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat);
+}
 
 // Central shaft landmark: a shallow dark ring and four stone uprights give
 // the hub a focal point without creating a hole or changing the flat floor.
@@ -991,7 +1008,7 @@ const mine = {
   chest: null,
   enemies: [],
   minimap: {
-    bounds: { minX: 90, maxX: 132, minZ: 93, maxZ: 132 },
+    bounds: { minX: 68, maxX: 155, minZ: 78, maxZ: 155 },
     zones: undergroundZones,
   },
 };
@@ -1103,18 +1120,17 @@ for (const [x,z,intensity] of [
 
 // Optional miniboss: completely separate from Morvhal and does NOT advance the
 // Area 1 progression. It exists to make the deepest mine route worth exploring.
-const mineMiniboss = new Boss(game,121.5,131.0,{
+const mineMiniboss = new MineBoss(game,126.5,143.0,{
   name:'Gorvak, o Guardião das Profundezas',
-  onSummon:()=>{},
   onDefeated:()=>{
     prog.setCounter('mineMinibossDefeated', true);
     game.onBossDefeated({
-      xp:180,
-      gold:120,
-      loot:[{itemId:'iron_scrap',amount:6},{itemId:'hollow_core',amount:1}]
+      xp:320,
+      gold:220,
+      loot:[{itemId:'iron_scrap',amount:8},{itemId:'hollow_core',amount:1}]
     },mineMiniboss.pos);
     game.schedule(0.5,()=>game.ui.hideBoss());
-    game.ui.banner('PROFUNDEZAS LIMPA','Gorvak, o Guardião das Profundezas, foi derrotado.','victory',3.5);
+    game.ui.banner('PROFUNDEZAS LIMPA','Gorvak caiu. A caverna revelou o antigo cache dos mineiros.','victory',3.5);
   },
 });
 mineMiniboss.isMineMiniboss=true;
@@ -1126,7 +1142,7 @@ const stage4Trigger={
   update(){
     if(this.started || !mine.active || mineMiniboss.state==='dead') return;
     const p=game.player.pos;
-    if(p.x>113.5 && p.x<130.5 && p.z>124.5 && p.z<135.5){
+    if(p.x>113 && p.x<143 && p.z>136 && p.z<150){
       this.started=true;
       mineMiniboss.awaken();
       game.ui.showBoss(mineMiniboss.name);
@@ -1147,7 +1163,7 @@ mineMiniboss.update = (dt) => {
   originalMinibossUpdate(dt);
 };
 
-const mineDeepChest = createChest(game, 121.5, 133.2, Math.PI);
+const mineDeepChest = createChest(game, 126.5, 147.0, Math.PI);
 mineDeepChest.root = null;
 
 game.interaction.add({
@@ -1172,7 +1188,7 @@ game.interaction.add({
 // A second ranged patrol makes the final gallery less predictable without
 // turning the mine into another mandatory boss corridor.
 mine.enemies.push(
-  spawn('wisp', 124, 118.5, 'mine', true),
+  spawn('wisp', 139, 111, 'mine', true),
   spawn('zombie', 107.5, 126.5, 'mine', true),
 );
 
