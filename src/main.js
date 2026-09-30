@@ -69,7 +69,10 @@ class Game {
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
     addEventListener('resize', () => this.resize());
-    addEventListener('keydown', (e) => { if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp(); });
+    addEventListener('keydown', (e) => {
+      if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
+      if (e.code === 'KeyI' && this.state === 'play' && !e.repeat) this.ui.toggleItems();
+    });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
 
