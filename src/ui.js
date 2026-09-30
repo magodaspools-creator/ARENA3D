@@ -22,7 +22,7 @@ export class UI {
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
-      minimap: $('minimap'),
+      minimap: $('minimap-canvas'),
       pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
