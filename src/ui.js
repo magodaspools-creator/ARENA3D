@@ -22,6 +22,7 @@ export class UI {
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
+      minimap: $('minimap'),
       pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
@@ -30,6 +31,8 @@ export class UI {
     this.bubble.el.innerHTML = '<div class="bname"></div><div class="btext"></div><div class="bhint">[E] continuar</div>';
     this.bannerTimer = null;
     this.actionBarFlashT = null;
+    this.minimapCtx = this.el.minimap?.getContext('2d') || null;
+    this.minimapLastT = 0;
   }
 
   // ---------- world anchored ----------
@@ -88,6 +91,7 @@ export class UI {
   }
 
   update(dt) {
+    this.updateMinimap();
     for (let i = this.floaters.length - 1; i >= 0; i--) {
       const f = this.floaters[i];
       f.t += dt;
@@ -105,6 +109,81 @@ export class UI {
       a.el.style.transform = `translate(${s.x | 0}px, ${s.y | 0}px) translate(-50%, ${ty})`;
       a.el.style.visibility = s.ok ? 'visible' : 'hidden';
     }
+  }
+
+  // ---------- minimap ----------
+  updateMinimap(force = false) {
+    const canvas = this.el.minimap;
+    const ctx = this.minimapCtx;
+    const area = this.game.area;
+    const p = this.game.player;
+    if (!canvas || !ctx || !area?.minimap || !p) return;
+    if (!force && this.game.time - this.minimapLastT < 0.08) return;
+    this.minimapLastT = this.game.time;
+
+    const w = canvas.width, h = canvas.height;
+    const { minX, maxX, minZ, maxZ } = area.minimap.bounds;
+    const sx = w / (maxX - minX), sy = h / (maxZ - minZ);
+    const px = (x) => (x - minX) * sx;
+    const pz = (z) => h - (z - minZ) * sy;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(7, 11, 14, 0.88)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Walkable regions.
+    ctx.fillStyle = 'rgba(83, 115, 83, 0.48)';
+    for (const [x1, x2, z1, z2] of area.minimap.zones) {
+      ctx.fillRect(px(x1), pz(z2), (x2 - x1) * sx, (z2 - z1) * sy);
+    }
+
+    // Main route / important structures.
+    ctx.strokeStyle = 'rgba(205, 177, 116, 0.62)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const path = [[0,46],[0.5,38],[-2.5,30],[1.5,22],[-0.5,14],[0,6],[0,-20],[0,-31],[0,-44]];
+    path.forEach(([x,z], i) => i ? ctx.lineTo(px(x), pz(z)) : ctx.moveTo(px(x), pz(z)));
+    ctx.stroke();
+
+    // Boss arena.
+    const a = area.minimap.arena;
+    ctx.beginPath();
+    ctx.arc(px(a.x), pz(a.z), a.r * sx, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(155, 47, 72, 0.35)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(225, 106, 125, 0.75)';
+    ctx.stroke();
+
+    // Secret chamber.
+    ctx.fillStyle = 'rgba(104, 164, 196, 0.42)';
+    ctx.fillRect(px(24), pz(18), 14 * sx, 14 * sy);
+
+    // Portal.
+    ctx.fillStyle = '#71d9ff';
+    ctx.beginPath();
+    ctx.arc(px(area.minimap.portal.x), pz(area.minimap.portal.z), 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player marker — always the most visible element.
+    ctx.save();
+    ctx.translate(px(p.pos.x), pz(p.pos.z));
+    ctx.rotate(-p.facing);
+    ctx.fillStyle = '#f7f0d0';
+    ctx.beginPath();
+    ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Frame and tiny north indicator.
+    ctx.strokeStyle = 'rgba(232,199,122,0.62)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, w - 2, h - 2);
+    ctx.fillStyle = 'rgba(232,199,122,0.78)';
+    ctx.font = 'bold 9px Segoe UI, sans-serif';
+    ctx.fillText('N', w - 13, 12);
   }
 
   // ---------- HUD ----------
