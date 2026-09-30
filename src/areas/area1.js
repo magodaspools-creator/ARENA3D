@@ -23,12 +23,12 @@ export function createArea1(game) {
   const r = rng(1337);
 
   // ---------- walkable space ----------
-  collision.addRectZone(-14, 14, 10, 45);   // forest entrance
+  collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
   collision.addRectZone(-32, -14, 14, 34);   // west forest connector
   collision.addRectZone(-40, -23, -16, 18);  // hanging grove
-  collision.addRectZone(-18, 18, 45, 58);    // northern ruins extension
+  collision.addRectZone(-18, 18, 44, 58);    // northern ruins extension (overlaps entrance)
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
   // Expanded forecourt OUTSIDE the boss arena. This is the pause/lore space
