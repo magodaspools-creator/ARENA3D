@@ -530,199 +530,182 @@ export function createArea1(game) {
   decor.build(scene);
 
   // ---------- abandoned mine ----------
-  // Optional underground exploration beside Doran. The mine lives in a
-  // separate coordinate pocket so entering/exiting is a clean teleport while
-  // keeping Area 1's existing collision map untouched.
+  // The mine is a small handcrafted dungeon, not a single room:
+  // entrance -> timber corridor -> split -> ore chamber -> collapsed tunnel.
   const MINE = { x: 110, z: 110 };
   const mineGroup = new THREE.Group();
   mineGroup.name = 'abandoned-mine';
   mineGroup.visible = false;
   scene.add(mineGroup);
 
-  const mineFloorMat = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 1, metalness: 0, flatShading: true });
-  const mineRockMat = new THREE.MeshStandardMaterial({ color: 0x34302d, roughness: 1, metalness: 0, flatShading: true });
-  const mineWoodMat = new THREE.MeshStandardMaterial({ color: 0x33251b, roughness: 0.95, metalness: 0, flatShading: true });
+  const mineRockMat = new THREE.MeshStandardMaterial({ color: 0x34302d, roughness: 1, flatShading: true });
+  const mineRockDarkMat = new THREE.MeshStandardMaterial({ color: 0x211f1d, roughness: 1, flatShading: true });
+  const mineWoodMat = new THREE.MeshStandardMaterial({ color: 0x33251b, roughness: 0.95, flatShading: true });
   const mineMetalMat = new THREE.MeshStandardMaterial({ color: 0x3e4144, roughness: 0.75, metalness: 0.55, flatShading: true });
+  const mineOreMat = new THREE.MeshStandardMaterial({ color: 0x4d6770, emissive: 0x172a30, emissiveIntensity: 0.35, roughness: 0.7, flatShading: true });
   const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 
-  const mineFloor = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), mineFloorMat);
-  mineFloor.rotation.x = -Math.PI / 2;
-  mineFloor.position.set(MINE.x, -0.04, MINE.z);
-  mineFloor.receiveShadow = true;
-  mineGroup.add(mineFloor);
-
-  // Irregular rock perimeter.
-  for (const [x, z, sx, sy, sz, ry] of [
-    [92, 101, 2.0, 3.4, 5.8, 0.12], [92, 112, 2.3, 4.2, 6.2, -0.08], [93, 123, 2.0, 3.6, 5.0, 0.18],
-    [103, 128, 5.5, 3.0, 2.0, 0.05], [114, 128, 5.8, 3.8, 2.2, -0.12], [125, 127, 4.2, 3.2, 2.0, 0.1],
-    [128, 117, 2.0, 3.8, 5.5, -0.15], [128, 105, 2.4, 4.0, 5.2, 0.16], [124, 92, 5.0, 3.2, 2.1, -0.08],
-    [112, 92, 6.0, 3.6, 2.2, 0.14], [100, 92, 4.5, 3.0, 2.0, -0.1],
-  ]) {
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), mineRockMat);
-    rock.position.set(x, sy * 0.48, z);
-    rock.scale.set(sx, sy, sz);
-    rock.rotation.y = ry;
-    rock.castShadow = true;
-    mineGroup.add(rock);
-  }
-
-  // Timber supports make the underground floor read as a real abandoned mine.
-  for (const z of [100, 109, 118]) {
-    for (const x of [98, 122]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.65, 5.2, 0.65), mineWoodMat);
-      post.position.set(x, 2.6, z);
-      post.rotation.z = (z % 2 ? -0.025 : 0.02);
-      post.castShadow = true;
-      mineGroup.add(post);
-    }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(25, 0.7, 0.7), mineWoodMat);
-    beam.position.set(110, 5.0, z);
-    beam.castShadow = true;
-    mineGroup.add(beam);
-  }
-
-  // A broken mining rail line points toward the deeper chamber.
-  for (const x of [98, 122]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 25), mineMetalMat);
-    rail.position.set(x, 0.08, 109);
-    mineGroup.add(rail);
-  }
-  for (const z of [96, 101, 106, 111, 116, 121]) {
-    const sleeper = new THREE.Mesh(new THREE.BoxGeometry(27, 0.16, 0.55), mineWoodMat);
-    sleeper.position.set(110, 0.02, z);
-    sleeper.castShadow = true;
-    mineGroup.add(sleeper);
-  }
-
-  // Lanterns and a warm pool of light in the otherwise dark mine.
+  const box = (w,h,d,x,y,z,mat,rotY=0) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); m.rotation.y=rotY; m.castShadow=true; m.receiveShadow=true;
+    mineGroup.add(m); return m;
+  };
+  const rock = (x,z,sx,sy,sz,rot=0,mat=mineRockMat) => {
+    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),mat);
+    m.position.set(x,sy*0.48,z); m.scale.set(sx,sy,sz); m.rotation.y=rot;
+    m.castShadow=true; m.receiveShadow=true; mineGroup.add(m); return m;
+  };
+  const lamp = (x,z,intensity=7,range=11) => {
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),mineGlowMat);
+    orb.position.set(x,2.9,z); mineGroup.add(orb);
+    const light = new THREE.PointLight(0xd89b54,intensity,range,1.8);
+    light.position.set(x,2.7,z); mineGroup.add(light); mineLights.push(light);
+  };
   const mineLights = [];
-  for (const [x, z] of [[98, 99], [122, 108], [104, 119], [116, 96]]) {
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), mineGlowMat);
-    lamp.position.set(x, 3.7, z);
-    mineGroup.add(lamp);
-    const light = new THREE.PointLight(0xd89b54, 8, 13, 1.8);
-    light.position.set(x, 3.6, z);
-    mineGroup.add(light);
-    mineLights.push(light);
-  }
 
-  // A deeper alcove gives the floor a destination instead of being a single room.
-  const alcove = new THREE.Mesh(new THREE.BoxGeometry(10, 3.8, 7), mineRockMat);
-  alcove.position.set(110, 1.9, 122.5);
-  alcove.castShadow = true;
-  mineGroup.add(alcove);
-  const alcoveOpening = new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.8, 0.35), new THREE.MeshStandardMaterial({ color: 0x090909, roughness: 1 }));
-  alcoveOpening.position.set(110, 1.4, 119.0);
-  mineGroup.add(alcoveOpening);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(44,42),new THREE.MeshStandardMaterial({color:0x171513,roughness:1}));
+  floor.rotation.x=-Math.PI/2; floor.position.set(MINE.x,-0.04,MINE.z);
+  floor.receiveShadow=true; mineGroup.add(floor);
 
-  // Surface mine mouth: stone arch, darkness and descending steps beside Doran.
+  // Surface mine mouth: a carved rock face, with a real blocked threshold.
   const mineEntrance = new THREE.Group();
-  mineEntrance.name = 'abandoned-mine-entrance';
-  mineEntrance.position.set(12.4, 0, 35.0);
-  const entranceRock = new THREE.MeshStandardMaterial({ color: 0x4b4d50, roughness: 1, flatShading: true });
-  const entranceDark = new THREE.MeshStandardMaterial({ color: 0x08090a, roughness: 1 });
-  for (const x of [-2.2, 2.2]) {
-    const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.15, 3.7, 1.35), entranceRock);
-    pillar.position.set(x, 1.85, 0);
-    pillar.rotation.z = x < 0 ? -0.04 : 0.04;
-    pillar.castShadow = true;
-    mineEntrance.add(pillar);
+  mineEntrance.name='abandoned-mine-entrance';
+  mineEntrance.position.set(12.4,0,35.0);
+  const entranceRock=new THREE.MeshStandardMaterial({color:0x45474a,roughness:1,flatShading:true});
+  const entranceDark=new THREE.MeshStandardMaterial({color:0x070708,roughness:1});
+  const leftRock=new THREE.Mesh(new THREE.DodecahedronGeometry(1,1),entranceRock);
+  leftRock.position.set(-2.6,2.1,0); leftRock.scale.set(2.0,2.8,1.8); leftRock.castShadow=true; mineEntrance.add(leftRock);
+  const rightRock=leftRock.clone(); rightRock.position.x=2.6; rightRock.rotation.y=0.8; mineEntrance.add(rightRock);
+  const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(1,1),entranceRock);
+  crown.position.set(0,3.8,0); crown.scale.set(3.0,1.8,1.8); crown.castShadow=true; mineEntrance.add(crown);
+  const mouth=new THREE.Mesh(new THREE.CylinderGeometry(2.0,2.15,0.22,14),entranceDark);
+  mouth.rotation.x=Math.PI/2; mouth.position.set(0,1.65,-0.85); mouth.scale.z=0.7; mineEntrance.add(mouth);
+  for(let i=0;i<4;i++){
+    const step=new THREE.Mesh(new THREE.BoxGeometry(3.0-i*0.18,0.22,0.65),entranceRock);
+    step.position.set(0,0.08-i*0.12,-0.72-i*0.58); step.castShadow=true; mineEntrance.add(step);
   }
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(5.7, 1.15, 1.5), entranceRock);
-  lintel.position.set(0, 3.35, 0);
-  lintel.rotation.z = -0.025;
-  lintel.castShadow = true;
-  mineEntrance.add(lintel);
-  const mouth = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.35, 0.18, 12), entranceDark);
-  mouth.scale.set(1, 1, 0.65);
-  mouth.rotation.x = Math.PI / 2;
-  mouth.position.set(0, 1.65, -0.72);
-  mineEntrance.add(mouth);
-  for (let i = 0; i < 5; i++) {
-    const step = new THREE.Mesh(new THREE.BoxGeometry(3.1 - i * 0.22, 0.22, 0.72), entranceRock);
-    step.position.set(0, 0.08 - i * 0.13, -0.65 - i * 0.62);
-    step.castShadow = true;
-    mineEntrance.add(step);
-  }
-  for (const x of [-1.8, 1.8]) {
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), mineGlowMat);
-    lamp.position.set(x, 2.55, 0.2);
-    mineEntrance.add(lamp);
-    const light = new THREE.PointLight(0xd89b54, 7, 9, 1.8);
-    light.position.set(x, 2.5, 0.1);
-    mineEntrance.add(light);
+  for(const x of [-1.7,1.7]){
+    const o=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,6),mineGlowMat);
+    o.position.set(x,2.45,0.05); mineEntrance.add(o);
+    const l=new THREE.PointLight(0xd89b54,6,8,1.8); l.position.set(x,2.4,0); mineEntrance.add(l);
   }
   scene.add(mineEntrance);
 
-  // The underground floor is isolated from the surface walkable zones.
-  collision.addRectZone(94, 126, 94, 126);
-  collision.addBox(93.2, 94.2, 93.2, 126.8);
-  collision.addBox(125.8, 126.8, 93.2, 126.8);
-  collision.addBox(93.2, 126.8, 93.2, 94.2);
-  collision.addBox(93.2, 126.8, 125.8, 126.8);
+  // Main tunnel: narrow, readable and curved through three distinct spaces.
+  for(const [x,z,sx,sy,sz,r] of [
+    [97,98,2.8,2.8,2.2,0.1],[101,95,2.2,2.4,2.0,-0.2],[108,94,2.5,2.8,2.0,0.1],
+    [121,96,3.0,3.0,2.2,-0.1],[126,101,2.4,3.0,2.0,0.2],
+    [127,112,2.8,3.4,2.3,-0.15],[124,123,3.2,3.0,2.2,0.1],
+    [115,127,3.0,2.7,2.0,-0.1],[104,126,3.5,3.2,2.3,0.15],
+    [96,122,2.5,3.0,2.1,-0.1],[94,112,2.8,3.2,2.2,0.15],
+    [101,116,1.8,2.2,1.6,0.3],[118,114,2.0,2.5,1.7,-0.2]
+  ]) rock(x,z,sx,sy,sz,r);
 
-  const mine = {
-    active: false,
-    spawn: { x: 110, z: 96, facing: Math.PI },
-    return: { x: 12.4, z: 37.2, facing: Math.PI },
-    group: mineGroup,
-    entrance: mineEntrance,
-    chest: null,
-    enemies: [],
-    minimap: {
-      bounds: { minX: 90, maxX: 130, minZ: 90, maxZ: 130 },
-      zones: [[94, 126, 94, 126]],
-    },
+  // Timber frames along the playable corridor.
+  for(const [x,z,span] of [[98,98,5],[108,95,5],[121,98,5],[126,108,5],[124,119,5],[115,126,5],[104,125,5],[97,118,5]]){
+    for(const dx of [-span/2,span/2]) box(0.55,4.6,0.55,x+dx,2.3,z,mineWoodMat);
+    box(span+0.7,0.55,0.65,x,4.35,z,mineWoodMat);
+  }
+
+  // Broken rail enters the mine, then bends toward the ore chamber.
+  for(const [x,z,rot,len] of [[99,98,0,8],[107,101,Math.PI/2,8],[115,108,0,10]]){
+    const rail1=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.12,len),mineMetalMat);
+    rail1.position.set(x,0.08,z); rail1.rotation.y=rot; rail1.castShadow=true; mineGroup.add(rail1);
+    const rail2=rail1.clone(); rail2.position.set(x+2.4*Math.cos(rot),0.08,z+2.4*Math.sin(rot)); mineGroup.add(rail2);
+  }
+  for(const [x,z,r] of [[99,98,0],[107,101,Math.PI/2],[115,108,0]]){
+    for(let i=-2;i<=2;i++){
+      const s=new THREE.Mesh(new THREE.BoxGeometry(5.2,0.16,0.45),mineWoodMat);
+      s.position.set(x+i*1.5*Math.cos(r),0.02,z+i*1.5*Math.sin(r)); s.rotation.y=r; mineGroup.add(s);
+    }
+  }
+
+  // Ore veins: visible mineral clusters embedded in the rock walls.
+  for(const [x,y,z,s] of [
+    [94.0,1.4,108.0,0.7],[96.0,1.9,111.0,0.5],[102.0,1.5,124.5,0.75],
+    [119.5,1.7,124.0,0.6],[126.0,2.0,115.0,0.8],[124.5,1.2,103.0,0.5],
+    [108.0,1.8,95.0,0.65]
+  ]){
+    const vein=new THREE.Mesh(new THREE.DodecahedronGeometry(0.7,0),mineOreMat);
+    vein.position.set(x,y,z); vein.scale.set(s,0.65*s,1.35*s); vein.rotation.set(0,0.3,0.2); vein.castShadow=true; mineGroup.add(vein);
+  }
+
+  // No roofed "house": the central chamber is open to the camera.
+  // A collapsed side passage gives the dungeon a dead end and a reason to explore.
+  for(const [x,z,s] of [[105,109,1.5],[108,110,1.2],[111,109,1.6],[114,110,1.1]]){
+    rock(x,z,s,1.0,s*0.8,0.2,mineRockDarkMat);
+  }
+  const collapseSign=box(5.5,2.4,0.6,110,1.25,111,mineWoodMat,0);
+  collapseSign.rotation.z=-0.08;
+
+  for(const [x,z] of [[98,98],[108,95],[121,98],[126,108],[124,119],[115,126],[104,125],[97,118],[116,109]]){
+    lamp(x,z);
+  }
+
+  // Walkable zones form corridors/chambers instead of one giant square.
+  collision.addRectZone(96,102,94,103);
+  collision.addRectZone(100,110,97,104);
+  collision.addRectZone(107,119,101,110);
+  collision.addRectZone(114,127,104,116);
+  collision.addRectZone(121,128,112,122);
+  collision.addRectZone(113,125,118,128);
+  collision.addRectZone(102,116,119,128);
+  collision.addRectZone(94,106,114,122);
+
+  // Solid rock walls around the dungeon. The corridors above remain the only
+  // walkable union, so the player cannot cut through the scenery.
+  collision.addBox(92,96,94,126);
+  collision.addBox(126,130,94,126);
+  collision.addBox(94,128,92,95);
+  collision.addBox(94,128,127,130);
+
+  const mine={
+    active:false,
+    spawn:{x:98.5,z:98,facing:Math.PI},
+    return:{x:12.4,z:37.2,facing:Math.PI},
+    group:mineGroup,
+    entrance:mineEntrance,
+    chest:null,
+    enemies:[],
+    minimap:{bounds:{minX:91,maxX:131,minZ:91,maxZ:131},zones:[
+      [96,102,94,103],[100,110,97,104],[107,119,101,110],[114,127,104,116],
+      [121,128,112,122],[113,125,118,128],[102,116,119,128],[94,106,114,122]
+    ]}
   };
 
-  const surfaceMinimap = {
-    bounds: { minX: -42, maxX: 42, minZ: -62, maxZ: 61 },
-    zones: [
-      [-14, 14, 10, 45], [-32, -14, 14, 34], [-40, -23, -16, 18],
-      [-18, 18, 45, 58], [-35, -18, 34, 58], [-22, 22, -20, 13],
-      [-11, 11, -31, -20], [14, 38, 4, 16],
-    ],
+  const surfaceMinimap={
+    bounds:{minX:-42,maxX:42,minZ:-62,maxZ:61},
+    zones:[
+      [-14,14,10,45],[-32,-14,14,34],[-40,-23,-16,18],[-18,18,45,58],
+      [-35,-18,34,58],[-22,22,-20,13],[-11,11,-31,-20],[14,38,4,16]
+    ]
   };
 
-  const enterMine = () => {
-    if (mine.active || game.state !== 'play' || game.inputLocked) return;
-    game.inputLocked = true;
-    game.ui.hidePrompt();
-    game.ui.fade(true);
-    game.schedule(0.55, () => {
-      mine.active = true;
-      mine.group.visible = true;
-      mine.entrance.visible = true;
-      game.player.place(mine.spawn.x, mine.spawn.z, mine.spawn.facing);
+  const enterMine=()=>{
+    if(mine.active||game.state!=='play'||game.inputLocked)return;
+    game.inputLocked=true; game.ui.hidePrompt(); game.ui.fade(true);
+    game.schedule(0.55,()=>{
+      mine.active=true; mine.group.visible=true;
+      game.player.place(mine.spawn.x,mine.spawn.z,mine.spawn.facing);
       game.rig.snap(game.player.pos);
-      area.minimap.bounds = mine.minimap.bounds;
-      area.minimap.zones = mine.minimap.zones;
-      game.ui.banner('MINA ABANDONADA', 'O ar lá embaixo é antigo... e alguma coisa ainda se move.', 'boss', 3.2);
+      area.minimap.bounds=mine.minimap.bounds; area.minimap.zones=mine.minimap.zones;
+      game.ui.banner('MINA ABANDONADA','Veios antigos ainda brilham nas paredes.','boss',3.2);
     });
-    game.schedule(0.9, () => {
-      game.ui.fade(false);
-      game.inputLocked = false;
-    });
+    game.schedule(0.9,()=>{game.ui.fade(false);game.inputLocked=false;});
   };
 
-  const leaveMine = () => {
-    if (!mine.active || game.state !== 'play' || game.inputLocked) return;
-    game.inputLocked = true;
-    game.ui.hidePrompt();
-    game.ui.fade(true);
-    game.schedule(0.45, () => {
-      mine.active = false;
-      mine.group.visible = false;
-      game.player.place(mine.return.x, mine.return.z, mine.return.facing);
+  const leaveMine=()=>{
+    if(!mine.active||game.state!=='play'||game.inputLocked)return;
+    game.inputLocked=true; game.ui.hidePrompt(); game.ui.fade(true);
+    game.schedule(0.45,()=>{
+      mine.active=false; mine.group.visible=false;
+      game.player.place(mine.return.x,mine.return.z,mine.return.facing);
       game.rig.snap(game.player.pos);
-      area.minimap.bounds = surfaceMinimap.bounds;
-      area.minimap.zones = surfaceMinimap.zones;
+      area.minimap.bounds=surfaceMinimap.bounds; area.minimap.zones=surfaceMinimap.zones;
     });
-    game.schedule(0.8, () => {
-      game.ui.fade(false);
-      game.inputLocked = false;
-    });
+    game.schedule(0.8,()=>{game.ui.fade(false);game.inputLocked=false;});
   };
+
 
 
   // ---------- forgotten corpse + lore book ----------
@@ -904,16 +887,22 @@ export function createArea1(game) {
   });
 
   const mineExitAnchor = new THREE.Object3D();
-  mineExitAnchor.position.set(mine.return.x, 1.5, mine.return.z - 1.2);
+  mineExitAnchor.position.set(mine.spawn.x, 1.0, mine.spawn.z - 1.4);
   scene.add(mineExitAnchor);
   game.interaction.add({
     pos: mineExitAnchor.position,
-    radius: 3.0,
+    radius: 2.8,
     height: 3.0,
     label: 'Subir para a superfície',
     enabled: () => mine.active,
     onInteract: leaveMine,
   });
+
+  // Rock around the surface mouth is solid; only the interaction itself opens
+  // the transition, so the player cannot simply walk through the scenery.
+  collision.addBox(8.8,10.8,32.0,38.0);
+  collision.addBox(14.0,16.0,32.0,38.0);
+  collision.addCircle(12.4,35.0,1.15);
 
   const lit = () => braziers.filter((b) => b.lit).length;
 
