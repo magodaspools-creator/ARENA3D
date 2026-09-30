@@ -657,6 +657,8 @@ const undergroundZones = [
   [104, 118, 114, 124],  // south connector
   [102, 120, 122, 129],  // southern extraction chamber
   [120, 126, 124, 129],  // collapsed south-east pocket
+  [116, 126, 126, 131],  // natural boss cave entrance
+  [110, 130, 129, 134],  // natural boss cave chamber
 ];
 
 // The zones overlap deliberately. This avoids zero-width seams where the
@@ -971,6 +973,147 @@ for (const [x, z, len, rot] of [
 // Fine dust hanging in the air is handled by the existing particle ambience.
 // Stage 3 only adds the static visual layer; no new per-frame systems are
 // introduced, keeping the mine load predictable.
+
+// ---------- Stage 4 natural boss cave + optional miniboss ----------
+// This is NOT the main Area 1 boss arena. Morvhal remains above, in the
+// Santuário Afundado, and the mine is an optional exploration branch.
+// The cave is a deeper natural pocket reached through the south-east gallery.
+
+// Irregular cave walls: short rock segments overlap at slightly different
+// angles so the chamber reads as carved/natural instead of another rectangle.
+for (const [x1,z1,x2,z2,h] of [
+  [116,126,121,128,4.6],
+  [121,128,127,127,5.2],
+  [127,127,130,131,5.6],
+  [130,131,128,134,6.0],
+  [128,134,121,135,6.2],
+  [121,135,114,133,5.5],
+  [114,133,110,130,5.0],
+  [110,130,112,127,4.6],
+  [112,127,116,126,4.4],
+]) {
+  mineWall(x1,z1,x2,z2,h);
+}
+
+// Interior rock teeth create depth around the chamber while leaving a clear
+// combat floor in the center.
+for (const [x,z,sx,sy,sz,rot] of [
+  [114.5,129.0,1.4,3.8,1.2,-0.3],
+  [118.0,133.0,1.6,4.5,1.3,0.2],
+  [125.5,130.8,1.8,4.8,1.4,-0.15],
+  [128.0,133.0,1.2,4.2,1.0,0.25],
+  [121.0,127.8,1.0,3.2,1.1,0.1],
+]) {
+  mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat);
+}
+
+// Cave ceiling stalactites are visual only. They stop well above the player
+// and never form a low roof/collision trap.
+for (const [x,z,h,sx] of [
+  [113,128,2.6,0.8],
+  [117,130,3.2,0.9],
+  [123,128,2.8,0.75],
+  [128,130,3.5,1.0],
+  [126,133,2.4,0.7],
+]) {
+  const stal = new THREE.Mesh(
+    new THREE.ConeGeometry(sx * 0.62, h, 7),
+    mineRockDarkMat
+  );
+  stal.position.set(x, 5.8, z);
+  stal.rotation.y = r() * Math.PI;
+  stal.castShadow = true;
+  mineGroup.add(stal);
+}
+
+// Cave floor rocks define the edges of the arena and leave the center open.
+for (const [x,z,s] of [
+  [112.5,131.8,0.8],[116,127.5,0.65],[119,134,0.9],
+  [126,127.8,0.7],[129,132,0.85],[123,134.2,0.65],
+]) {
+  mineRock(x,z,s,0.7,s*0.9,r()*0.5,mineRockDarkMat);
+}
+
+// A cold underground spring gives the chamber a distinct visual landmark.
+const springMat = new THREE.MeshStandardMaterial({
+  color: 0x33434a, roughness: 0.25, metalness: 0.15,
+  transparent: true, opacity: 0.78,
+});
+const spring = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16), springMat);
+spring.rotation.x = -Math.PI / 2;
+spring.scale.set(1.4, 0.7, 1);
+spring.position.set(126.0,0.018,133.0);
+mineGroup.add(spring);
+
+const caveCrystalMat = new THREE.MeshStandardMaterial({
+  color: 0x7a8d92, roughness: 0.35, metalness: 0.15, flatShading: true,
+});
+for (const [x,z,s] of [[113,130,0.7],[119,134,0.85],[128,131,0.9],[124,128,0.55]]) {
+  const crystal = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55,0), caveCrystalMat);
+  crystal.position.set(x,0.75,z);
+  crystal.scale.set(0.65*s,1.7*s,0.65*s);
+  crystal.rotation.set(0,r()*Math.PI,0.15);
+  crystal.castShadow=true;
+  mineGroup.add(crystal);
+}
+
+// Cave boundary colliders follow the rock perimeter. The entrance remains
+// open from the south-east extraction gallery.
+wallCollider(115.2,117.0,125.5,127.5);
+wallCollider(119.5,127.5,126.0,128.8);
+wallCollider(128.0,131.0,127.5,131.5);
+wallCollider(128.0,130.8,130.5,134.5);
+wallCollider(121.0,129.5,133.7,135.5);
+wallCollider(113.0,121.5,132.0,134.8);
+wallCollider(109.5,113.5,129.0,132.0);
+
+// Miniboss arena marker: subtle stone ring, no gameplay lock.
+// The player can enter, retreat, and return to the surface normally.
+const miniRing = new THREE.Mesh(
+  new THREE.RingGeometry(3.8,4.2,20),
+  mineOreMat
+);
+miniRing.rotation.x=-Math.PI/2;
+miniRing.position.set(121.5,0.025,131.0);
+mineGroup.add(miniRing);
+
+// Dedicated cave lights create a visual transition from worked mine to natural cave.
+for (const [x,z,intensity] of [
+  [116,129,3.5],[124,130,4.5],[129,132,3.8]
+]) addHangingLamp(x,z,4.4,intensity);
+
+// Optional miniboss: completely separate from Morvhal and does NOT advance the
+// Area 1 progression. It exists to make the deepest mine route worth exploring.
+const mineMiniboss = new Boss(game,121.5,131.0,{
+  name:'Gorvak, o Guardião das Profundezas',
+  onSummon:()=>{},
+  onDefeated:()=>{
+    game.onBossDefeated({
+      xp:180,
+      gold:120,
+      loot:[{itemId:'iron_scrap',amount:6},{itemId:'hollow_core',amount:1}]
+    },mineMiniboss.pos);
+    game.schedule(0.5,()=>game.ui.hideBoss());
+    game.ui.banner('PROFUNDEZAS LIMPA','Gorvak, o Guardião das Profundezas, foi derrotado.','victory',3.5);
+  },
+});
+mineMiniboss.isMineMiniboss=true;
+mineMiniboss.activeWhenMine=false;
+game.addEnemy(mineMiniboss);
+
+const stage4Trigger={
+  started:false,
+  update(){
+    if(this.started || !mine.active || mineMiniboss.state==='dead') return;
+    const p=game.player.pos;
+    if(p.x>116 && p.x<127 && p.z>126 && p.z<134){
+      this.started=true;
+      mineMiniboss.awaken();
+      game.ui.showBoss(mineMiniboss.name);
+      game.ui.banner('GORVAK','Algo antigo desperta na caverna.','boss',3);
+    }
+  }
+};
 
 // Timber supports are intentionally simple Box geometry. Their collision is
 // also Box-shaped and only blocks the actual posts, never the full corridor.
@@ -1579,6 +1722,7 @@ const leaveMine = () => {
       campfire.update(dt, t);
       if (mine.active) {
         for (const light of mineLights) light.intensity = 7 + Math.sin(t * 2.5 + light.position.x) * 1.2;
+        stage4Trigger.update();
       }
       braziers.forEach((b) => b.update(dt, t));
       gate.update(dt, t);
@@ -1643,6 +1787,10 @@ const leaveMine = () => {
       if (mine.active) {
         mine.active = false;
         mine.group.visible = false;
+        if (mineMiniboss.state !== 'dead') {
+          mineMiniboss.reset();
+          stage4Trigger.started = false;
+        }
         area.minimap.bounds = surfaceMinimap.bounds;
         area.minimap.zones = surfaceMinimap.zones;
         return;
