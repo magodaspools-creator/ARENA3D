@@ -631,7 +631,10 @@ for (const x of [-1.7, 1.7]) {
 }
 scene.add(mineEntrance);
 
-// ---------- Stage 1 underground layout ----------
+// ---------- Stage 2 underground route layout ----------
+  // Stage 1 established the enclosed physical pocket. Stage 2 turns that
+  // pocket into a readable mine: entrance tunnel -> central shaft -> three
+  // extraction branches, each with a distinct landmark and return path.
 // Coordinates are local to the underground pocket. The entrance transition
 // teleports the player here, so the surface map never intersects these zones.
 //
@@ -645,12 +648,15 @@ scene.add(mineEntrance);
 // The future boss cave will extend north-east from the hub in a later stage.
 
 const undergroundZones = [
-  [96, 124, 96, 104],   // entrance approach / north hub
-  [98, 122, 102, 118],  // central hub
-  [96, 106, 114, 126],  // west extraction connector
-  [114, 124, 114, 126], // east extraction connector
-  [103, 117, 119, 128], // south chamber
-  [112, 126, 124, 128], // south-east pocket
+  [107, 113, 96, 104],  // entrance tunnel / return route
+  [102, 118, 102, 116],  // central shaft hub
+  [96, 106, 108, 120],   // west extraction tunnel
+  [94, 108, 118, 127],   // west extraction chamber
+  [116, 124, 106, 116],  // east extraction tunnel
+  [120, 128, 112, 126],  // east extraction chamber
+  [104, 118, 114, 124],  // south connector
+  [102, 120, 122, 129],  // southern extraction chamber
+  [120, 126, 124, 129],  // collapsed south-east pocket
 ];
 
 // The zones overlap deliberately. This avoids zero-width seams where the
@@ -696,16 +702,40 @@ const perimeter = [
 ];
 for (const segment of perimeter) mineWall(...segment);
 
-// Extra interior rock faces make the branches read as authored tunnels rather
-// than painted rectangles. They never close a required connection.
-mineWall(92, 105, 99, 105, 4.2);
-mineWall(121, 105, 128, 106, 4.2);
-mineWall(106, 118, 106, 126, 4.2);
-mineWall(117, 118, 125, 118, 4.2);
+// ---------- Stage 2 authored route layout ----------
+// The player now has one clear entrance -> hub route and three distinct
+// extraction branches. Visual rock partitions match the collision openings:
+// no invisible maze walls and no branch that terminates against a blank edge.
 
-// Physical wall colliders mirror the visual perimeter. They are deliberately
-// simple boxes and sit slightly inside the visible rock, leaving no invisible
-// wall outside the scenery.
+// West branch: narrow mouth, then a wider extraction chamber.
+mineWall(94, 107.2, 101.5, 107.2, 3.9);
+mineWall(94, 107.2, 96, 116.5, 3.8);
+mineWall(94, 116.5, 102, 116.5, 3.6);
+mineWall(102, 116.5, 102, 120, 3.5);
+
+// East branch: old supports frame the tunnel before it opens into the chamber.
+mineWall(119.5, 105.5, 127, 105.5, 3.8);
+mineWall(127, 105.5, 127, 112, 3.8);
+mineWall(127, 126, 120, 126, 3.6);
+mineWall(120, 126, 120, 121, 3.5);
+
+// South branch: broad central opening, then a tighter extraction gallery.
+mineWall(94, 120.5, 103, 120.5, 3.5);
+mineWall(119, 120.5, 128, 120.5, 3.5);
+mineWall(101.5, 129, 120, 129, 3.8);
+
+// Branch-mouth rock shoulders make the topology readable from the hub.
+for (const [x, z, sx, sy, sz, rot] of [
+  [103.5, 108.2, 1.4, 2.4, 1.2, 0.2],
+  [116.5, 108.2, 1.4, 2.4, 1.2, -0.2],
+  [103.0, 115.2, 1.5, 2.2, 1.3, -0.15],
+  [117.0, 115.2, 1.5, 2.2, 1.3, 0.15],
+]) {
+  mineRock(x, z, sx, sy, sz, rot);
+}
+
+// Physical wall colliders mirror the visual perimeter and the new branch
+// partitions. The openings remain deliberately wider than the player capsule.
 const wallCollider = (minX, maxX, minZ, maxZ) => collision.addBox(minX, maxX, minZ, maxZ);
 
 wallCollider(92, 94, 95, 106);
@@ -720,11 +750,84 @@ wallCollider(124, 130, 96, 106);
 wallCollider(112, 125, 94, 98);
 wallCollider(94, 113, 94, 98);
 
-// Close the four temporary internal faces with matching colliders.
-wallCollider(92, 99, 104.3, 106.0);
-wallCollider(120.8, 129, 104.5, 106.2);
-wallCollider(105.3, 106.7, 118, 126);
-wallCollider(116.5, 126, 117.2, 118.8);
+// West branch boundaries. The gap x=102..106 remains the branch mouth.
+wallCollider(94, 102, 106.6, 108.0);
+wallCollider(94, 96.0, 108.0, 116.8);
+wallCollider(94, 102, 116.0, 117.8);
+wallCollider(101.3, 102.7, 116.5, 121);
+
+// East branch boundaries. The gap x=116..120 remains open from the hub.
+wallCollider(119, 127.8, 104.9, 106.3);
+wallCollider(126.5, 128.2, 105.5, 112.0);
+wallCollider(119, 128, 125.0, 127.0);
+wallCollider(119.2, 120.8, 120.5, 126);
+
+// South chamber side walls leave a broad central connection x=103..119.
+wallCollider(94, 103, 119.8, 121.2);
+wallCollider(119, 128, 119.8, 121.2);
+wallCollider(101.0, 121.0, 128.2, 130.2);
+
+// Central shaft landmark: a shallow dark ring and four stone uprights give
+// the hub a focal point without creating a hole or changing the flat floor.
+const shaftMat = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 1, flatShading: true });
+const shaftRing = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.65, 0.12, 12), mineRockDarkMat);
+shaftRing.position.set(110, 0.02, 109);
+shaftRing.receiveShadow = true;
+mineGroup.add(shaftRing);
+const shaftVoid = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.75, 0.08, 12), shaftMat);
+shaftVoid.position.set(110, 0.09, 109);
+mineGroup.add(shaftVoid);
+for (const [x, z, rot] of [[107.9,109,0],[112.1,109,0],[110,106.9,Math.PI/2],[110,111.1,Math.PI/2]]) {
+  mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat);
+}
+
+// Collapsed gallery in the south-east pocket. The debris is decorative and
+// leaves the safe walkable lane along the western side of the pocket.
+for (const [x, z, sx, sy, sz, ry] of [
+  [123.8, 125.8, 1.8, 0.8, 1.0, 0.2],
+  [125.0, 126.8, 1.3, 0.55, 0.8, -0.3],
+  [122.5, 127.2, 1.5, 0.45, 0.7, 0.15],
+  [125.8, 124.8, 0.9, 1.0, 0.8, 0.4],
+]) {
+  mineBox(sx, sy, sz, x, sy * 0.5, z, mineRockDarkMat, ry);
+}
+
+// A mine cart marks the end of the west extraction line. It is kept outside
+// the corridor center so it cannot become a navigation trap.
+const cart = new THREE.Group();
+cart.position.set(100.2, 0.28, 123.0);
+const cartBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.75, 1.35), mineWoodMat);
+cartBody.position.y = 0.45;
+cartBody.castShadow = true;
+cart.add(cartBody);
+for (const wheelX of [-0.68, 0.68]) {
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.16, 10), mineMetalMat);
+  wheel.rotation.z = Math.PI / 2;
+  wheel.position.set(wheelX, 0.22, 0.66);
+  wheel.castShadow = true;
+  cart.add(wheel);
+  const wheel2 = wheel.clone();
+  wheel2.position.z = -0.66;
+  cart.add(wheel2);
+}
+mineGroup.add(cart);
+
+// Additional ore clusters are placed at the end of branches so each route has
+// a visual reward target before Stage 5 loot interaction is added.
+for (const [x, y, z, s, rot] of [
+  [97.0, 1.4, 121.5, 0.9, -0.2],
+  [101.8, 1.2, 125.2, 0.65, 0.3],
+  [124.8, 1.5, 116.0, 0.85, 0.1],
+  [126.0, 1.4, 121.5, 0.7, -0.25],
+  [108.0, 1.5, 126.8, 0.75, 0.2],
+]) {
+  const vein = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7, 0), mineOreMat);
+  vein.position.set(x, y, z);
+  vein.scale.set(s, 0.72 * s, 1.25 * s);
+  vein.rotation.set(0, rot, 0.15);
+  vein.castShadow = true;
+  mineGroup.add(vein);
+}
 
 // Timber supports are intentionally simple Box geometry. Their collision is
 // also Box-shaped and only blocks the actual posts, never the full corridor.
