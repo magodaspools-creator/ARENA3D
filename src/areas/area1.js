@@ -116,6 +116,10 @@ export function createArea1(game) {
   // ---------- expanded pre-arena forecourt ----------
   decor.wall(-10.5, -30.8, -10.5, -21.0, 3.2, r, { minH: 0.45 });
   decor.wall(10.5, -30.8, 10.5, -21.0, 3.2, r, { minH: 0.45 });
+  // Match the two visible walls with gameplay colliders. The walkable zone
+  // alone must not be responsible for making these walls feel solid.
+  collision.addBox(-11.1, -9.9, -31.3, -20.5);
+  collision.addBox(9.9, 11.1, -31.3, -20.5);
   for (const [x, z, h, broken] of [[-8.2, -28.6, 3.4, true], [8.2, -28.6, 3.8, false], [-7.2, -22.2, 2.8, true], [7.2, -22.2, 3.1, true]]) {
     decor.column(x, z, h, r, broken);
     collision.addCircle(x, z, 0.9);
@@ -126,6 +130,11 @@ export function createArea1(game) {
   decor.wall(-39.5, -16.5, -39.5, 17.5, 3.4, r, { minH: 0.25 });
   decor.wall(-39.5, 17.5, -27, 18, 3.0, r, { minH: 0.35 });
   decor.wall(-27, -16.5, -39.5, -16.5, 2.6, r, { minH: 0.25 });
+  // Perimeter colliders. There is intentionally NO right-side wall collider:
+  // that edge is the exploration entrance back to the main map.
+  collision.addBox(-40.1, -38.9, -17.1, 18.1);
+  collision.addBox(-40.1, -26.5, 17.4, 18.6);
+  collision.addBox(-40.1, -26.5, -17.1, -15.9);
   // Open entrance: the connector and grove zones already overlap here.
   // Do not add a gameplay collider across this boundary; the old split-wall
   // workaround still left decorative debris at the doorway and could trap the player.
@@ -146,6 +155,12 @@ export function createArea1(game) {
   decor.wall(6, 56.5, 17.5, 56.5, 3.2, r, { minH: 0.35 });
   decor.wall(-17.5, 45.5, -17.5, 56.5, 3.2, r, { minH: 0.35 });
   decor.wall(17.5, 45.5, 17.5, 56.5, 3.6, r, { minH: 0.3 });
+  // Northern ruins walls are solid gameplay geometry too. The south side is
+  // intentionally open because it reconnects to the main entrance zone.
+  collision.addBox(-18.1, -16.9, 45.0, 57.1);
+  collision.addBox(16.9, 18.1, 45.0, 57.1);
+  collision.addBox(-18.1, -5.5, 55.9, 57.1);
+  collision.addBox(5.5, 18.1, 55.9, 57.1);
   for (const [x, z, h, broken] of [
     [-12.5, 52.5, 4.8, false],
     [11.5, 52.5, 3.6, true],
@@ -217,6 +232,15 @@ export function createArea1(game) {
       );
     }
   }
+
+  // Gameplay perimeter follows the same broken layout. The west side is the
+  // entrance wall, with an opening around z=11..13 for the secret gate.
+  collision.addBox(23.4, 24.6, 2.0, 6.2);
+  collision.addBox(23.4, 24.6, 12.8, 18.6);
+  collision.addBox(39.4, 40.6, 2.5, 18.6);
+  collision.addBox(24.0, 40.6, 17.4, 18.6);
+  collision.addBox(24.0, 29.4, 1.4, 2.6);
+  collision.addBox(30.6, 40.6, 1.4, 3.2);
 
   // Broken, staggered perimeter instead of a clean rectangular room.
   decor.wall(24, 2, 29, 2, 3.8, r, { minH: 0.45 });
