@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js';
 
 await RAPIER.init();
@@ -286,30 +287,27 @@ export class Collision {
       child.material?.dispose();
     }
 
-    const THREERef = globalThis.THREE;
-    if (!THREERef) return;
-
     for (const o of this.obstacles) {
       if (!o.enabled) continue;
       if (o.type === 'circle') {
-        const mesh = new THREERef.Mesh(
-          new THREERef.CylinderGeometry(o.r, o.r, COLLISION_HEIGHT, 20, 1, true),
-          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        const mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(o.r, o.r, COLLISION_HEIGHT, 20, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
         );
         mesh.position.set(o.x, COLLISION_HEIGHT * 0.5, o.z);
         this.debugRoot.add(mesh);
       } else if (o.type === 'box') {
-        const mesh = new THREERef.Mesh(
-          new THREERef.BoxGeometry(o.maxX - o.minX, COLLISION_HEIGHT, o.maxZ - o.minZ),
-          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(o.maxX - o.minX, COLLISION_HEIGHT, o.maxZ - o.minZ),
+          new THREE.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
         );
         mesh.position.set((o.minX + o.maxX) * 0.5, COLLISION_HEIGHT * 0.5, (o.minZ + o.maxZ) * 0.5);
         this.debugRoot.add(mesh);
       } else if (o.type === 'wall') {
         const len = Math.hypot(o.x2 - o.x1, o.z2 - o.z1);
-        const mesh = new THREERef.Mesh(
-          new THREERef.BoxGeometry(o.thickness, o.height, len),
-          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(o.thickness, o.height, len),
+          new THREE.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
         );
         mesh.position.set((o.x1 + o.x2) * 0.5, o.height * 0.5, (o.z1 + o.z2) * 0.5);
         mesh.rotation.y = Math.atan2(o.x2 - o.x1, o.z2 - o.z1);
