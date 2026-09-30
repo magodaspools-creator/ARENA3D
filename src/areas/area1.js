@@ -974,6 +974,20 @@ for (const [x, z, len, rot] of [
 // Stage 3 only adds the static visual layer; no new per-frame systems are
 // introduced, keeping the mine load predictable.
 
+const mine = {
+  active: false,
+  spawn: { x: 110, z: 101, facing: Math.PI },
+  return: { x: 12.4, z: 37.2, facing: Math.PI },
+  group: mineGroup,
+  entrance: mineEntrance,
+  chest: null,
+  enemies: [],
+  minimap: {
+    bounds: { minX: 90, maxX: 132, minZ: 93, maxZ: 132 },
+    zones: undergroundZones,
+  },
+};
+
 // ---------- Stage 4 natural boss cave + optional miniboss ----------
 // This is NOT the main Area 1 boss arena. Morvhal remains above, in the
 // Santuário Afundado, and the mine is an optional exploration branch.
@@ -1215,19 +1229,7 @@ for (const [x, z] of [[99, 101], [116, 101], [100, 116], [120, 116]]) {
 // The underground state remains compatible with the existing transition,
 // enemies, chest and return interaction. Later stages can extend only this
 // pocket without touching the approved surface entrance.
-const mine = {
-  active: false,
-  spawn: { x: 110, z: 101, facing: Math.PI },
-  return: { x: 12.4, z: 37.2, facing: Math.PI },
-  group: mineGroup,
-  entrance: mineEntrance,
-  chest: null,
-  enemies: [],
-  minimap: {
-    bounds: { minX: 90, maxX: 132, minZ: 93, maxZ: 132 },
-    zones: undergroundZones,
-  },
-};
+
 
 const surfaceMinimap = {
   bounds: { minX: -42, maxX: 42, minZ: -62, maxZ: 61 },
