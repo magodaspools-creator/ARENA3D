@@ -1088,6 +1088,7 @@ const mineMiniboss = new Boss(game,121.5,131.0,{
   name:'Gorvak, o Guardião das Profundezas',
   onSummon:()=>{},
   onDefeated:()=>{
+    prog.setCounter('mineMinibossDefeated', true);
     game.onBossDefeated({
       xp:180,
       gold:120,
@@ -1114,6 +1115,50 @@ const stage4Trigger={
     }
   }
 };
+
+// ---------- Stage 5 gameplay: mine combat loop + miniboss reward ----------
+// The mine now has a complete optional gameplay loop:
+// enter -> clear patrols -> explore -> awaken Gorvak -> defeat him ->
+// claim the deep cache -> return to the surface. Morvhal's progression is
+// intentionally untouched.
+
+const originalMinibossUpdate = mineMiniboss.update.bind(mineMiniboss);
+mineMiniboss.update = (dt) => {
+  if (!mine.active && mineMiniboss.state !== 'dead') return;
+  originalMinibossUpdate(dt);
+};
+
+const mineDeepChest = createChest(game, 121.5, 133.2, Math.PI);
+mineDeepChest.root = null;
+if (prog.counters.mineDeepChestOpened) mineDeepChest.restoreOpen();
+
+game.interaction.add({
+  pos: mineDeepChest.pos,
+  radius: 2.4,
+  height: 2.2,
+  label: () => mineDeepChest.opened ? 'Cofre das profundezas vazio' : 'Abrir cofre das profundezas',
+  enabled: () => mine.active && mineMiniboss.state === 'dead' && !mineDeepChest.opened,
+  onInteract: () => {
+    mineDeepChest.open();
+    prog.setCounter('mineDeepChestOpened', true);
+    game.rewardCharacter(0, 160);
+    game.spawnGroundLoot([
+      { itemId: 'iron_scrap', amount: 8 },
+      { itemId: 'wisp_essence', amount: 2 },
+      { itemId: 'red_potion', amount: 3 },
+    ], mineDeepChest.pos);
+    game.ui.banner('TESOURO DAS PROFUNDEZAS', 'O cofre escondia os últimos suprimentos dos antigos mineiros.', 'victory', 3.2);
+  },
+});
+
+// A second ranged patrol makes the final gallery less predictable without
+// turning the mine into another mandatory boss corridor.
+mine.enemies.push(
+  spawn('wisp', 124, 124.5, 'mine', true),
+  spawn('zombie', 107.5, 126.5, 'mine', true),
+);
+
+
 
 // Timber supports are intentionally simple Box geometry. Their collision is
 // also Box-shaped and only blocks the actual posts, never the full corridor.
@@ -1201,6 +1246,10 @@ const enterMine = () => {
   game.schedule(0.55, () => {
     mine.active = true;
     mine.group.visible = true;
+    for (const e of game.enemies) {
+      if (e.group === 'mine' && !e.removed) e.root.visible = true;
+    }
+    mineMiniboss.root.visible = mineMiniboss.state !== 'dead';
     game.player.place(mine.spawn.x, mine.spawn.z, mine.spawn.facing);
     game.rig.snap(game.player.pos);
     area.minimap.bounds = mine.minimap.bounds;
@@ -1221,6 +1270,10 @@ const leaveMine = () => {
   game.schedule(0.45, () => {
     mine.active = false;
     mine.group.visible = false;
+    for (const e of game.enemies) {
+      if (e.group === 'mine' && !e.removed) e.root.visible = false;
+    }
+    mineMiniboss.root.visible = false;
     game.player.place(mine.return.x, mine.return.z, mine.return.facing);
     game.rig.snap(game.player.pos);
     area.minimap.bounds = surfaceMinimap.bounds;
@@ -1557,6 +1610,7 @@ const leaveMine = () => {
   // ---------- enemies ----------
   const spawn = (type, x, z, group, respawnable = false) => {
     const e = game.addEnemy(new Enemy(game, type, x, z, { group }));
+    if (group === 'mine') e.root.visible = mine.active;
     e.respawnable = respawnable;
     if (respawnable) e.spawnData = { type, x, z, group };
     return e;
@@ -1714,6 +1768,18 @@ const leaveMine = () => {
       }
 
       prog.apply();
+
+      if (prog.counters.mineDeepChestOpened) {
+        mineDeepChest.restoreOpen();
+      }
+      if (prog.counters.mineMinibossDefeated) {
+        mineMiniboss.alive = false;
+        mineMiniboss.hp = 0;
+        mineMiniboss.state = 'dead';
+        mineMiniboss.root.visible = false;
+        stage4Trigger.started = true;
+      }
+
       game.ui.banner('FLORESTA DE VHAL', restored ? 'Progresso restaurado' : 'Área 1', '', 3.2);
       game.schedule(3.5, () => game.ui.toast('Use WASD para andar. Há uma luz perto da fogueira...'));
     },
@@ -1787,6 +1853,10 @@ const leaveMine = () => {
       if (mine.active) {
         mine.active = false;
         mine.group.visible = false;
+        for (const e of game.enemies) {
+          if (e.group === 'mine' && !e.removed) e.root.visible = false;
+        }
+        mineMiniboss.root.visible = false;
         if (mineMiniboss.state !== 'dead') {
           mineMiniboss.reset();
           stage4Trigger.started = false;
