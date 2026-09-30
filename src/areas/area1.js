@@ -349,8 +349,10 @@ export function createArea1(game) {
   game.interaction.add({
     pos: runeStone.pos, radius: 2.8, height: 3.4, label: 'Ler pedra rúnica',
     onInteract: () => game.dialogue.open('Pedra Rúnica', [
-      '"Três chamas vigiam o portão. Enquanto arderem juntas, o selo não se fecha."',
-      '"Mas a chama não obedece enquanto os mortos respiram ao seu redor."',
+      '"Não foi a floresta que apodreceu. Foi o que enterramos sob ela."',
+      '"Quando os sinos silenciaram, os mortos começaram a chamar uns pelos outros sob as raízes."',
+      '"Morvhal não era o carcereiro. Era a última coisa que ainda se lembrava de por que a porta devia permanecer fechada."',
+      '"Se ele despertar, não confie no que ouvir. A voz que responde do fundo não é a dele."',
     ], runeStone.anchor),
   });
 
