@@ -26,6 +26,9 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 45);   // forest entrance
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
+  // Expanded forecourt OUTSIDE the boss arena. This is the pause/lore space
+  // before the player crosses the arena threshold.
+  collision.addRectZone(-11, 11, -31, -20);  // pre-arena forecourt
   // Hidden east passage / secret chamber: closed behind the secret gate, then
   // opens into a larger side room instead of a tiny empty square.
   collision.addRectZone(14, 38, 4, 16);
@@ -90,6 +93,12 @@ export function createArea1(game) {
     if (r() < 0.12) decor.mushrooms(x, terrain.height(x, z), z, r);
   }
 
+  // ---------- expanded pre-arena forecourt ----------
+  decor.wall(-10.5, -30.8, -10.5, -21.0, 3.2, r, { minH: 0.45 });
+  decor.wall(10.5, -30.8, 10.5, -21.0, 3.2, r, { minH: 0.45 });
+  for (const [x, z, h, broken] of [[-8.2, -28.6, 3.4, true], [8.2, -28.6, 3.8, false], [-7.2, -22.2, 2.8, true], [7.2, -22.2, 3.1, true]]) {
+    decor.column(x, z, h, r, broken);
+  }
   // ---------- courtyard ruins ----------
   for (let x = -21; x <= 21; x += 2) {
     for (let z = -19; z <= 12; z += 2) {
