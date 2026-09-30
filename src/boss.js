@@ -180,7 +180,7 @@ export class Boss {
           g.fx.slash(this.pos, dir, 6, 2.0, 0xff5a3a);
           g.rig.shake(0.5);
           const ang = Math.abs(Math.atan2(Math.sin(toPlayer - this.facing), Math.cos(toPlayer - this.facing)));
-          if (dist < 6.2 + p.radius && ang < 1.0) p.takeDamage(g.combat.roll([26, 34], 0).amount, this.pos);
+          if (dist < 6.2 + p.radius && ang < 1.0) p.takeDamage(g.combat.roll([48, 62], 0).amount, this.pos);
         }
         if (this.stateT > wind + 0.6) this.toChase();
         break;
@@ -203,7 +203,7 @@ export class Boss {
           g.fx.ring(this.slamAt, 0xffffff, 3.5, 0.3);
           g.fx.emit(V.copy(this.slamAt).setY(0.3), { count: 60, color: 0x9a8a78, speed: 8, up: 2, life: 0.9, size: 0.7, gravity: 6, flat: true, drag: 2 });
           g.fx.emit(V.copy(this.slamAt).setY(0.3), { count: 30, color: this.enraged ? 0xff3b2a : 0x9dffe0, speed: 6, up: 3, life: 0.8, size: 0.5 });
-          if (Math.hypot(p.pos.x - this.slamAt.x, p.pos.z - this.slamAt.z) < 3.8 + p.radius) p.takeDamage(g.combat.roll([32, 42], 0).amount, this.slamAt);
+          if (Math.hypot(p.pos.x - this.slamAt.x, p.pos.z - this.slamAt.z) < 3.8 + p.radius) p.takeDamage(g.combat.roll([58, 74], 0).amount, this.slamAt);
         }
         if (this.stateT > wind + 0.9 * fast) { this.leapFrom = null; this.toChase(); }
         break;
@@ -310,7 +310,7 @@ export class Boss {
     for (let i = 0; i < n; i++) {
       const a = ((i + offset) / n) * Math.PI * 2;
       const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-      g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 1.5), dir, speed: 7.5, range: 22, damage: [12, 16], damageType: 'magic', visual: 'bigOrb', color: 0xff5a3a, radius: 0.45 });
+      g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 1.5), dir, speed: 7.5, range: 22, damage: [20, 26], damageType: 'magic', visual: 'bigOrb', color: 0xff5a3a, radius: 0.45 });
     }
     g.rig.shake(0.4);
     g.fx.ring(this.pos, 0xff5a3a, 4, 0.4);
