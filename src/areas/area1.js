@@ -670,30 +670,44 @@ for (const [minX, maxX, minZ, maxZ] of undergroundZones) {
 
 // The mine is deliberately larger than the old 30x40 pocket. It is built as
 // chambers connected by long corridors, not as one rectangular room.
-const mineWall = (x1, z1, x2, z2, h = 8.0) => {
+const mineWall = (x1, z1, x2, z2, h = 8.0, options = {}) => {
   const dx = x2 - x1, dz = z2 - z1;
   const len = Math.hypot(dx, dz);
   const angle = Math.atan2(dz, dx);
-  mineBox(len + 0.5, h, 2.0, (x1 + x2) * 0.5, h * 0.5 - 0.08, (z1 + z2) * 0.5, mineRockDarkMat, angle);
+  const collide = options.collide ?? true;
 
-  // Collision is generated from the same authored wall path. Dense samples
-  // close the old gaps where the player could walk through visible rocks.
-  const count = Math.max(3, Math.ceil(len / 0.95));
+  // Natural wall mass: no long rectangular boxes. A small number of overlapping
+  // low-poly rock masses form one continuous ridge, so the silhouette reads as
+  // carved stone rather than a row of cubes.
+  const count = Math.max(2, Math.ceil(len / 3.8));
   for (let i = 0; i < count; i++) {
-    const t = i / (count - 1);
-    collision.addCircle(x1 + dx * t, z1 + dz * t, 0.95);
+    const t = (i + 0.5) / count;
+    const wobble = Math.sin((i + 1) * 2.17 + x1 * 0.13 + z1 * 0.07) * 0.22;
+    const px = x1 + dx * t - (dz / Math.max(len, 0.001)) * wobble;
+    const pz = z1 + dz * t + (dx / Math.max(len, 0.001)) * wobble;
+    const chunkLen = Math.min(4.6, Math.max(2.7, len / count + 0.9));
+    const rock = mineRock(
+      px,
+      pz,
+      chunkLen * 0.58,
+      h * (0.38 + (i % 3) * 0.035),
+      1.05 + (i % 2) * 0.18,
+      angle + (i % 2 ? 0.08 : -0.06),
+      mineRockDarkMat
+    );
+    rock.rotation.z = (i % 2 ? -1 : 1) * 0.035;
   }
 
-  const rocks = Math.max(2, Math.ceil(len / 3.2));
-  for (let i = 0; i < rocks; i++) {
-    const t = (i + 0.5) / rocks;
-    mineRock(
-      x1 + dx * t, z1 + dz * t,
-      1.35 + (i % 2) * 0.4,
-      2.4 + (i % 3) * 0.5,
-      1.15 + (i % 2) * 0.3,
-      angle + (i % 2 ? 0.25 : -0.2)
-    );
+  // Only interior walls get obstacle colliders. The outside perimeter is
+  // already enforced by the walkable-zone union, so it must not receive a
+  // second, offset collision layer.
+  if (collide) {
+    const sampleStep = 0.72;
+    const samples = Math.max(2, Math.ceil(len / sampleStep) + 1);
+    for (let i = 0; i < samples; i++) {
+      const t = samples === 1 ? 0 : i / (samples - 1);
+      collision.addCircle(x1 + dx * t, z1 + dz * t, 0.82);
+    }
   }
 };
 
@@ -721,7 +735,7 @@ const perimeter = [
   [78, 94, 91, 87],
   [91, 87, 104, 80],
 ];
-for (const segment of perimeter) mineWall(...segment);
+for (const segment of perimeter) mineWall(...segment, { collide: false });
 
 // Worked-mine corridors. Their bends create sightline breaks between chambers.
 for (const segment of [
@@ -735,30 +749,11 @@ for (const segment of [
   [143, 139, 138, 136],
 ]) mineWall(...segment, 7.0);
 
-// Heavy stone shoulders frame each doorway without blocking the corridors.
-for (const [x,z,sx,sy,sz,rot] of [
-  [104.5,96,1.8,3.2,1.5,0.1],[115.5,96,1.8,3.2,1.5,-0.1],
-  [98,99,1.5,3.0,1.4,0.3],[124,99,1.5,3.0,1.4,-0.3],
-  [96,118,1.7,3.4,1.4,0.1],[126,118,1.7,3.4,1.4,-0.1],
-  [106,131,1.8,3.8,1.5,0.2],[123,131,1.8,3.8,1.5,-0.2],
-]) mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat);
+// Doorways stay visually open. The wall masses themselves define each side of
+// the passage; no extra rock blocks are placed in the openings.
 
-// Physical boundaries are intentionally generous and follow the authored
-// chambers. The walkable union handles the corridors; these stop wall bypasses.
-const wallCollider = (minX, maxX, minZ, maxZ) => collision.addBox(minX, maxX, minZ, maxZ);
-for (const box of [
-  [69,72,103,116],[69,72,116,130],[72,80,137,145],[80,99,143,146],
-  [99,111,149,152],[111,125,151,154],[125,143,151,154],
-  [143,153,145,148],[150,154,119,138],[151,154,101,120],
-  [149,153,91,105],[137,151,82,92],[123,139,81,85],[103,116,79,83],
-  [89,104,83,88],[77,92,88,94],
-  [106,108,87,94],[112,114,87,94],
-  [88,96,99,101],[88,96,106,108],
-  [136,138,99,108],[124,136,99,101],[124,136,106,108],
-  [88,95,117,119],[88,95,125,127],
-  [126,136,117,119],[126,136,125,127],
-  [104,106,130,138],[124,126,130,138],
-]) wallCollider(...box);
+// No duplicate physical wall layer here. The walkable zones define the
+// outer boundary, while mineWall() supplies collision only for interior rock walls.
 
 // No solid ceiling: the mine must remain readable from the player's maximum
 // zoom-out. The exterior is masked with a thick fog bank instead of a black roof.
@@ -1125,15 +1120,8 @@ for (const [x,z,s] of [[113,130,0.7],[119,134,0.85],[128,131,0.9],[124,128,0.55]
   mineGroup.add(crystal);
 }
 
-// Cave boundary colliders follow the rock perimeter. The entrance remains
-// open from the south-east extraction gallery.
-wallCollider(115.0,116.8,125.4,127.0);
-wallCollider(123.0,127.5,127.5,128.8);
-wallCollider(128.0,131.0,127.5,131.5);
-wallCollider(128.0,130.8,130.5,134.5);
-wallCollider(121.0,129.5,133.7,135.5);
-wallCollider(113.0,121.5,132.0,134.8);
-wallCollider(109.5,113.5,129.0,132.0);
+// Cave collision is authored by the same mineWall() segments above.
+// There is intentionally no second rectangular collider layer here.
 
 // Miniboss arena marker: subtle stone ring, no gameplay lock.
 // The player can enter, retreat, and return to the surface normally.
