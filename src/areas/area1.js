@@ -353,7 +353,8 @@ export function createArea1(game) {
   tornCloak.rotation.y = -0.18;
   corpse.add(tornCloak);
 
-  corpse.position.set(-7.2, 0, -42.2);
+  // Outside the boss arena: the player can stop here and read before entering.
+  corpse.position.set(0, 0, -27.0);
   corpse.rotation.y = -0.35;
   scene.add(corpse);
 
@@ -367,12 +368,12 @@ export function createArea1(game) {
   const pages = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.07, 0.88), pageMat);
   pages.position.y = 0.2;
   loreBook.add(cover, pages);
-  loreBook.position.set(-6.1, 0.08, -41.5);
+  loreBook.position.set(2.0, 0.08, -27.2);
   loreBook.rotation.set(-0.08, -0.35, 0.12);
   scene.add(loreBook);
 
   const loreBookAnchor = new THREE.Object3D();
-  loreBookAnchor.position.set(-6.1, 0.75, -41.5);
+  loreBookAnchor.position.set(2.0, 0.75, -27.2);
   scene.add(loreBookAnchor);
 
   // ---------- set pieces ----------
