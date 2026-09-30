@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator, mesh, mat } from './models.js';
 import { rollLoot } from './loot.js';
 
 // Regular enemies. Two archetypes share one state machine:
