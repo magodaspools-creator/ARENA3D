@@ -275,6 +275,35 @@ button:hover { filter: brightness(1.1); }
   color: #8f8672;
   font-size: 12px;
 }
+.shop-tabs {
+  display: flex;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(232,199,122,.12);
+}
+.shop-tabs button {
+  padding: 8px 18px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  background: rgba(255,255,255,.035);
+  color: #a99f88;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: none;
+}
+.shop-tabs button.active {
+  background: linear-gradient(#f0d9a8, #c9a24e);
+  color: #1a1408;
+  border-color: rgba(232,199,122,.65);
+  box-shadow: 0 3px 14px rgba(232,199,122,.18);
+}
+.shop-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: #8f8672;
+  border: 1px dashed rgba(255,255,255,.1);
+  border-radius: 7px;
+}
 .shop-item-card {
   min-height: 96px;
   display: grid;
