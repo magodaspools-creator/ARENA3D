@@ -30,6 +30,7 @@ export function createArea1(game) {
   // not merely touch at x=-14. Player radius is 0.45, so a zero-width
   // zone junction behaves like an invisible wall.
   collision.addRectZone(-32, -11, 10, 34);   // west forest connector
+  collision.addRectZone(-34, -18, 28, 41);    // open route into northern-left cemetery
   // Wider doorway into the Hanging Grove. The old tree stood here and its
   // collider could make the opening feel like an invisible wall.
   // Wider doorway into the Hanging Grove. It overlaps the connector by
