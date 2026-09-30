@@ -125,7 +125,7 @@ export class UI {
     const { minX, maxX, minZ, maxZ } = area.minimap.bounds;
     const sx = w / (maxX - minX), sy = h / (maxZ - minZ);
     const px = (x) => (x - minX) * sx;
-    const pz = (z) => h - (z - minZ) * sy;
+    const pz = (z) => (z - minZ) * sy;
 
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(7, 11, 14, 0.88)';
