@@ -72,6 +72,7 @@ class Game {
     addEventListener('keydown', (e) => {
       if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
       if (e.code === 'KeyI' && this.state === 'play' && !e.repeat) this.ui.toggleItems();
+      if (e.code === 'F3' && !e.repeat) this.collision.toggleDebug(this.scene);
     });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
