@@ -1612,13 +1612,13 @@ const leaveMine = () => {
   }
 
   // ---------- enemies ----------
-  const spawn = (type, x, z, group, respawnable = false) => {
+  function spawn(type, x, z, group, respawnable = false) {
     const e = game.addEnemy(new Enemy(game, type, x, z, { group }));
     if (group === 'mine') e.root.visible = mine.active;
     e.respawnable = respawnable;
     if (respawnable) e.spawnData = { type, x, z, group };
     return e;
-  };
+  }
 
   // Farm mobs: each one returns after a short cooldown so the area can be used
   // as a safe XP/gold/loot farming loop.
