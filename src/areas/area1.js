@@ -120,20 +120,40 @@ export function createArea1(game) {
   decor.wall(3.9, -21, 3.9, -30.5, 5.5, r, { minH: 0.85 });
 
   // ---------- hidden east chamber ----------
-  // A proper side room sits beyond the secret gate. The player can only reach
-  // this area after pulling the concealed lever in the courtyard.
-  for (let x = 25; x <= 36; x += 2) {
-    for (let z = 6; z <= 14; z += 2) {
-      decor.tiles.add(x + (r() - 0.5) * 0.15, -0.05 + r() * 0.03, z + (r() - 0.5) * 0.15,
-        1.85, 0.14, 1.85, (r() - 0.5) * 0.06,
-        r() < 0.2 ? 0x3e4a3a : [0x4a4c52, 0x55575d, 0x3f4146][Math.floor(r() * 3)]);
+  // A natural ruined chamber: irregular walls, a narrow concealed entrance,
+  // broken masonry and a deeper alcove around the reward.
+  for (let x = 24; x <= 38; x += 2) {
+    for (let z = 2; z <= 18; z += 2) {
+      decor.tiles.add(
+        x + (r() - 0.5) * 0.22, -0.05 + r() * 0.03,
+        z + (r() - 0.5) * 0.22,
+        1.85, 0.14, 1.85, (r() - 0.5) * 0.09,
+        r() < 0.22 ? 0x3e4a3a : [0x4a4c52, 0x55575d, 0x3f4146, 0x505258][Math.floor(r() * 4)]
+      );
     }
   }
-  decor.wall(24, 4, 38, 4, 3.8, r, { minH: 0.55 });
-  decor.wall(38, 4, 38, 16, 3.8, r, { minH: 0.55 });
-  decor.wall(24, 16, 38, 16, 3.8, r, { minH: 0.55 });
-  decor.column(34.5, 6.2, 2.8, r, true);
-  decor.column(35.5, 13.8, 3.2, r, false);
+
+  // Broken, staggered perimeter instead of a clean rectangular room.
+  decor.wall(24, 2, 29, 2, 3.8, r, { minH: 0.45 });
+  decor.wall(31, 2, 40, 2.8, 3.5, r, { minH: 0.4 });
+  decor.wall(40, 2.8, 40, 8, 3.8, r, { minH: 0.45 });
+  decor.wall(40, 10, 40, 18, 3.4, r, { minH: 0.35 });
+  decor.wall(40, 18, 34, 18, 3.7, r, { minH: 0.4 });
+  decor.wall(32, 18, 24, 18, 3.1, r, { minH: 0.3 });
+  decor.wall(24, 18, 24, 13, 3.8, r, { minH: 0.4 });
+  decor.wall(24, 11, 24, 6, 3.0, r, { minH: 0.3 });
+
+  // Collapsed masonry and broken pillars make the edges irregular.
+  decor.column(27, 4.5, 3.2, r, true);
+  decor.column(36.5, 5, 4.1, r, false);
+  decor.column(37, 14.8, 2.7, r, true);
+  decor.blocks.add(26.2, 0.45, 15.5, 2.4, 0.8, 1.8, -0.15, 0x45484e);
+  decor.blocks.add(28.8, 0.3, 15.9, 1.8, 0.55, 1.3, 0.2, 0x3f4146);
+  decor.blocks.add(38, 0.35, 10.5, 2.2, 0.7, 1.5, 0.1, 0x505258);
+
+  // A small ruined altar in the back, framing the chest as a hidden reward.
+  decor.blocks.add(32, 0.35, 15.6, 4.4, 0.7, 2.2, 0, 0x45484e);
+  decor.blocks.add(32, 0.85, 15.6, 3.0, 0.3, 1.5, 0, 0x55585e);
 
   // ---------- arena ----------
   for (let rad = 1.9; rad < 15.2; rad += 1.55) {
@@ -198,11 +218,11 @@ export function createArea1(game) {
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
   // Hide the lever deeper in the ruined courtyard, beside the broken wall.
-  const secretLever = createLever(game, 20.2, 11.7, -0.55);
+  const secretLever = createLever(game, 20.8, 8.6, -0.8);
   // The old chest used to sit outside the secret passage. It now lives inside
   // the chamber, so opening the passage reveals the actual reward room.
-  const chest = createChest(game, 32.2, 10.0, 0.2);
-  const secretGate = createSecretGate(game, 23, 10.0, Math.PI / 2, 3.0);
+  const chest = createChest(game, 32.5, 11.8, 0.2);
+  const secretGate = createSecretGate(game, 23, 10.0, Math.PI / 2, 4.2);
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
   const gate = createGate(game, 0, -20);
   const portal = createPortal(game, 0, -55.5);
