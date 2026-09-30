@@ -156,28 +156,63 @@ export function createArea1(game) {
   decor.blocks.add(32, 0.85, 15.6, 3.0, 0.3, 1.5, 0, 0x55585e);
 
   // ---------- secret chamber cover ----------
-  // Heavy ruined roof hides the chamber from the exterior.
+  // Ruined pitched roof: broken wooden beams + uneven stone/wood tiles.
+  // It hides the chamber from above without looking like a flat concrete slab.
   const secretRoof = new THREE.Group();
   secretRoof.name = 'secret-chamber-roof';
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x34373c, roughness: 1, metalness: 0, flatShading: true });
-  const roofPieces = [[27.2, 7.2, 6.8, 5.8, 0.15], [34.0, 7.45, 7.2, 6.2, -0.08], [37.8, 7.15, 4.8, 7.0, 0.1], [29.8, 7.35, 5.6, 5.0, -0.12]];
-  for (const [x, y, sx, sz, ry] of roofPieces) {
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.9, sz), roofMat);
-    slab.position.set(x, y, 10);
-    slab.rotation.y = ry;
-    slab.castShadow = true;
-    slab.receiveShadow = true;
-    secretRoof.add(slab);
+
+  const roofStoneMat = new THREE.MeshStandardMaterial({
+    color: 0x3f4245, roughness: 1, metalness: 0, flatShading: true,
+  });
+  const roofWoodMat = new THREE.MeshStandardMaterial({
+    color: 0x29251f, roughness: 1, metalness: 0, flatShading: true,
+  });
+
+  // Two broken roof slopes, leaving irregular gaps between old tiles.
+  const roofTiles = [
+    [25.8, 6.5, 3.2, 5.8, 0.28], [29.0, 6.9, 3.5, 6.2, 0.22],
+    [32.4, 7.2, 3.4, 6.5, 0.16], [35.6, 7.0, 3.6, 6.3, 0.10],
+    [38.3, 6.6, 3.0, 5.7, 0.02],
+    [27.0, 6.0, 3.0, 5.5, -0.24], [30.2, 6.5, 3.4, 6.0, -0.18],
+    [33.5, 6.8, 3.5, 6.2, -0.12], [36.8, 6.5, 3.3, 5.8, -0.06],
+  ];
+  for (const [x, y, sx, sz, ry] of roofTiles) {
+    const tile = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.42, sz), roofStoneMat);
+    tile.position.set(x, y, 10 + (r() - 0.5) * 0.8);
+    tile.rotation.set((r() - 0.5) * 0.06, ry, (r() - 0.5) * 0.05);
+    tile.castShadow = true;
+    tile.receiveShadow = true;
+    secretRoof.add(tile);
   }
-  const roofDebris = [[25.2, 7.55, 5.0, 1.7, 0.25], [32.0, 7.95, 4.0, 1.2, -0.2], [38.5, 7.65, 4.2, 1.5, 0.15], [35.2, 7.8, 2.5, 1.0, 0.35]];
-  for (const [x, y, sx, sz, ry] of roofDebris) {
-    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), roofMat);
-    stone.position.set(x, y, 10 + (r() - 0.5) * 5);
-    stone.scale.set(sx, 0.8, sz);
-    stone.rotation.set((r() - 0.5) * 0.3, ry, (r() - 0.5) * 0.25);
-    stone.castShadow = true;
-    secretRoof.add(stone);
+
+  // Old support beams crossing the ruined roof.
+  for (const [x, z, sx, sz, ry] of [
+    [24.8, 10, 15.5, 0.55, 0.18],
+    [32.2, 10.1, 17.0, 0.65, -0.10],
+    [39.2, 10, 12.0, 0.5, 0.08],
+  ]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.55, sz), roofWoodMat);
+    beam.position.set(x, 6.15, z);
+    beam.rotation.y = ry;
+    beam.castShadow = true;
+    secretRoof.add(beam);
   }
+
+  // A few collapsed pieces sell the ruined look.
+  for (const [x, y, z, sx, sy, sz, ry] of [
+    [25.0, 5.9, 6.0, 2.2, 0.55, 1.0, 0.2],
+    [29.2, 5.7, 15.4, 2.5, 0.5, 1.2, -0.18],
+    [37.8, 5.8, 4.8, 2.0, 0.5, 1.1, 0.25],
+    [39.0, 6.0, 15.8, 2.3, 0.45, 1.0, -0.15],
+  ]) {
+    const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), roofStoneMat);
+    chunk.position.set(x, y, z);
+    chunk.scale.set(sx, sy, sz);
+    chunk.rotation.set((r() - 0.5) * 0.35, ry, (r() - 0.5) * 0.3);
+    chunk.castShadow = true;
+    secretRoof.add(chunk);
+  }
+
   scene.add(secretRoof);
 
   // ---------- secret chamber mist ----------
