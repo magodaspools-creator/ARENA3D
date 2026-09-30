@@ -509,7 +509,7 @@ export function createChest(game, x, z, rot = 0) {
 
 
 /** Hidden shortcut gate: a small ruined arch that opens a passage through a wall. */
-export function createSecretGate(game, x, z, rot = 0, width = 2.8) {
+export function createSecretGate(game, x, z, rot = 0, width = 4.2) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
   g.rotation.y = rot;
@@ -538,7 +538,7 @@ export function createSecretGate(game, x, z, rot = 0, width = 2.8) {
   g.add(light);
 
   game.scene.add(g);
-  const collider = game.collision.addBox(x - 0.55, x + 0.55, z - width / 2, z + width / 2);
+  const collider = game.collision.addBox(x - 0.7, x + 0.7, z - width / 2, z + width / 2);
 
   const gate = {
     pos: new THREE.Vector3(x, 0, z),
