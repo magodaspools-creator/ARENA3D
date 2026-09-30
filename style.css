@@ -37,6 +37,33 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 .bubble .bname { font-family: Georgia, serif; color: #e8c77a; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
 .bubble .bhint { text-align: right; font-size: 12px; color: #a99f88; margin-top: 6px; }
 
+/* ---------- minimap ---------- */
+#minimap {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  width: 186px;
+  height: 186px;
+  padding: 3px;
+  border: 1px solid rgba(232,199,122,.5);
+  border-radius: 5px;
+  background: rgba(5,8,11,.58);
+  box-shadow: 0 8px 24px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.05);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+  z-index: 20;
+}
+#minimap-canvas {
+  display: block;
+  width: 180px;
+  height: 180px;
+  image-rendering: auto;
+}
+@media (max-width: 700px) {
+  #minimap { left: 10px; bottom: 10px; width: 136px; height: 136px; }
+  #minimap-canvas { width: 130px; height: 130px; }
+}
+
 /* ---------- HUD ---------- */
 #player-panel { position: absolute; left: 18px; top: 16px; display: flex; gap: 12px; align-items: flex-start; }
 #portrait { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #e8c77a; background: radial-gradient(circle at 40% 35%, #fff4, #0000 60%), var(--vc, #888);
