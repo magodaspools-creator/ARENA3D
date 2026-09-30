@@ -173,6 +173,44 @@ export function createArea1(game) {
   decor.blocks.add(-7, 0.4, 50.5, 4.5, 0.8, 2.0, 0.08, 0x45484e);
   decor.blocks.add(7.5, 0.3, 53.5, 2.6, 0.6, 1.5, -0.15, 0x505258);
 
+  // ---------- northern cemetery ----------
+  // Old graves sit in the open field beside the northern ruins. They are
+  // intentionally low and irregular: this should feel like an abandoned
+  // burial ground, not a modern cemetery.
+  const graveStoneMat = new THREE.MeshStandardMaterial({
+    color: 0x4b4d4f, roughness: 1, metalness: 0, flatShading: true,
+  });
+  const graveBaseMat = new THREE.MeshStandardMaterial({
+    color: 0x383a3d, roughness: 1, metalness: 0, flatShading: true,
+  });
+  const graves = [
+    [-12.8, 48.2, -0.12, 1.0, 0.35],
+    [-9.0, 49.8, 0.08, 0.9, 0.25],
+    [-5.8, 47.4, -0.18, 1.1, 0.3],
+    [-1.8, 50.0, 0.12, 0.95, 0.28],
+    [2.2, 47.6, -0.08, 1.05, 0.3],
+    [6.0, 49.4, 0.16, 0.9, 0.26],
+    [10.2, 47.5, -0.14, 1.0, 0.3],
+    [13.0, 50.2, 0.05, 0.85, 0.24],
+  ];
+  for (const [x, z, rot, w, h] of graves) {
+    decor.blocks.add(x, 0.12, z + 0.45, w * 1.35, 0.24, 0.75, rot, 0x45474a);
+    decor.blocks.add(x, h * 0.5, z, w, h, 0.28, rot, 0x4b4d4f);
+    // Small stone footing keeps each grave visually grounded.
+    decor.blocks.add(x, 0.16, z - 0.35, w * 1.15, 0.18, 0.55, rot, 0x383a3d);
+  }
+  // A few broken tombs and collapsed masonry pieces make the cemetery blend
+  // into the surrounding ruins. These are decoration only, so they cannot
+  // create another invisible movement barrier.
+  for (const [x, z, sx, sz, ry] of [
+    [-15.2, 46.8, 1.7, 0.8, -0.28],
+    [-3.8, 52.0, 2.2, 0.9, 0.18],
+    [4.5, 52.6, 1.5, 0.7, -0.22],
+    [14.8, 47.0, 2.0, 0.85, 0.3],
+  ]) {
+    decor.blocks.add(x, 0.22, z, sx, 0.42, sz, ry, 0x424447);
+  }
+
   // ---------- courtyard ruins ----------
   for (let x = -21; x <= 21; x += 2) {
     for (let z = -19; z <= 12; z += 2) {
@@ -732,7 +770,8 @@ export function createArea1(game) {
     ['hollow', -1, 18.5, 'path'], ['hollow', 3.5, 16, 'path'],
     ['hollow', -31, 12, 'grove'], ['wisp', -35, 4, 'grove'], ['hollow', -29, -10, 'grove'],
     ['wisp', -34, -12, 'grove'],
-    ['hollow', -11, 51, 'north'], ['wisp', 9, 53, 'north'],
+    ['zombie', -11, 51, 'north'], ['zombie', 9, 53, 'north'],
+    ['zombie', -5, 49, 'north'], ['zombie', 5, 50, 'north'],
     ['hollow', -12.5, 5.5, 'west'], ['wisp', -17.5, -1.5, 'west'],
     ['hollow', 12.5, 5.5, 'east'], ['hollow', 16.5, -2, 'east'], ['wisp', 18, 6, 'east'],
     ['hollow', -3.5, -9, 'north'], ['hollow', 3.5, -10, 'north'], ['wisp', 0, -16.5, 'north'],
