@@ -79,6 +79,26 @@ export class MineBoss {
   }
 
   get targetable() { return this.alive && this.state !== 'dormant' && this.state !== 'waking'; }
+
+  reset() {
+    this.tele.forEach((t) => this.game.fx.remove(t));
+    this.tele = [];
+    this.pos.copy(this.home);
+    this.hp = this.maxHp;
+    this.alive = true;
+    this.state = 'dormant';
+    this.stateT = 0;
+    this.phase = 1;
+    this.pendingEnrage = false;
+    this.nextAttack = 1.5;
+    this.struck = false;
+    this.roared = false;
+    this.root.visible = false;
+    this.anim.revive();
+    this.anim.kneel = 1;
+    this.aura.intensity = 0;
+    this.aura.color.set(0xffb84a);
+  }
   get enraged() { return this.phase === 2; }
 
   awaken() {
