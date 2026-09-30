@@ -26,8 +26,9 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 45);   // forest entrance
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
-  // Hidden east passage: once opened, it reconnects the ruined courtyard to the entrance.
-  collision.addRectZone(14, 31, 7.5, 12.5);
+  // Hidden east passage / secret chamber: closed behind the secret gate, then
+  // opens into a larger side room instead of a tiny empty square.
+  collision.addRectZone(14, 38, 4, 16);
   collision.addCircleZone(ARENA.x, ARENA.z, ARENA.r);
   // courtyard south wall (with a gap for the path)
   collision.addBox(-23, -6.2, 12.9, 14.3);
@@ -118,6 +119,22 @@ export function createArea1(game) {
   decor.wall(-3.9, -21, -3.9, -30.5, 5.5, r, { minH: 0.85 });
   decor.wall(3.9, -21, 3.9, -30.5, 5.5, r, { minH: 0.85 });
 
+  // ---------- hidden east chamber ----------
+  // A proper side room sits beyond the secret gate. The player can only reach
+  // this area after pulling the concealed lever in the courtyard.
+  for (let x = 25; x <= 36; x += 2) {
+    for (let z = 6; z <= 14; z += 2) {
+      decor.tiles.add(x + (r() - 0.5) * 0.15, -0.05 + r() * 0.03, z + (r() - 0.5) * 0.15,
+        1.85, 0.14, 1.85, (r() - 0.5) * 0.06,
+        r() < 0.2 ? 0x3e4a3a : [0x4a4c52, 0x55575d, 0x3f4146][Math.floor(r() * 3)]);
+    }
+  }
+  decor.wall(24, 4, 38, 4, 3.8, r, { minH: 0.55 });
+  decor.wall(38, 4, 38, 16, 3.8, r, { minH: 0.55 });
+  decor.wall(24, 16, 38, 16, 3.8, r, { minH: 0.55 });
+  decor.column(34.5, 6.2, 2.8, r, true);
+  decor.column(35.5, 13.8, 3.2, r, false);
+
   // ---------- arena ----------
   for (let rad = 1.9; rad < 15.2; rad += 1.55) {
     const n = Math.floor((Math.PI * 2 * rad) / 1.6);
@@ -180,8 +197,11 @@ export function createArea1(game) {
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
-  const secretLever = createLever(game, 19.2, 9.0, -0.35);
-  const chest = createChest(game, 15.5, 10.5, 0.2);
+  // Hide the lever deeper in the ruined courtyard, beside the broken wall.
+  const secretLever = createLever(game, 20.2, 11.7, -0.55);
+  // The old chest used to sit outside the secret passage. It now lives inside
+  // the chamber, so opening the passage reveals the actual reward room.
+  const chest = createChest(game, 32.2, 10.0, 0.2);
   const secretGate = createSecretGate(game, 23, 10.0, Math.PI / 2, 3.0);
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
   const gate = createGate(game, 0, -20);
@@ -265,7 +285,6 @@ export function createArea1(game) {
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
   if (prog.counters.chestOpened) chest.restoreOpen();
-  if (prog.counters.secretOpened) { secretGate.restoreOpen(); secretLever.restorePulled(); }
 
   game.interaction.add({
     pos: chest.pos, radius: 2.5, height: 2.0,
@@ -426,6 +445,14 @@ export function createArea1(game) {
 
         if (prog.reached('shrine')) {
           gate.restoreOpen();
+        }
+
+        // Secret passage state must be restored AFTER Progression.load().
+        // Previously this ran before the saved counters were loaded, which
+        // left the gate closed while the lever interaction stayed disabled.
+        if (prog.counters.secretOpened) {
+          secretGate.restoreOpen();
+          secretLever.restorePulled();
         }
 
         if (prog.id === 'boss') {
