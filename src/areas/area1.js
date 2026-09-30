@@ -26,9 +26,14 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
-  collision.addRectZone(-32, -14, 12, 34);   // west forest connector (overlaps courtyard + grove)
+  // West route: this MUST overlap the main entrance and courtyard by area,
+  // not merely touch at x=-14. Player radius is 0.45, so a zero-width
+  // zone junction behaves like an invisible wall.
+  collision.addRectZone(-32, -11, 10, 34);   // west forest connector
   // Wider doorway into the Hanging Grove. The old tree stood here and its
   // collider could make the opening feel like an invisible wall.
+  // Wider doorway into the Hanging Grove. It overlaps the connector by
+  // several meters so the player can actually pass with collision radius.
   collision.addRectZone(-34, -21, 6, 20);
   collision.addRectZone(-40, -23, -16, 18);  // hanging grove
   collision.addRectZone(-18, 18, 44, 58);    // northern ruins extension (overlaps entrance)
@@ -41,9 +46,8 @@ export function createArea1(game) {
   // opens into a larger side room instead of a tiny empty square.
   collision.addRectZone(14, 38, 4, 16);
   collision.addCircleZone(ARENA.x, ARENA.z, ARENA.r);
-  // Upper courtyard wall collision. Keep the west exploration opening clear:
-  // the visual wall has a large section, but the Hanging Grove route enters
-  // through the left side of the courtyard instead of hitting an invisible wall.
+  // Upper courtyard wall: leave a real, visible doorway for the west route.
+  // The gameplay opening and the visual opening are intentionally identical.
   collision.addBox(-23, -19.0, 12.9, 14.3);
   collision.addBox(-12.0, -6.2, 12.9, 14.3);
   collision.addBox(6.2, 23, 12.9, 14.3);
@@ -177,7 +181,10 @@ export function createArea1(game) {
   collision.addBox(-23.8, -22.8, -21.5, 5.5);
   collision.addBox(22.8, 24.0, -21.5, 7.2);
   collision.addBox(22.8, 24.0, 12.8, 13.6);
-  decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
+  // West doorway in the upper wall. Keep the visual wall aligned with the
+  // collision gap (-19..-12) so there is no hidden mismatch.
+  decor.wall(-23, 13.6, -19, 13.6, 2.6, r, { minH: 0.35 });
+  decor.wall(-12, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
   decor.wall(6.6, 13.6, 23, 13.6, 2.6, r, { minH: 0.35 });
   // The two upper courtyard pillars are also real obstacles.
   decor.column(-6.4, 13.6, 5.5, r);
