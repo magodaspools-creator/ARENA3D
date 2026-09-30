@@ -321,6 +321,8 @@ class Game {
     this.inputLocked = true;
 
     const sellPrice = (item) => Math.max(1, Math.floor(Number(item?.value || 0) * 0.30));
+    let shopMode = 'buy';
+    let shopScrollTop = 0;
 
     const buildSellStock = () => {
       const byId = new Map();
@@ -346,7 +348,10 @@ class Game {
       return [...byId.values()].sort((a, b) => a.item.name.localeCompare(b.item.name, 'pt-BR'));
     };
 
-    const render = () => {
+    const render = (mode = shopMode, scrollTop = shopScrollTop) => {
+      shopMode = mode === 'sell' ? 'sell' : 'buy';
+      shopScrollTop = Math.max(0, Number(scrollTop) || 0);
+
       const available = stock
         .map((entry) => ({ ...entry, item: getItem(entry.itemId), owned: this.character.getItemCount(entry.itemId) }))
         .filter((entry) => entry.item);
@@ -355,67 +360,85 @@ class Game {
         npcName,
         stock: available,
         sellStock: buildSellStock(),
-        onBuy: (itemId, price) => {
+        initialMode: shopMode,
+        initialScrollTop: shopScrollTop,
+        onBuy: (itemId, price, quantity = 1) => {
           const item = getItem(itemId);
           if (!item) return;
 
-          const cost = Math.max(0, Math.floor(price || 0));
+          const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+          const cost = Math.max(0, Math.floor(price || 0)) * qty;
+
           if (this.character.gold < cost) {
-            this.ui.showShopFeedback('Você precisa de ' + cost + ' ouro. Você possui ' + this.character.gold + '.', true);
+            this.ui.showShopFeedback('Você precisa de ' + cost + ' ouro para comprar ' + qty + 'x ' + item.name + '.', true);
             return;
           }
 
-          const added = this.character.addItem(itemId, 1, item.maxStack || 99);
-          if (!added.added) {
-            this.ui.showShopFeedback('Sem espaço para outra ' + item.name + '.', true);
+          const added = this.character.addItem(itemId, qty, item.maxStack || 99);
+          if (added.added < qty) {
+            if (added.added > 0) this.character.removeItem(itemId, added.added);
+            this.ui.showShopFeedback('Sem espaço para comprar ' + qty + 'x ' + item.name + '.', true);
             return;
           }
 
           const payment = this.character.spendGold(cost);
           if (!payment.ok) {
-            this.character.removeItem(itemId, 1);
+            this.character.removeItem(itemId, qty);
             this.ui.showShopFeedback('A compra não pôde ser concluída.', true);
             return;
           }
 
+          shopScrollTop = this.ui.el.shopItem?.scrollTop || shopScrollTop;
           this.ui.setProgress(this.character);
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
-          this.ui.showShopFeedback('Comprado: ' + item.name + ' · -' + cost + ' ouro');
+          render(shopMode, shopScrollTop);
+          this.ui.showShopFeedback('Comprado: ' + qty + 'x ' + item.name + ' · -' + cost + ' ouro');
+          this.ui.showShopAmount('-' + cost, itemId);
           this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
-          render();
         },
-        onSell: (itemId, price) => {
+        onSell: (itemId, price, quantity = 1) => {
           const item = getItem(itemId);
           if (!item || item.category === 'quest' || item.sellable === false) return;
 
-          const value = Math.max(1, Math.floor(price || sellPrice(item)));
-          let sold = false;
-          const inventoryResult = this.character.sellItem(itemId, 1);
-          if (inventoryResult.ok) {
-            sold = true;
-          } else {
-            const equipmentSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
-              .find((slot) => this.character.equipment?.[slot] === itemId);
-            if (equipmentSlot) {
-              const equippedResult = this.character.sellEquipped(equipmentSlot);
-              sold = equippedResult.ok;
+          const requested = Math.max(1, Math.floor(Number(quantity) || 1));
+          const unitValue = Math.max(1, Math.floor(price || sellPrice(item)));
+          const inventoryOwned = this.character.getItemCount(itemId);
+          const equippedSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
+            .find((slot) => this.character.equipment?.[slot] === itemId);
+
+          let remaining = requested;
+          let sold = 0;
+
+          if (inventoryOwned > 0) {
+            const inventoryResult = this.character.sellItem(itemId, Math.min(remaining, inventoryOwned));
+            if (inventoryResult.ok) sold += inventoryResult.quantity;
+            remaining -= inventoryResult.quantity || 0;
+          }
+
+          if (remaining > 0 && remaining === 1 && equippedSlot) {
+            const equippedResult = this.character.sellEquipped(equippedSlot);
+            if (equippedResult.ok) {
+              sold += 1;
+              remaining = 0;
             }
           }
 
           if (!sold) {
             this.ui.showShopFeedback('Esse item não está mais disponível para venda.', true);
-            render();
             return;
           }
 
-          this.character.addGold(value);
+          const totalValue = unitValue * sold;
+          this.character.addGold(totalValue);
+          shopScrollTop = this.ui.el.shopItem?.scrollTop || shopScrollTop;
           this.ui.setProgress(this.character);
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
-          this.ui.showShopFeedback('Vendido: ' + item.name + ' · +' + value + ' ouro');
+          render(shopMode, shopScrollTop);
+          this.ui.showShopFeedback('Vendido: ' + sold + 'x ' + item.name + ' · +' + totalValue + ' ouro');
+          this.ui.showShopAmount('+' + totalValue, itemId);
           this.fx.ring(this.player.pos, 0xffd36a, 1.2, 0.55, 0.7);
-          render();
         },
         onClose: () => this.closeShop(),
       });
