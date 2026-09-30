@@ -179,6 +179,42 @@ export function createArea1(game) {
     secretRoof.add(stone);
   }
   scene.add(secretRoof);
+
+  // ---------- secret chamber mist ----------
+  // Local translucent mist only: the rest of the map stays clear.
+  const secretMist = new THREE.Group();
+  secretMist.name = 'secret-chamber-mist';
+  const mistCanvas = document.createElement('canvas');
+  mistCanvas.width = 128;
+  mistCanvas.height = 128;
+  const mistCtx = mistCanvas.getContext('2d');
+  const mistGradient = mistCtx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  mistGradient.addColorStop(0, 'rgba(190, 205, 198, 0.22)');
+  mistGradient.addColorStop(0.45, 'rgba(150, 170, 165, 0.10)');
+  mistGradient.addColorStop(1, 'rgba(110, 125, 120, 0)');
+  mistCtx.fillStyle = mistGradient;
+  mistCtx.fillRect(0, 0, 128, 128);
+  const mistTexture = new THREE.CanvasTexture(mistCanvas);
+  mistTexture.needsUpdate = true;
+  const mistMat = new THREE.SpriteMaterial({
+    map: mistTexture,
+    transparent: true,
+    opacity: 0.7,
+    depthWrite: false,
+    depthTest: true,
+  });
+  for (const [x, y, z, sx, sy] of [
+    [27.5, 1.2, 5.5, 9, 4.5],
+    [33.5, 1.0, 8.5, 11, 5],
+    [37.0, 1.4, 12.5, 9, 4.5],
+    [31.5, 1.1, 15.5, 10, 4.2],
+  ]) {
+    const mist = new THREE.Sprite(mistMat.clone());
+    mist.position.set(x, y, z);
+    mist.scale.set(sx, sy, 1);
+    secretMist.add(mist);
+  }
+  scene.add(secretMist);
   // ---------- arena ----------
   for (let rad = 1.9; rad < 15.2; rad += 1.55) {
     const n = Math.floor((Math.PI * 2 * rad) / 1.6);
@@ -534,10 +570,11 @@ export function createArea1(game) {
       gate.update(dt, t);
       secretGate.update(dt, t);
       secretLever.update(t);
+      const p = game.player;
       const insideSecret = p.pos.x > 24.2 && p.pos.x < 39.6 && p.pos.z > 2.4 && p.pos.z < 17.6;
       secretRoof.visible = !insideSecret;
+      secretMist.visible = insideSecret;
       portal.update(dt, t);
-      const p = game.player;
       barrierMat.opacity += ((barrierCol.enabled ? 0.45 + Math.sin(t * 4) * 0.1 : 0) - barrierMat.opacity) * Math.min(1, dt * 4);
       for (const l of arenaLights) if (l.isPointLight) l.intensity = 28 + Math.sin(t * 7 + l.position.x) * 4; else l.scale.y = 1 + Math.sin(t * 11 + l.position.z) * 0.15;
       runes.rotation.y = t * 0.05;
