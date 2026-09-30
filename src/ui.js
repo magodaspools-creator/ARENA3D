@@ -125,20 +125,31 @@ export class UI {
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
-  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose }) {
+  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose, initialMode = 'buy', initialScrollTop = 0 }) {
     if (!this.el.shop) return;
 
-    const renderMode = (mode) => {
-      const isSell = mode === 'sell';
+    let currentMode = initialMode === 'sell' ? 'sell' : 'buy';
+
+    const setQuantity = (card, value) => {
+      const input = card?.querySelector('.shop-qty-input');
+      if (!input) return 1;
+      const max = Math.max(1, Number(input.max) || 1);
+      const qty = Math.min(max, Math.max(1, Math.floor(Number(value) || 1)));
+      input.value = String(qty);
+      const button = card.querySelector('.shop-buy-item');
+      const action = button?.dataset.action || 'Comprar';
+      if (button) button.textContent = action + ' x' + qty;
+      return qty;
+    };
+
+    const renderMode = (mode, scrollTop = 0) => {
+      currentMode = mode === 'sell' ? 'sell' : 'buy';
+      const isSell = currentMode === 'sell';
       const entries = isSell ? sellStock : stock;
       this.el.shopTitle.textContent = 'Comércio — ' + npcName;
       this.el.shopSubtitle.textContent = isSell
         ? 'Venda itens encontrados ou equipamentos que não deseja mais'
         : 'Escolha um item para comprar';
-      if (this.el.shopFeedback) {
-        this.el.shopFeedback.textContent = '';
-        this.el.shopFeedback.classList.remove('show', 'error');
-      }
 
       this.el.shopItem.innerHTML = entries.length
         ? entries.map((entry) => {
@@ -146,17 +157,23 @@ export class UI {
             const price = entry.price;
             const owned = entry.owned ?? 0;
             const equipped = entry.equipped ?? 0;
+            const maxQty = isSell ? Math.max(1, owned) : Math.max(1, Number(item.maxStack) || 99);
             const icon = item.sprite
               ? '<img class="shop-icon" alt="">'
               : '<span class="shop-icon shop-glyph">' + (item.icon || '◆') + '</span>';
             const ownedText = isSell
               ? 'Você possui: ' + owned + (equipped ? ' · Equipado: ' + equipped : '')
               : 'Você possui: ' + owned;
-            const actionText = isSell ? 'Vender 1' : 'Comprar';
+            const action = isSell ? 'Vender' : 'Comprar';
             return '<div class="shop-item-card" data-shop-item="' + item.id + '">' +
               icon +
               '<div class="shop-item-info"><div class="shop-item-name"></div><div class="shop-item-desc"></div><div class="shop-item-owned">' + ownedText + '</div></div>' +
-              '<div class="shop-buy-col"><div class="shop-price">' + price + '<small>ouro</small></div><button class="shop-buy-item" type="button"' + (isSell && owned <= 0 ? ' disabled' : '') + '>' + actionText + '</button></div>' +
+              '<div class="shop-buy-col">' +
+                '<div class="shop-price">' + price + '<small>ouro / un.</small></div>' +
+                '<div class="shop-qty"><button class="shop-qty-btn" type="button" data-step="-1" aria-label="Diminuir quantidade">−</button><input class="shop-qty-input" type="number" min="1" max="' + maxQty + '" value="1" inputmode="numeric" aria-label="Quantidade"><button class="shop-qty-btn" type="button" data-step="1" aria-label="Aumentar quantidade">+</button></div>' +
+                '<div class="shop-total">Total: <b>' + price + '</b> ouro</div>' +
+                '<button class="shop-buy-item" type="button" data-action="' + action + '">' + action + ' x1</button>' +
+              '</div>' +
             '</div>';
           }).join('')
         : '<div class="shop-empty">' + (isSell ? 'Você não possui itens que possam ser vendidos.' : 'Nenhuma mercadoria disponível.') + '</div>';
@@ -167,29 +184,77 @@ export class UI {
         card.querySelector('.shop-item-name').textContent = entry.item.name;
         card.querySelector('.shop-item-desc').textContent = entry.item.description;
         if (entry.item.sprite) card.querySelector('.shop-icon').src = entry.item.sprite;
+
+        const input = card.querySelector('.shop-qty-input');
+        const total = card.querySelector('.shop-total b');
         const button = card.querySelector('.shop-buy-item');
-        if (isSell) {
-          button.onclick = () => onSell(entry.item.id, entry.price);
-        } else {
-          button.onclick = () => onBuy(entry.item.id, entry.price);
-        }
+        const updateQtyUI = () => {
+          const qty = setQuantity(card, input.value);
+          input.value = String(qty);
+          total.textContent = String(entry.price * qty);
+        };
+
+        input.addEventListener('input', updateQtyUI);
+        input.addEventListener('change', updateQtyUI);
+        card.querySelectorAll('.shop-qty-btn').forEach((qtyButton) => {
+          qtyButton.onclick = () => updateQtyUIWithStep(qtyButton.dataset.step);
+        });
+
+        const updateQtyUIWithStep = (step) => {
+          setQuantity(card, Number(input.value) + Number(step));
+          total.textContent = String(entry.price * Number(input.value));
+        };
+
+        button.onclick = () => {
+          const qty = setQuantity(card, input.value);
+          if (isSell) onSell(entry.item.id, entry.price, qty);
+          else onBuy(entry.item.id, entry.price, qty);
+        };
       }
 
       this.el.shopTabs?.querySelectorAll('button').forEach((button) => {
-        button.classList.toggle('active', button.dataset.mode === mode);
+        button.classList.toggle('active', button.dataset.mode === currentMode);
       });
+
+      this.el.shopItem.scrollTop = Math.max(0, Number(scrollTop) || 0);
     };
 
     this.el.shopTabs?.querySelectorAll('button').forEach((button) => {
-      button.onclick = () => renderMode(button.dataset.mode || 'buy');
+      button.onclick = () => {
+        if (this.el.shopFeedback) {
+          this.el.shopFeedback.classList.remove('show', 'error');
+          this.el.shopFeedback.textContent = '';
+        }
+        renderMode(button.dataset.mode || 'buy', 0);
+      };
     });
 
     this.el.shopBuy.classList.add('hidden');
     this.el.shopClose.onclick = onClose;
     this.el.shopCancel.onclick = onClose;
     this.el.shopCancel.textContent = 'Fechar';
-    renderMode('buy');
+    renderMode(currentMode, initialScrollTop);
     this.el.shop.classList.remove('hidden');
+  }
+
+  showShopFeedback(text, error = false) {
+    const el = this.el.shopFeedback;
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('error', !!error);
+    el.classList.add('show');
+    clearTimeout(this.shopFeedbackTimer);
+    this.shopFeedbackTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  showShopAmount(text, itemId) {
+    const card = itemId ? this.el.shopItem?.querySelector('[data-shop-item="' + itemId + '"]') : null;
+    if (!card) return;
+    const el = document.createElement('div');
+    el.className = 'shop-transaction-float';
+    el.textContent = text;
+    card.appendChild(el);
+    setTimeout(() => el.remove(), 950);
   }
   hideShop() {
     this.el.shop?.classList.add('hidden');
