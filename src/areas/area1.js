@@ -41,8 +41,11 @@ export function createArea1(game) {
   // opens into a larger side room instead of a tiny empty square.
   collision.addRectZone(14, 38, 4, 16);
   collision.addCircleZone(ARENA.x, ARENA.z, ARENA.r);
-  // courtyard south wall (with a gap for the path)
-  collision.addBox(-23, -6.2, 12.9, 14.3);
+  // Upper courtyard wall collision. Keep the west exploration opening clear:
+  // the visual wall has a large section, but the Hanging Grove route enters
+  // through the left side of the courtyard instead of hitting an invisible wall.
+  collision.addBox(-23, -19.0, 12.9, 14.3);
+  collision.addBox(-12.0, -6.2, 12.9, 14.3);
   collision.addBox(6.2, 23, 12.9, 14.3);
 
   const terrain = new Terrain(collision);
