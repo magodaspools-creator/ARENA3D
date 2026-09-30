@@ -125,7 +125,7 @@ export class UI {
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
-  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose, onModeChange, initialMode = 'buy', initialScrollTop = 0 }) {
+  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onSellAll, onClose, onModeChange, initialMode = 'buy', initialScrollTop = 0 }) {
     if (!this.el.shop) return;
 
     let currentMode = initialMode === 'sell' ? 'sell' : 'buy';
@@ -215,6 +215,14 @@ export class UI {
       this.el.shopTabs?.querySelectorAll('button').forEach((button) => {
         button.classList.toggle('active', button.dataset.mode === currentMode);
       });
+
+      if (isSell) {
+        const bulkBar = document.createElement('div');
+        bulkBar.className = 'shop-bulk-bar';
+        bulkBar.innerHTML = '<span>Venda rápida</span><button type="button" id="shop-sell-all">Vender tudo</button>';
+        this.el.shopItem.prepend(bulkBar);
+        bulkBar.querySelector('#shop-sell-all').onclick = () => onSellAll?.();
+      }
 
       this.el.shopItem.scrollTop = Math.max(0, Number(scrollTop) || 0);
     };
