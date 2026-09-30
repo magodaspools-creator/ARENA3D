@@ -135,6 +135,14 @@ export class Boss {
     let speed = 0;
     const fast = this.enraged ? 0.75 : 1;
 
+    // Safety net: every combat state must eventually return to chase.
+    // If an animation/effect/timing edge case prevents the normal transition,
+    // the boss must not become permanently passive.
+    const attackState = this.state === 'cleave' || this.state === 'slam' || this.state === 'ring' || this.state === 'summon' || this.state === 'recover';
+    if (attackState && this.stateT > 4.5) {
+      this.toChase();
+    }
+
     switch (this.state) {
       case 'dormant':
         this.anim.kneel = 1;
@@ -253,6 +261,12 @@ export class Boss {
   }
 
   toChase() {
+    // Always clean old telegraphs when an attack finishes or is recovered.
+    this.tele?.forEach((t) => this.game.fx.remove(t));
+    this.tele = [];
+    this.leapFrom = null;
+    this.struck = false;
+
     if (this.pendingEnrage) return this.enrage();
     this.state = 'chase';
     this.stateT = 0;
