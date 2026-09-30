@@ -429,8 +429,12 @@ export function createArea1(game) {
         }
 
         if (prog.id === 'boss') {
+          // A refresh during the boss fight must resume inside the sanctuary.
+          // Progression is persisted, but the player's world position is not.
           barrierCol.enabled = true;
+          boss.reset();
           boss.awaken();
+          game.player.place(0, -34, Math.PI);
         } else if (prog.reached('portal')) {
           barrierCol.enabled = false;
           boss.alive = false;
