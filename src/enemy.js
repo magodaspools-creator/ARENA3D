@@ -48,12 +48,28 @@ export class Enemy {
       this.root = this.model.root;
     } else {
       const isZombie = type === 'zombie';
-      this.rig = createHumanoid({ skin: isZombie ? 0x6f8068 : 0x7d8a78, body: isZombie ? 0x3f493d : 0x33302c, legs: 0x2a2724, accent: isZombie ? 0x59694d : 0x4a4540, boots: 0x1c1a18, eyes: isZombie ? POISON_GREEN : 0x8affd8, bareArms: true, rags: true });
-      this.rig.torso.rotation.x = 0.35;
-      this.rig.handR.add(createWeapon('blade'));
+      this.rig = createHumanoid({
+        skin: isZombie ? 0x64755c : 0x7d8a78,
+        body: isZombie ? 0x394238 : 0x33302c,
+        legs: isZombie ? 0x252a24 : 0x2a2724,
+        accent: isZombie ? 0x59684f : 0x4a4540,
+        boots: isZombie ? 0x171b18 : 0x1c1a18,
+        eyes: isZombie ? POISON_GREEN : 0x8affd8,
+        bareArms: true,
+        rags: true,
+      });
+      this.rig.torso.rotation.x = isZombie ? 0.58 : 0.35;
+      if (isZombie) {
+        this.rig.root.scale.set(1.12, 1.08, 1.12);
+        this.rig.armL.rotation.x = -0.65;
+        this.rig.armR.rotation.x = -0.85;
+        this.rig.head.rotation.x = 0.28;
+      } else {
+        this.rig.handR.add(createWeapon('blade'));
+      }
       this.root = this.rig.root;
       this.anim = new HumanoidAnimator(this.rig);
-      this.root.scale.setScalar(1.05);
+      if (!isZombie) this.root.scale.setScalar(1.05);
     }
     this.mats = uniqueMaterials(this.root);
     this.pos = this.root.position;
