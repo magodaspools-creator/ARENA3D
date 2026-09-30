@@ -155,6 +155,30 @@ export function createArea1(game) {
   decor.blocks.add(32, 0.35, 15.6, 4.4, 0.7, 2.2, 0, 0x45484e);
   decor.blocks.add(32, 0.85, 15.6, 3.0, 0.3, 1.5, 0, 0x55585e);
 
+  // ---------- secret chamber cover ----------
+  // Heavy ruined roof hides the chamber from the exterior.
+  const secretRoof = new THREE.Group();
+  secretRoof.name = 'secret-chamber-roof';
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x34373c, roughness: 1, metalness: 0, flatShading: true });
+  const roofPieces = [[27.2, 7.2, 6.8, 5.8, 0.15], [34.0, 7.45, 7.2, 6.2, -0.08], [37.8, 7.15, 4.8, 7.0, 0.1], [29.8, 7.35, 5.6, 5.0, -0.12]];
+  for (const [x, y, sx, sz, ry] of roofPieces) {
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.9, sz), roofMat);
+    slab.position.set(x, y, 10);
+    slab.rotation.y = ry;
+    slab.castShadow = true;
+    slab.receiveShadow = true;
+    secretRoof.add(slab);
+  }
+  const roofDebris = [[25.2, 7.55, 5.0, 1.7, 0.25], [32.0, 7.95, 4.0, 1.2, -0.2], [38.5, 7.65, 4.2, 1.5, 0.15], [35.2, 7.8, 2.5, 1.0, 0.35]];
+  for (const [x, y, sx, sz, ry] of roofDebris) {
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), roofMat);
+    stone.position.set(x, y, 10 + (r() - 0.5) * 5);
+    stone.scale.set(sx, 0.8, sz);
+    stone.rotation.set((r() - 0.5) * 0.3, ry, (r() - 0.5) * 0.25);
+    stone.castShadow = true;
+    secretRoof.add(stone);
+  }
+  scene.add(secretRoof);
   // ---------- arena ----------
   for (let rad = 1.9; rad < 15.2; rad += 1.55) {
     const n = Math.floor((Math.PI * 2 * rad) / 1.6);
@@ -508,6 +532,8 @@ export function createArea1(game) {
       gate.update(dt, t);
       secretGate.update(dt, t);
       secretLever.update(t);
+      const insideSecret = p.pos.x > 24.2 && p.pos.x < 39.6 && p.pos.z > 2.4 && p.pos.z < 17.6;
+      secretRoof.visible = !insideSecret;
       portal.update(dt, t);
       const p = game.player;
       barrierMat.opacity += ((barrierCol.enabled ? 0.45 + Math.sin(t * 4) * 0.1 : 0) - barrierMat.opacity) * Math.min(1, dt * 4);
