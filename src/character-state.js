@@ -399,6 +399,40 @@ export class CharacterState {
       .reduce((sum, slot) => sum + slot.qty, 0);
   }
 
+  sellItem(itemId, amount = 1) {
+    const def = getItem(itemId);
+    if (!def || def.category === 'quest' || def.sellable === false) {
+      return { ok: false, reason: 'not_sellable' };
+    }
+
+    const qty = Math.max(1, Math.floor(amount || 1));
+    const removed = this.removeItem(itemId, qty);
+    if (removed <= 0) return { ok: false, reason: 'missing' };
+
+    // Keep action bar references clean when the last copy of an item is sold.
+    if (this.getItemCount(itemId) <= 0) {
+      for (let i = 0; i < this.data.actionBar.length; i++) {
+        if (this.data.actionBar[i] === itemId) this.data.actionBar[i] = null;
+      }
+    }
+
+    this.save();
+    return { ok: true, itemId, quantity: removed };
+  }
+
+  sellEquipped(slot) {
+    if (!EQUIPMENT_SLOTS.includes(slot)) return { ok: false, reason: 'invalid_slot' };
+    const itemId = this.data.equipment[slot];
+    const def = getItem(itemId);
+    if (!itemId || !def || def.category === 'quest' || def.sellable === false) {
+      return { ok: false, reason: 'not_sellable' };
+    }
+
+    delete this.data.equipment[slot];
+    this.save();
+    return { ok: true, itemId, slot };
+  }
+
   save() {
     localStorage.setItem(this.key, JSON.stringify(this.data));
   }
