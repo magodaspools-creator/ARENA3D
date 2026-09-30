@@ -435,6 +435,9 @@ export function createArea1(game) {
           boss.reset();
           boss.awaken();
           game.player.place(0, -34, Math.PI);
+          // Restore the boss HUD too: a reload recreates the UI in a hidden state.
+          game.ui.showBoss(boss.name);
+          game.ui.setBoss(boss.hp / boss.maxHp, boss.enraged);
         } else if (prog.reached('portal')) {
           barrierCol.enabled = false;
           boss.alive = false;
