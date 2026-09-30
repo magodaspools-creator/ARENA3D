@@ -37,6 +37,7 @@ export function createArea1(game) {
   collision.addRectZone(-34, -21, 6, 20);
   collision.addRectZone(-40, -23, -16, 18);  // hanging grove
   collision.addRectZone(-18, 18, 44, 58);    // northern ruins extension (overlaps entrance)
+  collision.addRectZone(-35, -18, 34, 58);   // expanded northern-left cemetery field
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
   // Expanded forecourt OUTSIDE the boss arena. This is the pause/lore space
@@ -174,41 +175,93 @@ export function createArea1(game) {
   decor.blocks.add(7.5, 0.3, 53.5, 2.6, 0.6, 1.5, -0.15, 0x505258);
 
   // ---------- northern cemetery ----------
-  // Old graves sit in the open field beside the northern ruins. They are
-  // intentionally low and irregular: this should feel like an abandoned
-  // burial ground, not a modern cemetery.
-  const graveStoneMat = new THREE.MeshStandardMaterial({
-    color: 0x4b4d4f, roughness: 1, metalness: 0, flatShading: true,
-  });
-  const graveBaseMat = new THREE.MeshStandardMaterial({
-    color: 0x383a3d, roughness: 1, metalness: 0, flatShading: true,
-  });
-  const graves = [
-    [-12.8, 48.2, -0.12, 1.0, 0.35],
-    [-9.0, 49.8, 0.08, 0.9, 0.25],
-    [-5.8, 47.4, -0.18, 1.1, 0.3],
-    [-1.8, 50.0, 0.12, 0.95, 0.28],
-    [2.2, 47.6, -0.08, 1.05, 0.3],
-    [6.0, 49.4, 0.16, 0.9, 0.26],
-    [10.2, 47.5, -0.14, 1.0, 0.3],
-    [13.0, 50.2, 0.05, 0.85, 0.24],
+  // Expanded burial field west of the northern ruins. This is deliberately
+  // built from recognizable grave pieces instead of generic rubble blocks.
+  const graveStoneMats = [
+    new THREE.MeshStandardMaterial({ color: 0x55575a, roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x484a4d, roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x606266, roughness: 1, flatShading: true }),
   ];
-  for (const [x, z, rot, w, h] of graves) {
-    decor.blocks.add(x, 0.12, z + 0.45, w * 1.35, 0.24, 0.75, rot, 0x45474a);
-    decor.blocks.add(x, h * 0.5, z, w, h, 0.28, rot, 0x4b4d4f);
-    // Small stone footing keeps each grave visually grounded.
-    decor.blocks.add(x, 0.16, z - 0.35, w * 1.15, 0.18, 0.55, rot, 0x383a3d);
+  const graveGroundMat = new THREE.MeshStandardMaterial({ color: 0x2e241d, roughness: 1, flatShading: true });
+  const graveMossMat = new THREE.MeshStandardMaterial({ color: 0x384838, roughness: 1, flatShading: true });
+
+  const gravePositions = [
+    [-32.0, 52.5, -0.10, 1.05, 1.20, false],
+    [-28.5, 54.0,  0.08, 0.95, 1.35, true],
+    [-24.8, 51.5, -0.16, 1.10, 1.10, false],
+    [-21.3, 54.2,  0.12, 0.90, 1.25, false],
+    [-30.2, 47.8,  0.18, 1.00, 1.05, true],
+    [-26.4, 45.6, -0.06, 1.15, 1.30, false],
+    [-22.3, 48.2,  0.14, 0.92, 1.15, true],
+    [-31.5, 42.8, -0.13, 1.05, 1.25, false],
+    [-27.8, 41.0,  0.06, 0.88, 0.95, true],
+    [-23.2, 43.0, -0.18, 1.08, 1.20, false],
+    [-20.0, 40.2,  0.10, 0.95, 1.00, true],
+    [-33.0, 38.8, -0.08, 1.00, 1.18, false],
+  ];
+
+  for (const [x, z, rot, w, h, broken] of gravePositions) {
+    const grave = new THREE.Group();
+    grave.position.set(x, 0, z);
+    grave.rotation.y = rot;
+
+    const mound = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.72, w, 0.16, 8), graveGroundMat);
+    mound.scale.z = 1.55;
+    mound.position.set(0, 0.08, 0.38);
+    mound.rotation.x = 0;
+    mound.receiveShadow = true;
+    grave.add(mound);
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(w * 1.12, 0.16, 0.48), graveStoneMats[Math.floor(r() * graveStoneMats.length)]);
+    base.position.set(0, 0.18, -0.05);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    grave.add(base);
+
+    const stoneMat = graveStoneMats[Math.floor(r() * graveStoneMats.length)];
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(w * 0.72, h * 0.72, 0.22), stoneMat);
+    slab.position.set(0, 0.18 + h * 0.36, -0.18);
+    slab.castShadow = true;
+    slab.receiveShadow = true;
+    grave.add(slab);
+
+    // Rounded cap makes it read as a headstone rather than a rectangular rock.
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.36, w * 0.36, 0.22, 8, 1, false, 0, Math.PI), stoneMat);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(0, 0.18 + h * 0.72, -0.18);
+    cap.castShadow = true;
+    cap.receiveShadow = true;
+    grave.add(cap);
+
+    if (r() < 0.55) {
+      const crossMat = graveMossMat;
+      const vertical = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.48, 0.07), crossMat);
+      const horizontal = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.08, 0.07), crossMat);
+      vertical.position.set(0, 0.58 + h * 0.36, -0.31);
+      horizontal.position.set(0, 0.68 + h * 0.36, -0.31);
+      grave.add(vertical, horizontal);
+    }
+
+    if (broken) {
+      slab.rotation.z = (r() - 0.5) * 0.35;
+      cap.rotation.z += (r() - 0.5) * 0.25;
+    }
+
+    scene.add(grave);
   }
-  // A few broken tombs and collapsed masonry pieces make the cemetery blend
-  // into the surrounding ruins. These are decoration only, so they cannot
-  // create another invisible movement barrier.
-  for (const [x, z, sx, sz, ry] of [
-    [-15.2, 46.8, 1.7, 0.8, -0.28],
-    [-3.8, 52.0, 2.2, 0.9, 0.18],
-    [4.5, 52.6, 1.5, 0.7, -0.22],
-    [14.8, 47.0, 2.0, 0.85, 0.3],
+
+  // Old cemetery fencing and scattered grave markers define the field without
+  // blocking navigation. A few markers are intentionally fallen.
+  for (const [x, z, rot] of [
+    [-34.0, 36.0, 0.12], [-30.5, 36.5, -0.08], [-26.0, 36.2, 0.16],
+    [-21.0, 37.0, -0.12], [-34.0, 56.0, 0.06], [-29.0, 57.0, -0.14],
   ]) {
-    decor.blocks.add(x, 0.22, z, sx, 0.42, sz, ry, 0x424447);
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.72, 0.18), graveStoneMats[1]);
+    marker.position.set(x, 0.36, z);
+    marker.rotation.y = rot;
+    marker.rotation.z = (r() - 0.5) * 0.2;
+    marker.castShadow = true;
+    scene.add(marker);
   }
 
   // ---------- courtyard ruins ----------
@@ -784,8 +837,9 @@ export function createArea1(game) {
     ['hollow', -1, 18.5, 'path'], ['hollow', 3.5, 16, 'path'],
     ['hollow', -31, 12, 'grove'], ['wisp', -35, 4, 'grove'], ['hollow', -29, -10, 'grove'],
     ['wisp', -34, -12, 'grove'],
-    ['zombie', -11, 51, 'north'], ['zombie', 9, 53, 'north'],
-    ['zombie', -5, 49, 'north'], ['zombie', 5, 50, 'north'],
+    ['zombie', -31, 52, 'cemetery'], ['zombie', -25, 53, 'cemetery'],
+    ['zombie', -28, 46, 'cemetery'], ['zombie', -22, 41, 'cemetery'],
+    ['zombie', -33, 40, 'cemetery'],
     ['hollow', -12.5, 5.5, 'west'], ['wisp', -17.5, -1.5, 'west'],
     ['hollow', 12.5, 5.5, 'east'], ['hollow', 16.5, -2, 'east'], ['wisp', 18, 6, 'east'],
     ['hollow', -3.5, -9, 'north'], ['hollow', 3.5, -10, 'north'], ['wisp', 0, -16.5, 'north'],
@@ -852,6 +906,7 @@ export function createArea1(game) {
         [-32, -14, 14, 34],
         [-40, -23, -16, 18],
         [-18, 18, 45, 58],
+        [-35, -18, 34, 58],
         [-22, 22, -20, 13],
         [-11, 11, -31, -20],
         [14, 38, 4, 16],
