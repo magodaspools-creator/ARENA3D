@@ -362,6 +362,10 @@ class Game {
         sellStock: buildSellStock(),
         initialMode: shopMode,
         initialScrollTop: shopScrollTop,
+        onModeChange: (mode) => {
+          shopMode = mode === 'sell' ? 'sell' : 'buy';
+          shopScrollTop = 0;
+        },
         onBuy: (itemId, price, quantity = 1) => {
           const item = getItem(itemId);
           if (!item) return;
