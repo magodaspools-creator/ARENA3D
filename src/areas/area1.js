@@ -103,6 +103,7 @@ export function createArea1(game) {
   decor.wall(10.5, -30.8, 10.5, -21.0, 3.2, r, { minH: 0.45 });
   for (const [x, z, h, broken] of [[-8.2, -28.6, 3.4, true], [8.2, -28.6, 3.8, false], [-7.2, -22.2, 2.8, true], [7.2, -22.2, 3.1, true]]) {
     decor.column(x, z, h, r, broken);
+    collision.addCircle(x, z, 0.9);
   }
   // ---------- expanded exploration: Hanging Grove (west) ----------
   // A large optional branch with its own visual identity and multiple return
@@ -111,7 +112,12 @@ export function createArea1(game) {
   decor.wall(-39.5, 17.5, -27, 18, 3.0, r, { minH: 0.35 });
   decor.wall(-27, -16.5, -39.5, -16.5, 2.6, r, { minH: 0.25 });
   decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
-  decor.wall(-27, 6, -27, 17.5, 2.8, r, { minH: 0.25 });
+  // Deliberate entrance from the main connector into the Hanging Grove.
+  // The old continuous wall sealed the new area despite the walkable zones overlapping.
+  decor.wall(-27, 6, -27, 11.2, 2.8, r, { minH: 0.25 });
+  decor.wall(-27, 15.2, -27, 17.5, 2.8, r, { minH: 0.25 });
+  collision.addBox(-27.45, -26.55, 6, 11.2);
+  collision.addBox(-27.45, -26.55, 15.2, 17.5);
   for (const [x, z, h, broken] of [
     [-35, 12, 4.2, true], [-30.5, 2, 3.1, false], [-34, -10, 4.6, true], [-26.5, -12.5, 3.3, true],
   ]) decor.column(x, z, h, r, broken);
