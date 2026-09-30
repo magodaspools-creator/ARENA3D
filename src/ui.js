@@ -125,7 +125,7 @@ export class UI {
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
 
-  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose, initialMode = 'buy', initialScrollTop = 0 }) {
+  showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onClose, onModeChange, initialMode = 'buy', initialScrollTop = 0 }) {
     if (!this.el.shop) return;
 
     let currentMode = initialMode === 'sell' ? 'sell' : 'buy';
@@ -225,7 +225,9 @@ export class UI {
           this.el.shopFeedback.classList.remove('show', 'error');
           this.el.shopFeedback.textContent = '';
         }
-        renderMode(button.dataset.mode || 'buy', 0);
+        const nextMode = button.dataset.mode || 'buy';
+        onModeChange?.(nextMode);
+        renderMode(nextMode, 0);
       };
     });
 
