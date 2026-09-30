@@ -81,8 +81,13 @@ export function createArea1(game) {
     trees.push([x, z]);
     decor.pine(x, terrain.height(x, z), z, 0.9 + r() * 0.9 + d * 0.03, r);
   }
-  // a few trees inside the entrance area (real obstacles)
-  for (const [x, z, s] of [[-9, 40, 1.3], [9.5, 37, 1.5], [10.5, 29, 1.2], [-8.5, 26, 1.4], [-11, 19, 1.3], [7.5, 14.5, 1.1], [11.5, 43, 1.2], [-12, 33, 1.5], [6, 32, 1.0], [-6, 16, 1.0]]) {
+  // Entrance trees: the three trees immediately left of Maren are visual-only.
+  // Their old gameplay circles created the invisible blockage beside the cemetery route.
+  for (const [x, z, s] of [[-9, 40, 1.3], [-8.5, 26, 1.4], [-12, 33, 1.5]]) {
+    decor.pine(x, 0, z, s, r);
+  }
+  // Other entrance trees remain real obstacles.
+  for (const [x, z, s] of [[9.5, 37, 1.5], [10.5, 29, 1.2], [-11, 19, 1.3], [7.5, 14.5, 1.1], [11.5, 43, 1.2], [6, 32, 1.0], [-6, 16, 1.0]]) {
     decor.pine(x, 0, z, s, r);
     collision.addCircle(x, z, 0.45 * s);
   }
