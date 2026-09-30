@@ -225,6 +225,20 @@ export function createArea1(game) {
   // South courtyard walls are visual geometry, so register matching gameplay colliders.
   collision.addBox(-23, -4.9, -21.5, -20.25);
   collision.addBox(4.9, 23, -21.5, -20.25);
+
+  // Collapsed masonry scattered across the south side. Decorative only:
+  // these pieces sell the age of the ruin without changing navigation.
+  for (const [x, z, sx, sz, ry] of [
+    [-17.5, -23.2, 2.8, 1.0, -0.18],
+    [-12.5, -24.4, 1.9, 0.75, 0.3],
+    [-5.2, -22.9, 2.5, 0.9, -0.12],
+    [5.8, -24.1, 2.2, 0.8, 0.2],
+    [13.2, -23.0, 3.0, 1.0, -0.25],
+    [18.2, -25.0, 1.7, 0.7, 0.16],
+  ]) {
+    decor.blocks.add(x, 0.2, z, sx, 0.4, sz, ry, 0x414348);
+    decor.blocks.add(x + (r() - 0.5) * 0.8, 0.48, z + (r() - 0.5) * 0.4, sx * 0.55, 0.28, sz * 0.65, -ry * 1.4, 0x505257);
+  }
   decor.wall(-23, -21, -23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(23, -21, 23, 7.2, 3.8, r, { minH: 0.3 });
   decor.wall(23, 12.8, 23, 13.6, 3.8, r, { minH: 0.3 });
