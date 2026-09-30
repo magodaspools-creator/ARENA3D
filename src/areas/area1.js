@@ -24,6 +24,11 @@ export function createArea1(game) {
 
   // ---------- walkable space ----------
   collision.addRectZone(-14, 14, 10, 45);   // forest entrance
+  // Expanded exploration branches. These connect to the main entrance/courtyard
+  // but deliberately stay outside the Morvhal arena and boss trigger corridor.
+  collision.addRectZone(-32, -14, 14, 34);   // west forest connector
+  collision.addRectZone(-40, -23, -16, 18);  // hanging grove
+  collision.addRectZone(-18, 18, 45, 58);    // northern ruins extension
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
   // Expanded forecourt OUTSIDE the boss arena. This is the pause/lore space
@@ -99,6 +104,35 @@ export function createArea1(game) {
   for (const [x, z, h, broken] of [[-8.2, -28.6, 3.4, true], [8.2, -28.6, 3.8, false], [-7.2, -22.2, 2.8, true], [7.2, -22.2, 3.1, true]]) {
     decor.column(x, z, h, r, broken);
   }
+  // ---------- expanded exploration: Hanging Grove (west) ----------
+  // A large optional branch with its own visual identity and multiple return
+  // paths. It is exploration space, not another mandatory quest corridor.
+  decor.wall(-39.5, -16.5, -39.5, 17.5, 3.4, r, { minH: 0.25 });
+  decor.wall(-39.5, 17.5, -27, 18, 3.0, r, { minH: 0.35 });
+  decor.wall(-27, -16.5, -39.5, -16.5, 2.6, r, { minH: 0.25 });
+  decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
+  decor.wall(-27, 6, -27, 17.5, 2.8, r, { minH: 0.25 });
+  for (const [x, z, h, broken] of [
+    [-35, 12, 4.2, true], [-30.5, 2, 3.1, false], [-34, -10, 4.6, true], [-26.5, -12.5, 3.3, true],
+  ]) decor.column(x, z, h, r, broken);
+  for (const [x, z, s] of [[-36, 5, 1.5], [-31, -5, 1.1], [-25, 8, 1.4], [-34, -2, 0.9]]) {
+    deadTree(scene, x, z, s, r); collision.addCircle(x, z, 0.45 * s);
+  }
+  decor.blocks.add(-34, 0.35, -1.5, 3.8, 0.7, 2.0, 0.1, 0x45484e);
+  decor.blocks.add(-34, 0.9, -1.5, 2.6, 0.3, 1.2, 0, 0x55585e);
+
+  // ---------- expanded exploration: Northern Ruins ----------
+  decor.wall(-17.5, 56.5, -6, 56.5, 3.0, r, { minH: 0.3 });
+  decor.wall(6, 56.5, 17.5, 56.5, 3.2, r, { minH: 0.35 });
+  decor.wall(-17.5, 45.5, -17.5, 56.5, 3.2, r, { minH: 0.35 });
+  decor.wall(17.5, 45.5, 17.5, 56.5, 3.6, r, { minH: 0.3 });
+  decor.column(-12.5, 52.5, 4.8, r, false);
+  decor.column(11.5, 52.5, 3.6, r, true);
+  decor.column(-4.5, 55, 3.2, r, true);
+  decor.column(5.5, 47.5, 4.2, r, false);
+  decor.blocks.add(-7, 0.4, 50.5, 4.5, 0.8, 2.0, 0.08, 0x45484e);
+  decor.blocks.add(7.5, 0.3, 53.5, 2.6, 0.6, 1.5, -0.15, 0x505258);
+
   // ---------- courtyard ruins ----------
   for (let x = -21; x <= 21; x += 2) {
     for (let z = -19; z <= 12; z += 2) {
@@ -576,6 +610,9 @@ export function createArea1(game) {
   // as a safe XP/gold/loot farming loop.
   const farmSpawns = [
     ['hollow', -1, 18.5, 'path'], ['hollow', 3.5, 16, 'path'],
+    ['hollow', -31, 12, 'grove'], ['wisp', -35, 4, 'grove'], ['hollow', -29, -10, 'grove'],
+    ['wisp', -34, -12, 'grove'],
+    ['hollow', -11, 51, 'north'], ['wisp', 9, 53, 'north'],
     ['hollow', -12.5, 5.5, 'west'], ['wisp', -17.5, -1.5, 'west'],
     ['hollow', 12.5, 5.5, 'east'], ['hollow', 16.5, -2, 'east'], ['wisp', 18, 6, 'east'],
     ['hollow', -3.5, -9, 'north'], ['hollow', 3.5, -10, 'north'], ['wisp', 0, -16.5, 'north'],
@@ -635,6 +672,20 @@ export function createArea1(game) {
     spawn: { x: 0.5, z: 42, facing: Math.PI },
     checkpoint: { x: 0.5, z: 38, facing: Math.PI },
     boss, braziers, gate, portal, secretGate,
+    minimap: {
+      bounds: { minX: -42, maxX: 42, minZ: -62, maxZ: 61 },
+      zones: [
+        [-14, 14, 10, 45],
+        [-32, -14, 14, 34],
+        [-40, -23, -16, 18],
+        [-18, 18, 45, 58],
+        [-22, 22, -20, 13],
+        [-11, 11, -31, -20],
+        [14, 38, 4, 16],
+      ],
+      arena: { x: ARENA.x, z: ARENA.z, r: ARENA.r },
+      portal: { x: portal.pos.x, z: portal.pos.z },
+    },
 
     onStart() {
       const restored = prog.load();
