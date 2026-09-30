@@ -1162,7 +1162,7 @@ mine.enemies.push(
 
 // Timber supports are intentionally simple Box geometry. Their collision is
 // also Box-shaped and only blocks the actual posts, never the full corridor.
-const addSupport = (x, z, span = 4.8, rotY = 0) => {
+function addSupport(x, z, span = 4.8, rotY = 0) {
   const half = span * 0.5;
   for (const side of [-1, 1]) {
     const px = x + Math.cos(rotY) * side * half;
