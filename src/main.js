@@ -361,27 +361,27 @@ class Game {
 
           const cost = Math.max(0, Math.floor(price || 0));
           if (this.character.gold < cost) {
-            this.ui.toast('Você precisa de ' + cost + ' ouro. Você possui ' + this.character.gold + '.');
+            this.ui.showShopFeedback('Você precisa de ' + cost + ' ouro. Você possui ' + this.character.gold + '.', true);
             return;
           }
 
           const added = this.character.addItem(itemId, 1, item.maxStack || 99);
           if (!added.added) {
-            this.ui.toast('Você não tem espaço para outra ' + item.name + '.');
+            this.ui.showShopFeedback('Sem espaço para outra ' + item.name + '.', true);
             return;
           }
 
           const payment = this.character.spendGold(cost);
           if (!payment.ok) {
             this.character.removeItem(itemId, 1);
-            this.ui.toast('A compra não pôde ser concluída.');
+            this.ui.showShopFeedback('A compra não pôde ser concluída.', true);
             return;
           }
 
           this.ui.setProgress(this.character);
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
-          this.ui.toast(item.name + ' comprada: -' + cost + ' ouro');
+          this.ui.showShopFeedback('Comprado: ' + item.name + ' · -' + cost + ' ouro');
           this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
           render();
         },
@@ -390,8 +390,6 @@ class Game {
           if (!item || item.category === 'quest' || item.sellable === false) return;
 
           const value = Math.max(1, Math.floor(price || sellPrice(item)));
-          if (!window.confirm('Vender 1x ' + item.name + ' por ' + value + ' ouro?')) return;
-
           let sold = false;
           const inventoryResult = this.character.sellItem(itemId, 1);
           if (inventoryResult.ok) {
@@ -406,7 +404,7 @@ class Game {
           }
 
           if (!sold) {
-            this.ui.toast('Esse item não está mais disponível para venda.');
+            this.ui.showShopFeedback('Esse item não está mais disponível para venda.', true);
             render();
             return;
           }
@@ -415,7 +413,7 @@ class Game {
           this.ui.setProgress(this.character);
           this.ui.setInventory(this.character);
           this.ui.setActionBar(this.character);
-          this.ui.toast(item.name + ' vendido: +' + value + ' ouro');
+          this.ui.showShopFeedback('Vendido: ' + item.name + ' · +' + value + ' ouro');
           this.fx.ring(this.player.pos, 0xffd36a, 1.2, 0.55, 0.7);
           render();
         },
