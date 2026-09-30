@@ -702,11 +702,11 @@ const mineWall = (x1, z1, x2, z2, h = 8.0, options = {}) => {
   // already enforced by the walkable-zone union, so it must not receive a
   // second, offset collision layer.
   if (collide) {
-    const sampleStep = 0.72;
+    const sampleStep = 0.8;
     const samples = Math.max(2, Math.ceil(len / sampleStep) + 1);
     for (let i = 0; i < samples; i++) {
       const t = samples === 1 ? 0 : i / (samples - 1);
-      collision.addCircle(x1 + dx * t, z1 + dz * t, 0.82);
+      collision.addCircle(x1 + dx * t, z1 + dz * t, 0.58);
     }
   }
 };
