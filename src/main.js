@@ -18,7 +18,7 @@ import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 
-const FOG = 0x0b1220;
+const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
 
 class Game {
   constructor() {
@@ -35,7 +35,7 @@ class Game {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(FOG);
-    this.scene.fog = new THREE.FogExp2(FOG, 0.021);
+    this.scene.fog = null; // Do not fog the entire map; secret-room mist is local to Area 1.
     this.camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 220);
 
     this.setupLights();
