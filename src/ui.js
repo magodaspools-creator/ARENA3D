@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ARENA_ITEMS } from './items.js';
 
 // Minimal DOM HUD + world-anchored elements (damage numbers, HP bars,
 // interaction prompts, speech bubbles) projected from 3D each frame.
@@ -19,7 +20,9 @@ export class UI {
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
+      itemsPanel: $('items-panel'), itemsGrid: $('items-grid'),
     };
+    this.renderItems();
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
     this.bubble.el.innerHTML = '<div class="bname"></div><div class="btext"></div><div class="bhint">[E] continuar</div>';
@@ -108,6 +111,20 @@ export class UI {
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
+
+  renderItems() {
+    this.el.itemsGrid.innerHTML = ARENA_ITEMS.map((item) => `
+      <div class="item-slot" title="${item.name}">
+        <img src="${item.sprite}" alt="${item.name}" draggable="false">
+        <span class="item-name">${item.name}</span>
+      </div>
+    `).join('');
+  }
+
+  toggleItems() {
+    if (this.game.state !== 'play') return;
+    this.el.itemsPanel.classList.toggle('hidden');
+  }
   setHP(hp, max) {
     this.el.hpFill.style.width = `${(hp / max) * 100}%`;
     this.el.hpText.textContent = `${Math.ceil(hp)} / ${max}`;
