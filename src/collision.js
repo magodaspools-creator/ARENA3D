@@ -1,24 +1,42 @@
-// 2D XZ collision for the Arena prototype.
-//
-// Design:
-// - zones define the actual walkable footprint;
-// - obstacles are explicit solid colliders;
-// - movement is swept in small substeps, so diagonal movement does not get
-//   incorrectly rejected at corners and fast movement cannot jump through walls;
-// - axis sliding is used when the full movement vector is blocked;
-// - circle-vs-box tests use the real circle/AABB distance instead of a coarse
-//   expanded-rectangle test.
-//
-// There is intentionally no physics engine here: the dungeon is static and
-// deterministic, so explicit collision geometry is easier to inspect and tune.
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js';
+
+await RAPIER.init();
+
+const STATIC = 1;
+const ACTOR = 2;
+const COLLISION_HEIGHT = 4.0;
+const ACTOR_HALF_HEIGHT = 0.55;
+const FLOOR_Y = -0.12;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class Collision {
   constructor() {
+    this.RAPIER = RAPIER;
+    this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    this.controller = this.world.createCharacterController(0.025);
+    this.controller.setUp({ x: 0, y: 1, z: 0 });
+    this.controller.setSlideEnabled(true);
+    this.controller.setMaxSlopeClimbAngle(Math.PI * 0.5);
+    this.controller.setMinSlopeSlideAngle(Math.PI * 0.5);
+    this.controller.enableAutostep(0.28, 0.22, false);
+    this.controller.disableSnapToGround();
+
     this.zones = [];
     this.obstacles = [];
-    this.maxStep = 0.18;
+    this.actorColliders = new WeakMap();
+    this.staticColliders = new Set();
+    this.debugRoot = null;
+    this.debug = false;
+
+    // A real floor keeps the character controller grounded numerically.
+    const floor = this.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(80, 0.12, 100)
+        .setTranslation(0, FLOOR_Y, -10)
+        .setCollisionGroups((STATIC << 16) | STATIC),
+    );
+    floor.userData = STATIC;
+    this.staticColliders.add(floor);
   }
 
   addRectZone(minX, maxX, minZ, maxZ) {
@@ -35,8 +53,21 @@ export class Collision {
       x, z, r,
       enabled: opts.enabled ?? true,
       projectiles: opts.projectiles ?? true,
+      collider: null,
     };
+
+    const desc = RAPIER.ColliderDesc.cylinder(COLLISION_HEIGHT * 0.5, r)
+      .setTranslation(x, COLLISION_HEIGHT * 0.5, z)
+      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setFriction(0);
+    desc.setEnabled(o.enabled);
+
+    o.collider = this.world.createCollider(desc);
+    o.collider.userData = STATIC;
+    this.staticColliders.add(o.collider);
     this.obstacles.push(o);
+    this.syncEnabled(o);
+    this.refreshDebug();
     return o;
   }
 
@@ -46,12 +77,63 @@ export class Collision {
       minX, maxX, minZ, maxZ,
       enabled: opts.enabled ?? true,
       projectiles: opts.projectiles ?? true,
+      collider: null,
     };
+
+    const hx = Math.max(0.001, (maxX - minX) * 0.5);
+    const hz = Math.max(0.001, (maxZ - minZ) * 0.5);
+    const desc = RAPIER.ColliderDesc.cuboid(hx, COLLISION_HEIGHT * 0.5, hz)
+      .setTranslation((minX + maxX) * 0.5, COLLISION_HEIGHT * 0.5, (minZ + maxZ) * 0.5)
+      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setFriction(0);
+    desc.setEnabled(o.enabled);
+
+    o.collider = this.world.createCollider(desc);
+    o.collider.userData = STATIC;
+    this.staticColliders.add(o.collider);
     this.obstacles.push(o);
+    this.syncEnabled(o);
+    this.refreshDebug();
     return o;
   }
 
-  /** Signed distance to the walkable area (negative = inside). */
+  /** Oriented wall segment, used where the visual map has a real wall. */
+  addWall(x1, z1, x2, z2, height = COLLISION_HEIGHT, thickness = 1.0, opts = {}) {
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-5) return null;
+
+    const angle = Math.atan2(dx, dz);
+    const o = {
+      type: 'wall',
+      x1, z1, x2, z2, height, thickness,
+      enabled: opts.enabled ?? true,
+      projectiles: opts.projectiles ?? true,
+      collider: null,
+    };
+
+    const desc = RAPIER.ColliderDesc.cuboid(thickness * 0.5, height * 0.5, len * 0.5)
+      .setTranslation((x1 + x2) * 0.5, height * 0.5, (z1 + z2) * 0.5)
+      .setRotation({ w: Math.cos(angle * 0.5), x: 0, y: Math.sin(angle * 0.5), z: 0 })
+      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setFriction(0);
+    desc.setEnabled(o.enabled);
+
+    o.collider = this.world.createCollider(desc);
+    o.collider.userData = STATIC;
+    this.staticColliders.add(o.collider);
+    this.obstacles.push(o);
+    this.syncEnabled(o);
+    this.refreshDebug();
+    return o;
+  }
+
+  syncEnabled(o) {
+    if (o.collider) o.collider.setEnabled(!!o.enabled);
+  }
+
+  /** Signed distance to the walkable area (negative = inside). Used by terrain/decor only. */
   sdf(x, z) {
     let d = Infinity;
 
@@ -74,7 +156,6 @@ export class Collision {
     return this.sdf(x, z) <= pad;
   }
 
-  /** Exact circle-vs-obstacle test for a body of radius r. */
   obstacleHit(x, z, r, o) {
     if (!o.enabled) return false;
 
@@ -83,23 +164,22 @@ export class Collision {
       return (x - o.x) ** 2 + (z - o.z) ** 2 < rr * rr;
     }
 
+    if (o.type === 'wall') {
+      const dx = o.x2 - o.x1;
+      const dz = o.z2 - o.z1;
+      const len2 = dx * dx + dz * dz;
+      const t = clamp(((x - o.x1) * dx + (z - o.z1) * dz) / len2, 0, 1);
+      const cx = o.x1 + dx * t;
+      const cz = o.z1 + dz * t;
+      const rr = r + o.thickness * 0.5;
+      return (x - cx) ** 2 + (z - cz) ** 2 < rr * rr;
+    }
+
     const cx = clamp(x, o.minX, o.maxX);
     const cz = clamp(z, o.minZ, o.maxZ);
     return (x - cx) ** 2 + (z - cz) ** 2 < r * r;
   }
 
-  /** True when a body can occupy this XZ position. */
-  canOccupy(x, z, r) {
-    if (!this.inside(x, z, -r)) return false;
-
-    for (const o of this.obstacles) {
-      if (this.obstacleHit(x, z, r, o)) return false;
-    }
-
-    return true;
-  }
-
-  /** True if a circle at (x,z) overlaps an obstacle that blocks projectiles. */
   blocked(x, z, r) {
     for (const o of this.obstacles) {
       if (!o.enabled || !o.projectiles) continue;
@@ -108,144 +188,133 @@ export class Collision {
     return false;
   }
 
-  /**
-   * Resolve a body that is already intersecting an obstacle.
-   * This is mainly used for knockback/body separation; normal movement goes
-   * through canOccupy() and therefore never enters the obstacle in the first place.
-   */
-  resolveObstacles(x, z, r) {
-    let nx = x;
-    let nz = z;
-
-    for (let pass = 0; pass < 3; pass++) {
-      let changed = false;
-
-      for (const o of this.obstacles) {
-        if (!o.enabled || !this.obstacleHit(nx, nz, r, o)) continue;
-
-        if (o.type === 'circle') {
-          let ox = nx - o.x;
-          let oz = nz - o.z;
-          let d = Math.hypot(ox, oz);
-
-          if (d < 1e-6) {
-            ox = 1;
-            oz = 0;
-            d = 1;
-          }
-
-          const push = o.r + r - d;
-          nx += (ox / d) * push;
-          nz += (oz / d) * push;
-          changed = true;
-          continue;
-        }
-
-        const cx = clamp(nx, o.minX, o.maxX);
-        const cz = clamp(nz, o.minZ, o.maxZ);
-        let ox = nx - cx;
-        let oz = nz - cz;
-        const d2 = ox * ox + oz * oz;
-
-        if (d2 > 1e-8) {
-          const d = Math.sqrt(d2);
-          const push = r - d;
-          nx += (ox / d) * push;
-          nz += (oz / d) * push;
-        } else {
-          // Center is inside the box. Leave through the nearest face.
-          const left = nx - o.minX;
-          const right = o.maxX - nx;
-          const bottom = nz - o.minZ;
-          const top = o.maxZ - nz;
-          const m = Math.min(left, right, bottom, top);
-
-          if (m === left) nx = o.minX - r;
-          else if (m === right) nx = o.maxX + r;
-          else if (m === bottom) nz = o.minZ - r;
-          else nz = o.maxZ + r;
-        }
-
-        changed = true;
-      }
-
-      if (!changed) break;
+  getActorCollider(pos, radius) {
+    let collider = this.actorColliders.get(pos);
+    if (collider) {
+      collider.setRadius(radius);
+      return collider;
     }
 
-    return { x: nx, z: nz };
+    const desc = RAPIER.ColliderDesc.capsule(ACTOR_HALF_HEIGHT, radius)
+      .setTranslation(pos.x, ACTOR_HALF_HEIGHT + radius, pos.z)
+      .setCollisionGroups((ACTOR << 16) | ACTOR)
+      .setFriction(0);
+
+    collider = this.world.createCollider(desc);
+    collider.userData = ACTOR;
+    this.actorColliders.set(pos, collider);
+    return collider;
   }
 
   /**
-   * Move a circular body in XZ.
+   * Rapier Kinematic Character Controller movement.
    *
-   * The old implementation tested the final diagonal position once and,
-   * when that corner was outside, often rejected the whole movement. That
-   * creates the characteristic "invisible wall" feeling around dungeon
-   * corners and narrow passages.
-   *
-   * We now sweep in short deterministic steps. Each step tries:
-   *   1. full movement;
-   *   2. X-only slide;
-   *   3. Z-only slide;
-   *   4. a binary-search partial move if the full vector is blocked.
+   * The old implementation manually swept circles through an XZ list and
+   * performed its own axis sliding/binary search. Rapier now owns that part:
+   * the character is a capsule, movement is computed against the actual
+   * static colliders, and the resulting translation is applied to the
+   * Three.js position.
    */
-  move(pos, dx, dz, r) {
+  move(pos, dx, dz, radius) {
     const distance = Math.hypot(dx, dz);
-    if (distance < 1e-8) {
-      const resolved = this.resolveObstacles(pos.x, pos.z, r);
-      if (this.canOccupy(resolved.x, resolved.z, r)) {
-        pos.x = resolved.x;
-        pos.z = resolved.z;
-      }
+    if (distance < 1e-8) return;
+
+    const collider = this.getActorCollider(pos, radius);
+    collider.setTranslation({ x: pos.x, y: ACTOR_HALF_HEIGHT + radius, z: pos.z });
+
+    this.controller.computeColliderMovement(
+      collider,
+      { x: dx, y: 0, z: dz },
+      undefined,
+      undefined,
+      (other) => this.staticColliders.has(other),
+    );
+
+    const movement = this.controller.computedMovement();
+    pos.x += movement.x;
+    pos.z += movement.z;
+
+    collider.setTranslation({ x: pos.x, y: ACTOR_HALF_HEIGHT + radius, z: pos.z });
+  }
+
+  /**
+   * Resolve an already-overlapping body using Rapier's character controller.
+   * Kept intentionally small because normal movement no longer needs manual
+   * obstacle resolution.
+   */
+  resolveObstacles(x, z, r) {
+    const probe = { x, y: ACTOR_HALF_HEIGHT + r, z };
+    const collider = RAPIER.ColliderDesc.capsule(ACTOR_HALF_HEIGHT, r)
+      .setTranslation(probe.x, probe.y, probe.z);
+    const temp = this.world.createCollider(collider);
+    temp.userData = ACTOR;
+
+    this.controller.computeColliderMovement(
+      temp,
+      { x: 0, y: 0, z: 0 },
+      undefined,
+      undefined,
+      (other) => this.staticColliders.has(other),
+    );
+    this.world.removeCollider(temp, true);
+
+    const movement = this.controller.computedMovement();
+    return { x: x + movement.x, z: z + movement.z };
+  }
+
+  toggleDebug(scene) {
+    this.debug = !this.debug;
+
+    if (!this.debug) {
+      this.debugRoot?.removeFromParent();
+      this.debugRoot = null;
       return;
     }
 
-    const steps = Math.max(1, Math.ceil(distance / this.maxStep));
-    const sx = dx / steps;
-    const sz = dz / steps;
+    this.debugRoot = new THREE.Group();
+    this.debugRoot.name = 'Rapier Collision Debug';
+    scene.add(this.debugRoot);
+    this.refreshDebug();
+  }
 
-    for (let step = 0; step < steps; step++) {
-      const ox = pos.x;
-      const oz = pos.z;
-      const tx = ox + sx;
-      const tz = oz + sz;
+  refreshDebug() {
+    if (!this.debug || !this.debugRoot) return;
 
-      // Preferred path: full vector.
-      if (this.canOccupy(tx, tz, r)) {
-        pos.x = tx;
-        pos.z = tz;
-        continue;
-      }
-
-      // Slide along the individual axes. This is important at wall corners.
-      if (this.canOccupy(tx, oz, r)) pos.x = tx;
-      if (this.canOccupy(pos.x, tz, r)) pos.z = tz;
-
-      // If neither axis could advance, move as far as possible along the
-      // original vector instead of stopping an entire frame early.
-      if (pos.x === ox && pos.z === oz) {
-        let lo = 0;
-        let hi = 1;
-
-        for (let i = 0; i < 8; i++) {
-          const t = (lo + hi) * 0.5;
-          if (this.canOccupy(ox + sx * t, oz + sz * t, r)) lo = t;
-          else hi = t;
-        }
-
-        if (lo > 1e-3) {
-          pos.x = ox + sx * lo;
-          pos.z = oz + sz * lo;
-        }
-      }
+    while (this.debugRoot.children.length) {
+      const child = this.debugRoot.children.pop();
+      child.geometry?.dispose();
+      child.material?.dispose();
     }
 
-    // Knockback/body separation can start from an overlap. Keep this final
-    // correction, but only accept it if it remains inside the walkable area.
-    const resolved = this.resolveObstacles(pos.x, pos.z, r);
-    if (this.canOccupy(resolved.x, resolved.z, r)) {
-      pos.x = resolved.x;
-      pos.z = resolved.z;
+    const THREERef = globalThis.THREE;
+    if (!THREERef) return;
+
+    for (const o of this.obstacles) {
+      if (!o.enabled) continue;
+      if (o.type === 'circle') {
+        const mesh = new THREERef.Mesh(
+          new THREERef.CylinderGeometry(o.r, o.r, COLLISION_HEIGHT, 20, 1, true),
+          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        );
+        mesh.position.set(o.x, COLLISION_HEIGHT * 0.5, o.z);
+        this.debugRoot.add(mesh);
+      } else if (o.type === 'box') {
+        const mesh = new THREERef.Mesh(
+          new THREERef.BoxGeometry(o.maxX - o.minX, COLLISION_HEIGHT, o.maxZ - o.minZ),
+          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        );
+        mesh.position.set((o.minX + o.maxX) * 0.5, COLLISION_HEIGHT * 0.5, (o.minZ + o.maxZ) * 0.5);
+        this.debugRoot.add(mesh);
+      } else if (o.type === 'wall') {
+        const len = Math.hypot(o.x2 - o.x1, o.z2 - o.z1);
+        const mesh = new THREERef.Mesh(
+          new THREERef.BoxGeometry(o.thickness, o.height, len),
+          new THREERef.MeshBasicMaterial({ color: 0xff3040, wireframe: true, transparent: true, opacity: 0.6 }),
+        );
+        mesh.position.set((o.x1 + o.x2) * 0.5, o.height * 0.5, (o.z1 + o.z2) * 0.5);
+        mesh.rotation.y = Math.atan2(o.x2 - o.x1, o.z2 - o.z1);
+        this.debugRoot.add(mesh);
+      }
     }
   }
 }
