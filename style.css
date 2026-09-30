@@ -341,29 +341,16 @@ button:hover { filter: brightness(1.1); }
   background: rgba(255,255,255,.025);
 }
 .shop-item-card + .shop-item-card { margin-top: 7px; }
-.shop-bulk-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 8px;
-  padding: 7px 10px;
-  border: 1px solid rgba(232,199,122,.14);
-  border-radius: 6px;
-  background: rgba(232,199,122,.035);
-  color: #8f8672;
+.shop-sell-all-item {
+  padding: 6px 10px;
   font-size: 11px;
-}
-.shop-bulk-bar button {
-  padding: 6px 11px;
-  font-size: 11px;
-  letter-spacing: .8px;
+  letter-spacing: .6px;
   color: #1a1408;
   background: linear-gradient(#f0d9a8, #c9a24e);
   border: 1px solid rgba(232,199,122,.65);
   box-shadow: 0 2px 10px rgba(232,199,122,.12);
 }
-.shop-bulk-bar button:hover {
+.shop-sell-all-item:hover {
   filter: brightness(1.08);
 }
 
