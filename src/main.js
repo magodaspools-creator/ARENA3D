@@ -401,6 +401,52 @@ class Game {
           this.ui.showShopAmount('-' + cost, itemId);
           this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
         },
+        onSellAll: () => {
+          const sellable = buildSellStock();
+          let soldCount = 0;
+          let totalValue = 0;
+
+          for (const entry of sellable) {
+            const itemId = entry.item.id;
+            const unitValue = sellPrice(entry.item);
+            const inventoryOwned = this.character.getItemCount(itemId);
+
+            if (inventoryOwned > 0) {
+              const result = this.character.sellItem(itemId, inventoryOwned);
+              if (result.ok) {
+                soldCount += result.quantity;
+                totalValue += unitValue * result.quantity;
+              }
+            }
+
+            if (this.character.equipment) {
+              const equippedSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
+                .find((slot) => this.character.equipment?.[slot] === itemId);
+              if (equippedSlot) {
+                const result = this.character.sellEquipped(equippedSlot);
+                if (result.ok) {
+                  soldCount += 1;
+                  totalValue += unitValue;
+                }
+              }
+            }
+          }
+
+          if (!soldCount) {
+            this.ui.showShopFeedback('Não há itens disponíveis para vender.', true);
+            return;
+          }
+
+          this.character.addGold(totalValue);
+          shopScrollTop = this.ui.el.shopItem?.scrollTop || shopScrollTop;
+          this.ui.setProgress(this.character);
+          this.ui.setInventory(this.character);
+          this.ui.setActionBar(this.character);
+          render('sell', shopScrollTop);
+          this.ui.showShopFeedback('Vendido tudo: ' + soldCount + ' itens · +' + totalValue + ' ouro');
+          this.ui.showShopAmount('+' + totalValue);
+          this.fx.ring(this.player.pos, 0xffd36a, 1.35, 0.65, 0.8);
+        },
         onSell: (itemId, price, quantity = 1) => {
           const item = getItem(itemId);
           if (!item || item.category === 'quest' || item.sellable === false) return;
