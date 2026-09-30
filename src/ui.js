@@ -23,7 +23,7 @@ export class UI {
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
       pause: $('pause'), pauseControls: $('pause-controls'),
-      shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
+      shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -135,6 +135,10 @@ export class UI {
       this.el.shopSubtitle.textContent = isSell
         ? 'Venda itens encontrados ou equipamentos que não deseja mais'
         : 'Escolha um item para comprar';
+      if (this.el.shopFeedback) {
+        this.el.shopFeedback.textContent = '';
+        this.el.shopFeedback.classList.remove('show', 'error');
+      }
 
       this.el.shopItem.innerHTML = entries.length
         ? entries.map((entry) => {
