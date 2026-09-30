@@ -829,6 +829,149 @@ for (const [x, y, z, s, rot] of [
   mineGroup.add(vein);
 }
 
+// ---------- Stage 3 ambient prop pass ----------
+// This pass is visual/atmospheric only. Navigation geometry remains the Stage 2
+// layout: props are kept beside the walking lanes and large pieces use simple
+// collision boxes only where the player could visibly hit them.
+
+// Extra timber frames make the three extraction routes read as maintained mine
+// galleries instead of generic stone corridors.
+for (const [x, z, span, rot] of [
+  [104, 102.5, 4.2, 0],
+  [116, 102.5, 4.2, 0],
+  [97.5, 113.5, 3.8, Math.PI / 2],
+  [97.5, 121.5, 3.8, Math.PI / 2],
+  [122.5, 110, 3.8, Math.PI / 2],
+  [122.5, 117.5, 3.8, Math.PI / 2],
+  [108, 119.5, 4.4, 0],
+  [116, 119.5, 4.4, 0],
+]) {
+  addSupport(x, z, span, rot);
+}
+
+// Hanging work lamps. They are separate from the main lamps so the mine has
+// warm pools of light and darker stretches between them.
+const addHangingLamp = (x, z, y = 3.8, intensity = 3.5) => {
+  const chain = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.035, 0.7, 6),
+    mineMetalMat
+  );
+  chain.position.set(x, y + 0.35, z);
+  mineGroup.add(chain);
+
+  const cage = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.14, 0.32, 8),
+    mineMetalMat
+  );
+  cage.position.set(x, y, z);
+  mineGroup.add(cage);
+
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), mineGlowMat);
+  glow.position.set(x, y - 0.02, z);
+  mineGroup.add(glow);
+
+  const light = new THREE.PointLight(0xd89b54, intensity, 7, 1.8);
+  light.position.set(x, y - 0.05, z);
+  mineGroup.add(light);
+  mineLights.push(light);
+};
+
+for (const [x, z, y, intensity] of [
+  [110, 104.2, 3.7, 4.0],
+  [99.5, 112, 3.4, 3.2],
+  [123, 109, 3.4, 3.4],
+  [108.5, 123.5, 3.5, 3.6],
+  [122.5, 122.0, 3.2, 3.0],
+]) {
+  addHangingLamp(x, z, y, intensity);
+}
+
+// Crates and broken timber are placed against walls rather than in the
+// navigation center. These sell the extraction/workshop history.
+for (const [x, z, sx, sy, sz, ry] of [
+  [96.8, 101.4, 1.0, 0.9, 0.9, 0.1],
+  [98.0, 102.0, 0.75, 0.65, 0.75, -0.2],
+  [125.5, 107.0, 1.1, 0.8, 0.9, 0.15],
+  [126.2, 108.0, 0.75, 0.55, 0.7, -0.25],
+  [95.8, 124.8, 1.2, 0.7, 0.9, 0.2],
+  [125.5, 123.0, 1.1, 0.8, 0.9, -0.15],
+]) {
+  mineBox(sx, sy, sz, x, sy * 0.5, z, mineWoodMat, ry);
+}
+
+// Loose rock/debris clusters break up the floor edges. They are decorative and
+// intentionally small enough to avoid creating navigation traps.
+for (const [x, z, sx, sy, sz, ry] of [
+  [95.2, 109.2, 0.8, 0.45, 0.6, 0.2],
+  [96.0, 115.0, 0.65, 0.35, 0.5, -0.3],
+  [124.8, 113.0, 0.75, 0.4, 0.55, 0.15],
+  [126.0, 118.0, 0.9, 0.5, 0.7, -0.2],
+  [104.5, 125.8, 0.8, 0.38, 0.6, 0.25],
+  [117.8, 126.2, 0.7, 0.35, 0.5, -0.15],
+]) {
+  mineBox(sx, sy, sz, x, sy * 0.5, z, mineRockDarkMat, ry);
+}
+
+// Old mining markers: small wooden posts with colored cloth. They help the
+// player distinguish extraction branches without turning them into UI arrows.
+const markerMat = new THREE.MeshStandardMaterial({ color: 0x6b4b2d, roughness: 1 });
+const markerClothMat = new THREE.MeshStandardMaterial({ color: 0x6d2922, roughness: 1, flatShading: true });
+for (const [x, z, rot] of [
+  [103.2, 108.5, 0],
+  [116.8, 108.5, Math.PI],
+  [103.2, 119.0, 0],
+  [118.0, 119.0, Math.PI],
+]) {
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.5, 6), markerMat);
+  post.position.set(x, 0.75, z);
+  post.rotation.z = (rot === 0 ? 1 : -1) * 0.04;
+  post.castShadow = true;
+  mineGroup.add(post);
+
+  const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.28, 0.04), markerClothMat);
+  cloth.position.set(x + (rot === 0 ? 0.19 : -0.19), 1.25, z);
+  cloth.rotation.y = rot;
+  cloth.castShadow = true;
+  mineGroup.add(cloth);
+}
+
+// A few shallow damp patches give the floor variation without changing its
+// collision height. They stay outside the main movement lanes.
+const dampMat = new THREE.MeshStandardMaterial({
+  color: 0x25272a,
+  roughness: 0.75,
+  metalness: 0.05,
+  transparent: true,
+  opacity: 0.7,
+});
+for (const [x, z, sx, sz, rot] of [
+  [99, 106, 1.7, 0.8, 0.2],
+  [124, 111.5, 1.5, 0.7, -0.25],
+  [105.5, 124.8, 1.8, 0.75, 0.1],
+  [121.5, 126.8, 1.4, 0.65, -0.2],
+]) {
+  const puddle = new THREE.Mesh(new THREE.CircleGeometry(1, 12), dampMat);
+  puddle.rotation.x = -Math.PI / 2;
+  puddle.rotation.z = rot;
+  puddle.scale.set(sx, sz, 1);
+  puddle.position.set(x, 0.015, z);
+  mineGroup.add(puddle);
+}
+
+// Broken planks and tools left behind by the miners.
+for (const [x, z, len, rot] of [
+  [101.5, 111.0, 2.2, 0.35],
+  [124.0, 114.8, 2.0, -0.4],
+  [106.0, 126.0, 2.4, 0.2],
+  [117.5, 125.0, 1.8, -0.25],
+]) {
+  mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot);
+}
+
+// Fine dust hanging in the air is handled by the existing particle ambience.
+// Stage 3 only adds the static visual layer; no new per-frame systems are
+// introduced, keeping the mine load predictable.
+
 // Timber supports are intentionally simple Box geometry. Their collision is
 // also Box-shaped and only blocks the actual posts, never the full corridor.
 const addSupport = (x, z, span = 4.8, rotY = 0) => {
