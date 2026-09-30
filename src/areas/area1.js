@@ -111,12 +111,9 @@ export function createArea1(game) {
   decor.wall(-39.5, -16.5, -39.5, 17.5, 3.4, r, { minH: 0.25 });
   decor.wall(-39.5, 17.5, -27, 18, 3.0, r, { minH: 0.35 });
   decor.wall(-27, -16.5, -39.5, -16.5, 2.6, r, { minH: 0.25 });
-  decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
   // Open entrance: the connector and grove zones already overlap here.
   // Do not add a gameplay collider across this boundary; the old split-wall
   // workaround still left decorative debris at the doorway and could trap the player.
-  // The side walls remain, but the actual entrance is intentionally unobstructed.
-  decor.wall(-27, -16, -27, -6, 2.4, r, { minH: 0.25 });
   for (const [x, z, h, broken] of [
     [-35, 12, 4.2, true], [-30.5, 2, 3.1, false], [-34, -10, 4.6, true], [-26.5, -12.5, 3.3, true],
   ]) decor.column(x, z, h, r, broken);
