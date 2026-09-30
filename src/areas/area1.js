@@ -735,7 +735,7 @@ const perimeter = [
   [78, 94, 91, 87],
   [91, 87, 104, 80],
 ];
-for (const segment of perimeter) mineWall(...segment, { collide: false });
+for (const segment of perimeter) mineWall(...segment, 8.0, { collide: false });
 
 // Worked-mine corridors. Their bends create sightline breaks between chambers.
 for (const segment of [
