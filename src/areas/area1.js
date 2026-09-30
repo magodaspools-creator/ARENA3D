@@ -116,7 +116,10 @@ export function createArea1(game) {
   // workaround still left decorative debris at the doorway and could trap the player.
   for (const [x, z, h, broken] of [
     [-35, 12, 4.2, true], [-30.5, 2, 3.1, false], [-34, -10, 4.6, true], [-26.5, -12.5, 3.3, true],
-  ]) decor.column(x, z, h, r, broken);
+  ]) {
+    decor.column(x, z, h, r, broken);
+    collision.addCircle(x, z, 0.9);
+  }
   for (const [x, z, s] of [[-36, 5, 1.5], [-31, -5, 1.1], [-25, 8, 1.4], [-34, -2, 0.9]]) {
     deadTree(scene, x, z, s, r); collision.addCircle(x, z, 0.45 * s);
   }
@@ -202,9 +205,14 @@ export function createArea1(game) {
   decor.wall(24, 11, 24, 6, 3.0, r, { minH: 0.3 });
 
   // Collapsed masonry and broken pillars make the edges irregular.
-  decor.column(27, 4.5, 3.2, r, true);
-  decor.column(36.5, 5, 4.1, r, false);
-  decor.column(37, 14.8, 2.7, r, true);
+  for (const [x, z, h, broken] of [
+    [27, 4.5, 3.2, true],
+    [36.5, 5, 4.1, false],
+    [37, 14.8, 2.7, true],
+  ]) {
+    decor.column(x, z, h, r, broken);
+    collision.addCircle(x, z, 0.9);
+  }
   decor.blocks.add(26.2, 0.45, 15.5, 2.4, 0.8, 1.8, -0.15, 0x45484e);
   decor.blocks.add(28.8, 0.3, 15.9, 1.8, 0.55, 1.3, 0.2, 0x3f4146);
   decor.blocks.add(38, 0.35, 10.5, 2.2, 0.7, 1.5, 0.1, 0x505258);
