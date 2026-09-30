@@ -167,7 +167,7 @@ export class UI {
     // Player marker — always the most visible element.
     ctx.save();
     ctx.translate(px(p.pos.x), pz(p.pos.z));
-    // World +Z is the player's forward direction; on the minimap +Z points down.\n    // Add PI so the marker points in the same direction as the character.\n    ctx.rotate(p.facing + Math.PI);
+    // Canvas Y grows downward while world +Z maps downward on the minimap.\n    // The player triangle points up at zero rotation, so -facing matches world direction.\n    ctx.rotate(-p.facing);
     ctx.fillStyle = '#f7f0d0';
     ctx.beginPath();
     ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
