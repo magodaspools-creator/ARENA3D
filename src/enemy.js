@@ -7,9 +7,15 @@ import { rollLoot } from './loot.js';
 //   wisp   — floating caster, keeps distance and fires slow orbs
 
 const WHITE = new THREE.Color(0xffffff);
+const POISON_GREEN = 0x65d66f;
 const V = new THREE.Vector3();
 
 export const ENEMY_TYPES = {
+  zombie: { name: 'Zumbi', hp: 105, speed: 2.7, resistances: { physical: 0.05, magic: 0 }, rewards: { xp: 42, gold: 14 }, loot: [
+    { itemId: 'iron_scrap', chance: 0.55, min: 1, max: 2 },
+    { itemId: 'moon_herb', chance: 0.14 },
+    { itemId: 'red_potion', chance: 0.05 },
+  ], aggro: 8.5, range: 1.65, damage: [11, 15], windup: 0.65, cooldown: 1.8, radius: 0.5, height: 2.0, knock: 4, poison: { damage: [3, 5], duration: 5, tick: 1 } },
   hollow: { name: 'Oco', hp: 90, speed: 3.3, resistances: { physical: 0.08, magic: 0 }, rewards: { xp: 35, gold: 12 }, loot: [
     { itemId: 'iron_scrap', chance: 0.65, min: 1, max: 2 },
     { itemId: 'worn_cap', chance: 0.08 },
@@ -41,7 +47,8 @@ export class Enemy {
       this.model = createWispModel();
       this.root = this.model.root;
     } else {
-      this.rig = createHumanoid({ skin: 0x7d8a78, body: 0x33302c, legs: 0x2a2724, accent: 0x4a4540, boots: 0x1c1a18, eyes: 0x8affd8, bareArms: true, rags: true });
+      const isZombie = type === 'zombie';
+      this.rig = createHumanoid({ skin: isZombie ? 0x6f8068 : 0x7d8a78, body: isZombie ? 0x3f493d : 0x33302c, legs: 0x2a2724, accent: isZombie ? 0x59694d : 0x4a4540, boots: 0x1c1a18, eyes: isZombie ? POISON_GREEN : 0x8affd8, bareArms: true, rags: true });
       this.rig.torso.rotation.x = 0.35;
       this.rig.handR.add(createWeapon('blade'));
       this.root = this.rig.root;
@@ -119,7 +126,10 @@ export class Enemy {
       const ang = Math.abs(Math.atan2(Math.sin(Math.atan2(dx, dz) - this.facing), Math.cos(Math.atan2(dx, dz) - this.facing)));
       const fdir = V.set(Math.sin(this.facing), 0, Math.cos(this.facing)).clone();
       g.fx.slash(this.pos, fdir, this.def.range + 0.6, 1.6, 0x8affd8);
-      if (dist < this.def.range + p.radius + 0.35 && ang < 1.0) p.takeDamage(g.combat.roll(this.def.damage, 0).amount, this.pos);
+      if (dist < this.def.range + p.radius + 0.35 && ang < 1.0) {
+        p.takeDamage(g.combat.roll(this.def.damage, 0).amount, this.pos);
+        if (this.def.poison) p.applyPoison(this.def.poison, this.pos);
+      }
     }
   }
 
