@@ -275,6 +275,31 @@ button:hover { filter: brightness(1.1); }
   color: #8f8672;
   font-size: 12px;
 }
+#shop-feedback {
+  min-height: 0;
+  margin: -2px 0 8px;
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  color: #d9c58f;
+  font-size: 12px;
+  text-align: center;
+  transition: opacity .18s ease, max-height .18s ease, padding .18s ease;
+}
+#shop-feedback.show {
+  max-height: 42px;
+  padding: 7px 10px;
+  opacity: 1;
+  border: 1px solid rgba(232,199,122,.16);
+  border-radius: 5px;
+  background: rgba(232,199,122,.045);
+}
+#shop-feedback.error {
+  color: #d9a29a;
+  border-color: rgba(180,90,80,.25);
+  background: rgba(180,90,80,.06);
+}
 .shop-tabs {
   display: flex;
   gap: 7px;
