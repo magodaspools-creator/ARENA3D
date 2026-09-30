@@ -760,26 +760,58 @@ for (const box of [
   [104,106,130,138],[124,126,130,138],
 ]) wallCollider(...box);
 
-// A full dark ceiling closes the cave visually. The old low walls let the
-// camera see the outside void from above; this makes the mine a true enclosed
-// underground space.
-const mineCeiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(90, 82),
-  new THREE.MeshStandardMaterial({ color: 0x090807, roughness: 1, side: THREE.DoubleSide })
-);
-mineCeiling.rotation.x = Math.PI / 2;
-mineCeiling.position.set(110, 9.2, 118);
-mineCeiling.receiveShadow = true;
-mineGroup.add(mineCeiling);
+// No solid ceiling: the mine must remain readable from the player's maximum
+// zoom-out. The exterior is masked with a thick fog bank instead of a black roof.
+const mineFog = new THREE.Group();
+mineFog.name = 'mine-fog-bank';
+mineGroup.add(mineFog);
 
-// Ceiling ribs add depth and also make the corridors read as underground.
-for (const [x,z,len,rot] of [
-  [110,91,10,0],[92,104,10,Math.PI/2],[136,104,12,Math.PI/2],
-  [94,122,12,Math.PI/2],[128,122,12,Math.PI/2],[114,136,16,0],[128,144,15,0],
-]) {
-  const rib = mineBox(len,0.55,0.65,x,8.55,z,mineRockDarkMat,rot);
-  rib.scale.y = 1;
+const fogOuter = new THREE.Shape();
+fogOuter.moveTo(62, 72);
+fogOuter.lineTo(160, 72);
+fogOuter.lineTo(160, 160);
+fogOuter.lineTo(62, 160);
+fogOuter.lineTo(62, 72);
+
+const fogHole = new THREE.Path();
+for (let i = 0; i < perimeter.length; i++) {
+  const [, x, z] = [0, perimeter[i][0], perimeter[i][1]];
+  if (i === 0) fogHole.moveTo(x, -z);
+  else fogHole.lineTo(x, -z);
 }
+fogHole.closePath();
+fogOuter.holes.push(fogHole);
+
+const fogBank = new THREE.Mesh(
+  new THREE.ShapeGeometry(fogOuter),
+  new THREE.MeshBasicMaterial({
+    color: 0x211b17,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  })
+);
+fogBank.rotation.x = -Math.PI / 2;
+fogBank.position.y = 0.045;
+mineFog.add(fogBank);
+
+// A second, softer layer makes the boundary read as mist rather than a hard
+// black edge. It is also kept outside the playable polygon.
+const fogSoft = new THREE.Mesh(
+  new THREE.ShapeGeometry(fogOuter),
+  new THREE.MeshBasicMaterial({
+    color: 0x4a4038,
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  })
+);
+fogSoft.rotation.x = -Math.PI / 2;
+fogSoft.position.y = 0.055;
+fogSoft.scale.setScalar(1.03);
+mineFog.add(fogSoft);
 
 // Larger floor so no exterior background leaks into the playable perimeter.
 mineFloor.geometry.dispose();
