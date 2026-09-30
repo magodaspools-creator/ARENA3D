@@ -582,11 +582,11 @@ const mineLamp = (x, z, intensity = 6, range = 10) => {
 // Floor remains a simple plane. The perimeter is irregular visually, while the
 // playable area is authored as overlapping zones rather than a giant rectangle.
 const mineFloor = new THREE.Mesh(
-  new THREE.PlaneGeometry(44, 40),
+  new THREE.PlaneGeometry(48, 50),
   new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 1 })
 );
 mineFloor.rotation.x = -Math.PI / 2;
-mineFloor.position.set(MINE.x, -0.04, MINE.z);
+mineFloor.position.set(MINE.x, -0.04, MINE.z + 3);
 mineFloor.receiveShadow = true;
 mineGroup.add(mineFloor);
 
@@ -676,6 +676,15 @@ const mineWall = (x1, z1, x2, z2, h = 4.8) => {
   const len = Math.hypot(dx, dz);
   const angle = Math.atan2(dz, dx);
   const m = mineBox(len, h, 1.5, (x1 + x2) * 0.5, h * 0.5 - 0.08, (z1 + z2) * 0.5, mineRockDarkMat, angle);
+  // Give the visible wall an actual gameplay collision envelope.
+  // The previous layout only collided with a few hand-written boxes, so
+  // several visible rock sections were pass-through.
+  const collisionRadius = 0.82;
+  const collisionCount = Math.max(2, Math.ceil(len / 1.35));
+  for (let i = 0; i < collisionCount; i++) {
+    const t = collisionCount === 1 ? 0.5 : i / (collisionCount - 1);
+    collision.addCircle(x1 + dx * t, z1 + dz * t, collisionRadius);
+  }
   // Break the perfectly straight silhouette with a few low rock masses.
   const count = Math.max(2, Math.ceil(len / 3.5));
   for (let i = 0; i < count; i++) {
@@ -718,8 +727,7 @@ mineWall(102, 116.5, 102, 120, 3.5);
 // East branch: old supports frame the tunnel before it opens into the chamber.
 mineWall(119.5, 105.5, 127, 105.5, 3.8);
 mineWall(127, 105.5, 127, 112, 3.8);
-mineWall(127, 126, 120, 126, 3.6);
-mineWall(120, 126, 120, 121, 3.5);
+
 
 // South branch: broad central opening, then a tighter extraction gallery.
 mineWall(94, 120.5, 103, 120.5, 3.5);
@@ -996,16 +1004,13 @@ const mine = {
 // Irregular cave walls: short rock segments overlap at slightly different
 // angles so the chamber reads as carved/natural instead of another rectangle.
 for (const [x1,z1,x2,z2,h] of [
-  [116,126,121,128,4.6],
-  [121,128,127,127,5.2],
+  [123,126,127,127,5.2],
   [127,127,130,131,5.6],
   [130,131,128,134,6.0],
   [128,134,121,135,6.2],
   [121,135,114,133,5.5],
   [114,133,110,130,5.0],
-  [110,130,112,127,4.6],
-  [112,127,116,126,4.4],
-]) {
+  ]) {
   mineWall(x1,z1,x2,z2,h);
 }
 
@@ -1016,7 +1021,7 @@ for (const [x,z,sx,sy,sz,rot] of [
   [118.0,133.0,1.6,4.5,1.3,0.2],
   [125.5,130.8,1.8,4.8,1.4,-0.15],
   [128.0,133.0,1.2,4.2,1.0,0.25],
-  [121.0,127.8,1.0,3.2,1.1,0.1],
+  [121.0,129.8,1.0,3.2,1.1,0.1],
 ]) {
   mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat);
 }
@@ -1073,8 +1078,8 @@ for (const [x,z,s] of [[113,130,0.7],[119,134,0.85],[128,131,0.9],[124,128,0.55]
 
 // Cave boundary colliders follow the rock perimeter. The entrance remains
 // open from the south-east extraction gallery.
-wallCollider(115.2,117.0,125.5,127.5);
-wallCollider(119.5,127.5,126.0,128.8);
+wallCollider(115.0,116.8,125.4,127.0);
+wallCollider(123.0,127.5,127.5,128.8);
 wallCollider(128.0,131.0,127.5,131.5);
 wallCollider(128.0,130.8,130.5,134.5);
 wallCollider(121.0,129.5,133.7,135.5);
@@ -1121,7 +1126,7 @@ const stage4Trigger={
   update(){
     if(this.started || !mine.active || mineMiniboss.state==='dead') return;
     const p=game.player.pos;
-    if(p.x>116 && p.x<127 && p.z>126 && p.z<134){
+    if(p.x>113.5 && p.x<130.5 && p.z>124.5 && p.z<135.5){
       this.started=true;
       mineMiniboss.awaken();
       game.ui.showBoss(mineMiniboss.name);
@@ -1167,7 +1172,7 @@ game.interaction.add({
 // A second ranged patrol makes the final gallery less predictable without
 // turning the mine into another mandatory boss corridor.
 mine.enemies.push(
-  spawn('wisp', 124, 124.5, 'mine', true),
+  spawn('wisp', 124, 118.5, 'mine', true),
   spawn('zombie', 107.5, 126.5, 'mine', true),
 );
 
