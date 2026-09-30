@@ -95,10 +95,14 @@
           </div>
           <button id="shop-close" class="overlay-close" type="button" aria-label="Fechar comércio">×</button>
         </div>
+        <div id="shop-tabs" class="shop-tabs" role="tablist" aria-label="Comércio">
+          <button type="button" data-mode="buy" class="active">Comprar</button>
+          <button type="button" data-mode="sell">Vender</button>
+        </div>
         <div id="shop-item"></div>
         <div class="shop-actions">
-          <button id="shop-buy" type="button">Comprar</button>
-          <button id="shop-cancel" type="button">Não comprar</button>
+          <button id="shop-buy" class="hidden" type="button">Comprar</button>
+          <button id="shop-cancel" type="button">Fechar</button>
         </div>
       </div>
     </div>
