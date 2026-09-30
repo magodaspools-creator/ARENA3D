@@ -98,10 +98,16 @@ export function createArea1(game) {
   }
   decor.wall(-23, -20.9, -4.9, -20.9, 4.5, r, { minH: 0.7 });
   decor.wall(4.9, -20.9, 23, -20.9, 4.5, r, { minH: 0.7 });
+  collision.addWall(-23, -20.9, -4.9, -20.9, 4.5, 1.1);
+  collision.addWall(4.9, -20.9, 23, -20.9, 4.5, 1.1);
   decor.wall(-23, -21, -23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(23, -21, 23, 13.6, 3.8, r, { minH: 0.3 });
+  collision.addWall(-23, -21, -23, 13.6, 3.8, 1.1);
+  collision.addWall(23, -21, 23, 13.6, 3.8, 1.1);
   decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
   decor.wall(6.6, 13.6, 23, 13.6, 2.6, r, { minH: 0.35 });
+  collision.addWall(-23, 13.6, -6.6, 13.6, 2.6, 1.1);
+  collision.addWall(6.6, 13.6, 23, 13.6, 2.6, 1.1);
   decor.column(-6.4, 13.6, 5.5, r);
   decor.column(6.4, 13.6, 4.2, r, true);
   for (const [x, z, h, broken] of [[-8, 7, 4.5, false], [8, 7, 3, true], [-9, -7, 5, false], [9, -7, 4.8, false], [-17, -13, 2.2, true], [17, -13, 4.5, false], [-5, -16, 3.5, false], [5, -16, 3.5, false]]) {
@@ -114,6 +120,8 @@ export function createArea1(game) {
   // corridor walls
   decor.wall(-3.9, -21, -3.9, -30.5, 5.5, r, { minH: 0.85 });
   decor.wall(3.9, -21, 3.9, -30.5, 5.5, r, { minH: 0.85 });
+  collision.addWall(-3.9, -21, -3.9, -30.5, 5.5, 1.1);
+  collision.addWall(3.9, -21, 3.9, -30.5, 5.5, 1.1);
 
   // ---------- arena ----------
   for (let rad = 1.9; rad < 15.2; rad += 1.55) {
