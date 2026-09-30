@@ -419,6 +419,19 @@ export function createArea1(game) {
   loreBookAnchor.position.set(2.0, 0.75, -27.2);
   scene.add(loreBookAnchor);
 
+  // ---------- exploration points of interest ----------
+  // Optional rewards/lore for the two new branches. Both rewards are one-time
+  // and persist through Progression counters, so exploration has real value.
+  const groveRelic = createRuneStone(game, -31.5, -1.5);
+  const northRelic = createChest(game, 1.5, 51.5, -0.2);
+  const groveAnchor = new THREE.Object3D();
+  groveAnchor.position.set(-31.5, 2.0, -1.5);
+  scene.add(groveAnchor);
+
+  const northMarker = new THREE.Object3D();
+  northMarker.position.set(1.5, 0.9, 51.5);
+  scene.add(northMarker);
+
   // ---------- set pieces ----------
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
@@ -508,6 +521,41 @@ export function createArea1(game) {
   game.npcs.push(merchant);
 
   const lit = () => braziers.filter((b) => b.lit).length;
+
+  if (prog.counters.northRelicOpened) northRelic.restoreOpen();
+
+  game.interaction.add({
+    pos: groveAnchor.position, radius: 2.7, height: 3.0,
+    label: 'Examinar altar esquecido',
+    enabled: () => !prog.counters.groveRelicRead,
+    onInteract: () => {
+      prog.setCounter('groveRelicRead', true);
+      game.dialogue.open('Altar do Bosque Suspenso', [
+        'As pedras estão cobertas de raízes, mas ainda existe uma inscrição sob o musgo.',
+        '\\"Os que vigiam a porta não devem esquecer o caminho de volta.\\"',
+        '\\"Quando as chamas morrerem, siga para o norte. A torre quebrada guarda o último sinal.\\"',
+        'Uma pequena luz azul percorre a runa e desaparece entre as árvores.',
+      ], groveAnchor);
+      game.ui.toast('Você encontrou um vestígio antigo do Santuário.');
+    },
+  });
+
+  game.interaction.add({
+    pos: northMarker.position, radius: 2.5, height: 2.2,
+    label: () => northRelic.opened ? 'Relicário vazio' : 'Abrir relicário antigo',
+    enabled: () => !northRelic.opened,
+    onInteract: () => {
+      northRelic.open();
+      prog.setCounter('northRelicOpened', true);
+      game.rewardCharacter(0, 70);
+      game.spawnGroundLoot([
+        { itemId: 'wisp_essence', amount: 2 },
+        { itemId: 'moon_herb', amount: 1 },
+      ], northRelic.pos);
+      game.ui.toast('Relicário aberto: 70 ouro e materiais raros.');
+    },
+  });
+
   const hostileNear = (pos, rad) => game.enemies.some((e) => e.alive && !e.isBoss && e.pos.distanceTo(pos) < rad);
 
   if (prog.counters.chestOpened) chest.restoreOpen();
