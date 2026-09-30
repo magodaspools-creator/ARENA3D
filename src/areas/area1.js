@@ -308,6 +308,73 @@ export function createArea1(game) {
 
   decor.build(scene);
 
+  // ---------- forgotten corpse + lore book ----------
+  // A dead explorer lies between the arena pillars. The book beside him
+  // gives the player a piece of Morvhal's history before the fight.
+  const corpse = new THREE.Group();
+  corpse.name = 'forgotten-explorer-corpse';
+
+  const boneMat = new THREE.MeshStandardMaterial({
+    color: 0xb9b19f, roughness: 0.95, metalness: 0, flatShading: true,
+  });
+  const clothMat = new THREE.MeshStandardMaterial({
+    color: 0x29272a, roughness: 1, metalness: 0, flatShading: true,
+  });
+
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), boneMat);
+  skull.scale.set(1, 0.82, 0.9);
+  skull.position.set(0.45, 0.48, 0);
+  corpse.add(skull);
+
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 1.55, 7), boneMat);
+  spine.rotation.z = Math.PI / 2;
+  spine.position.set(-0.45, 0.22, 0);
+  corpse.add(spine);
+
+  for (const [x, z, rot, len] of [
+    [-0.25, -0.42, -0.45, 1.35], [-0.2, 0.42, 0.5, 1.35],
+    [0.55, -0.48, -0.8, 1.15], [0.65, 0.45, 0.7, 1.15],
+  ]) {
+    const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, len, 6), boneMat);
+    bone.rotation.z = Math.PI / 2 + rot;
+    bone.position.set(x, 0.16 + r() * 0.08, z);
+    corpse.add(bone);
+  }
+
+  for (const [x, z, rot] of [[-0.95, -0.35, -0.55], [-0.95, 0.35, 0.55]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 1.45, 6), boneMat);
+    leg.rotation.z = Math.PI / 2 + rot;
+    leg.position.set(x, 0.18, z);
+    corpse.add(leg);
+  }
+
+  const tornCloak = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 1.05), clothMat);
+  tornCloak.position.set(-0.2, 0.13, 0);
+  tornCloak.rotation.y = -0.18;
+  corpse.add(tornCloak);
+
+  corpse.position.set(-7.2, 0, -42.2);
+  corpse.rotation.y = -0.35;
+  scene.add(corpse);
+
+  // The journal is deliberately separate so the interaction remains readable.
+  const loreBook = new THREE.Group();
+  loreBook.name = 'morvhal-journal';
+  const coverMat = new THREE.MeshStandardMaterial({ color: 0x3a2118, roughness: 0.9, metalness: 0 });
+  const pageMat = new THREE.MeshStandardMaterial({ color: 0xc9b98f, roughness: 1, metalness: 0 });
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 1.05), coverMat);
+  cover.position.y = 0.12;
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.07, 0.88), pageMat);
+  pages.position.y = 0.2;
+  loreBook.add(cover, pages);
+  loreBook.position.set(-6.1, 0.08, -41.5);
+  loreBook.rotation.set(-0.08, -0.35, 0.12);
+  scene.add(loreBook);
+
+  const loreBookAnchor = new THREE.Object3D();
+  loreBookAnchor.position.set(-6.1, 0.75, -41.5);
+  scene.add(loreBookAnchor);
+
   // ---------- set pieces ----------
   const campfire = createCampfire(game, -6.8, 37.4);
   createSign(game, 2.8, 43.5, -0.4);
@@ -425,6 +492,17 @@ export function createArea1(game) {
       '"Morvhal não era o carcereiro. Era a última coisa que ainda se lembrava de por que a porta devia permanecer fechada."',
       '"Se ele despertar, não confie no que ouvir. A voz que responde do fundo não é a dele."',
     ], runeStone.anchor),
+  });
+
+  game.interaction.add({
+    pos: loreBookAnchor.position, radius: 2.4, height: 2.2, label: 'Ler diário abandonado',
+    onInteract: () => game.dialogue.open('Diário do Explorador', [
+      '"Morvhal não foi criado para guardar esta cripta. Ele foi escolhido para impedir que algo saísse dela."',
+      '"Vi os antigos sacerdotes alimentarem o selo com memórias humanas. Cada memória esquecida tornava o guardião mais vazio."',
+      '"Quando tentei quebrar o ritual, Morvhal me reconheceu... e pediu que eu corresse."',
+      '"Ele ainda luta contra alguma coisa dentro dele. Se seus olhos ficarem vermelhos, já não sei dizer quem está segurando a espada."',
+      '"Se alguém encontrar estas páginas, não desperte o Guardião por curiosidade. A porta existe por um motivo."',
+    ], loreBookAnchor),
   });
 
   game.interaction.add({
