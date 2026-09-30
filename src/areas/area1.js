@@ -27,6 +27,9 @@ export function createArea1(game) {
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
   collision.addRectZone(-32, -14, 12, 34);   // west forest connector (overlaps courtyard + grove)
+  // Wider doorway into the Hanging Grove. The old tree stood here and its
+  // collider could make the opening feel like an invisible wall.
+  collision.addRectZone(-34, -21, 6, 20);
   collision.addRectZone(-40, -23, -16, 18);  // hanging grove
   collision.addRectZone(-18, 18, 44, 58);    // northern ruins extension (overlaps entrance)
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
@@ -74,6 +77,11 @@ export function createArea1(game) {
     decor.pine(x, 0, z, s, r);
     collision.addCircle(x, z, 0.45 * s);
   }
+  // The old tree at the west doorway is intentionally not a gameplay obstacle.
+  // The opening itself is the passage into the Hanging Grove.
+  decor.pine(-25, 0, 8, 1.4, r);
+  // Keep the former tree position at the grove doorway visually clear.
+  // Its collision used to behave like an invisible barrier at the entrance.
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
     decor.rock(x, 0, z, s, r);
     collision.addCircle(x, z, s * 0.95);
@@ -160,6 +168,11 @@ export function createArea1(game) {
   decor.wall(-23, -21, -23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(23, -21, 23, 7.2, 3.8, r, { minH: 0.3 });
   decor.wall(23, 12.8, 23, 13.6, 3.8, r, { minH: 0.3 });
+  // Side walls of the southern courtyard are gameplay walls too.
+  // Keep the east-side gap at z 7.2..12.8 open for the secret passage.
+  collision.addBox(-23.8, -22.8, -21.5, 13.6);
+  collision.addBox(22.8, 24.0, -21.5, 7.2);
+  collision.addBox(22.8, 24.0, 12.8, 13.6);
   decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
   decor.wall(6.6, 13.6, 23, 13.6, 2.6, r, { minH: 0.35 });
   // The two upper courtyard pillars are also real obstacles.
