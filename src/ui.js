@@ -164,13 +164,15 @@ export class UI {
     ctx.arc(px(area.minimap.portal.x), pz(area.minimap.portal.z), 3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Player marker — always the most visible element.
+    // Player marker — local zero-facing points to world +Z, which is DOWN on this map.
+    // Keep the same facing convention as Player: facing = atan2(x, z).
+    // A down-pointing canvas triangle rotated by -facing maps +Z/+X/-Z/-X correctly.
     ctx.save();
     ctx.translate(px(p.pos.x), pz(p.pos.z));
-    // Canvas Y grows downward while world +Z maps downward on the minimap.\n    // The player triangle points up at zero rotation, so -facing matches world direction.\n    ctx.rotate(-p.facing);
+    ctx.rotate(-p.facing);
     ctx.fillStyle = '#f7f0d0';
     ctx.beginPath();
-    ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
+    ctx.moveTo(0, 7); ctx.lineTo(5, -6); ctx.lineTo(0, -3); ctx.lineTo(-5, -6); ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     ctx.lineWidth = 1.5;
