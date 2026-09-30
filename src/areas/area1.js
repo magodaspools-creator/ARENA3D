@@ -1130,7 +1130,6 @@ mineMiniboss.update = (dt) => {
 
 const mineDeepChest = createChest(game, 121.5, 133.2, Math.PI);
 mineDeepChest.root = null;
-if (prog.counters.mineDeepChestOpened) mineDeepChest.restoreOpen();
 
 game.interaction.add({
   pos: mineDeepChest.pos,
@@ -1285,6 +1284,16 @@ const leaveMine = () => {
   });
 };
 
+  // ---------- quest state ----------
+  const prog = new Progression(game, [
+    { id: 'arrive', timeline: 'Conhecer Maren', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E' },
+    { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
+    { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
+    { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
+    { id: 'portal', timeline: 'Abrir o caminho adiante', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
+    { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
+  ], 'area1');
+
   // ---------- forgotten corpse + lore book ----------
   // A dead explorer lies between the arena pillars. The book beside him
   // gives the player a piece of Morvhal's history before the fight.
@@ -1386,14 +1395,7 @@ const leaveMine = () => {
   const barrierCol = collision.addBox(-3.5, 3.5, -30.6, -29.8, { enabled: false });
 
   // ---------- quest ----------
-  const prog = new Progression(game, [
-    { id: 'arrive', timeline: 'Conhecer Maren', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E' },
-    { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
-    { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
-    { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
-    { id: 'portal', timeline: 'Abrir o caminho adiante', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
-    { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
-  ], 'area1');
+
 
   const maren = new NPC(game, {
     name: 'Maren, a Vigia', x: -4.6, z: 35.2, facing: 0.6,
