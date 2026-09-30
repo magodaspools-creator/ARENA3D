@@ -26,7 +26,7 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
-  collision.addRectZone(-32, -14, 14, 34);   // west forest connector
+  collision.addRectZone(-32, -14, 12, 34);   // west forest connector (overlaps courtyard + grove)
   collision.addRectZone(-40, -23, -16, 18);  // hanging grove
   collision.addRectZone(-18, 18, 44, 58);    // northern ruins extension (overlaps entrance)
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
@@ -144,13 +144,19 @@ export function createArea1(game) {
   }
   decor.wall(-23, -20.9, -4.9, -20.9, 4.5, r, { minH: 0.7 });
   decor.wall(4.9, -20.9, 23, -20.9, 4.5, r, { minH: 0.7 });
+  // South courtyard walls are visual geometry, so register matching gameplay colliders.
+  collision.addBox(-23, -4.9, -21.5, -20.25);
+  collision.addBox(4.9, 23, -21.5, -20.25);
   decor.wall(-23, -21, -23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(23, -21, 23, 7.2, 3.8, r, { minH: 0.3 });
   decor.wall(23, 12.8, 23, 13.6, 3.8, r, { minH: 0.3 });
   decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
   decor.wall(6.6, 13.6, 23, 13.6, 2.6, r, { minH: 0.35 });
+  // The two upper courtyard pillars are also real obstacles.
   decor.column(-6.4, 13.6, 5.5, r);
+  collision.addCircle(-6.4, 13.6, 0.9);
   decor.column(6.4, 13.6, 4.2, r, true);
+  collision.addCircle(6.4, 13.6, 0.9);
   for (const [x, z, h, broken] of [[-8, 7, 4.5, false], [8, 7, 3, true], [-9, -7, 5, false], [9, -7, 4.8, false], [-17, -13, 2.2, true], [17, -13, 4.5, false], [-5, -16, 3.5, false], [5, -16, 3.5, false]]) {
     decor.column(x, z, h, r, broken);
     collision.addCircle(x, z, 0.8);
@@ -161,6 +167,8 @@ export function createArea1(game) {
   // corridor walls
   decor.wall(-3.9, -21, -3.9, -30.5, 5.5, r, { minH: 0.85 });
   decor.wall(3.9, -21, 3.9, -30.5, 5.5, r, { minH: 0.85 });
+  collision.addBox(-4.45, -3.35, -30.8, -20.7);
+  collision.addBox(3.35, 4.45, -30.8, -20.7);
 
   // ---------- hidden east chamber ----------
   // A natural ruined chamber: irregular walls, a narrow concealed entrance,
@@ -310,6 +318,7 @@ export function createArea1(game) {
     pillarAngles.push(a);
     const px = ARENA.x + Math.sin(a) * 16.4, pz = ARENA.z + Math.cos(a) * 16.4;
     decor.column(px, pz, 5 + r() * 3, r, r() < 0.25);
+    collision.addCircle(px, pz, 0.95);
     const a2 = a + Math.PI / 16, wx = ARENA.x + Math.sin(a2) * 16.6, wz = ARENA.z + Math.cos(a2) * 16.6;
     if (Math.abs(Math.atan2(Math.sin(a2), Math.cos(a2))) > 0.3) decor.blocks.add(wx, 1.2, wz, 1.2, 2.4 + r() * 1.2, 3.4, a2, 0x4a4d54);
   }
