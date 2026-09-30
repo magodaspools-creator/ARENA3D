@@ -64,6 +64,13 @@ export class Enemy {
         this.rig.armL.rotation.x = -0.65;
         this.rig.armR.rotation.x = -0.85;
         this.rig.head.rotation.x = 0.28;
+        // Distinct undead silhouette: hood, exposed jaw and bone-like hands.
+        this.rig.head.add(mesh(new THREE.SphereGeometry(0.265, 7, 5), mat(0x263026, { side: THREE.DoubleSide }), 0, 0.02, -0.035));
+        this.rig.head.add(mesh(new THREE.BoxGeometry(0.19, 0.08, 0.12), mat(0x3a3d35), 0, -0.08, 0.18));
+        this.rig.handL.add(mesh(new THREE.BoxGeometry(0.055, 0.20, 0.055), mat(0xb8b39a), 0, -0.05, 0));
+        this.rig.handR.add(mesh(new THREE.BoxGeometry(0.055, 0.20, 0.055), mat(0xb8b39a), 0, -0.05, 0));
+        this.rig.armL.scale.set(1.0, 1.15, 1.0);
+        this.rig.armR.scale.set(1.0, 1.15, 1.0);
       } else {
         this.rig.handR.add(createWeapon('blade'));
       }
