@@ -320,6 +320,32 @@ class Game {
     this.state = 'shop';
     this.inputLocked = true;
 
+    const sellPrice = (item) => Math.max(1, Math.floor(Number(item?.value || 0) * 0.30));
+
+    const buildSellStock = () => {
+      const byId = new Map();
+
+      for (const slot of this.character.inventory) {
+        const item = getItem(slot.id);
+        if (!item || item.category === 'quest' || item.sellable === false) continue;
+        const entry = byId.get(item.id) || { item, owned: 0, equipped: 0, price: sellPrice(item) };
+        entry.owned += slot.qty;
+        byId.set(item.id, entry);
+      }
+
+      for (const slotName of ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']) {
+        const itemId = this.character.equipment?.[slotName];
+        const item = itemId ? getItem(itemId) : null;
+        if (!item || item.category === 'quest' || item.sellable === false) continue;
+        const entry = byId.get(item.id) || { item, owned: 0, equipped: 0, price: sellPrice(item) };
+        entry.equipped += 1;
+        entry.owned += 1;
+        byId.set(item.id, entry);
+      }
+
+      return [...byId.values()].sort((a, b) => a.item.name.localeCompare(b.item.name, 'pt-BR'));
+    };
+
     const render = () => {
       const available = stock
         .map((entry) => ({ ...entry, item: getItem(entry.itemId), owned: this.character.getItemCount(entry.itemId) }))
@@ -328,6 +354,7 @@ class Game {
       this.ui.showShop({
         npcName,
         stock: available,
+        sellStock: buildSellStock(),
         onBuy: (itemId, price) => {
           const item = getItem(itemId);
           if (!item) return;
@@ -358,13 +385,46 @@ class Game {
           this.fx.ring(this.player.pos, 0x9affdd, 1.2, 0.55, 0.7);
           render();
         },
+        onSell: (itemId, price) => {
+          const item = getItem(itemId);
+          if (!item || item.category === 'quest' || item.sellable === false) return;
+
+          const value = Math.max(1, Math.floor(price || sellPrice(item)));
+          if (!window.confirm('Vender 1x ' + item.name + ' por ' + value + ' ouro?')) return;
+
+          let sold = false;
+          const inventoryResult = this.character.sellItem(itemId, 1);
+          if (inventoryResult.ok) {
+            sold = true;
+          } else {
+            const equipmentSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
+              .find((slot) => this.character.equipment?.[slot] === itemId);
+            if (equipmentSlot) {
+              const equippedResult = this.character.sellEquipped(equipmentSlot);
+              sold = equippedResult.ok;
+            }
+          }
+
+          if (!sold) {
+            this.ui.toast('Esse item não está mais disponível para venda.');
+            render();
+            return;
+          }
+
+          this.character.addGold(value);
+          this.ui.setProgress(this.character);
+          this.ui.setInventory(this.character);
+          this.ui.setActionBar(this.character);
+          this.ui.toast(item.name + ' vendido: +' + value + ' ouro');
+          this.fx.ring(this.player.pos, 0xffd36a, 1.2, 0.55, 0.7);
+          render();
+        },
         onClose: () => this.closeShop(),
       });
     };
 
     render();
   }
-
   openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
     this.openShop({
       npcName,
