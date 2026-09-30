@@ -170,7 +170,8 @@ export function createArea1(game) {
   decor.wall(23, 12.8, 23, 13.6, 3.8, r, { minH: 0.3 });
   // Side walls of the southern courtyard are gameplay walls too.
   // Keep the east-side gap at z 7.2..12.8 open for the secret passage.
-  collision.addBox(-23.8, -22.8, -21.5, 13.6);
+  // West side: leave the old tree doorway open around z 6..13.6.
+  collision.addBox(-23.8, -22.8, -21.5, 5.5);
   collision.addBox(22.8, 24.0, -21.5, 7.2);
   collision.addBox(22.8, 24.0, 12.8, 13.6);
   decor.wall(-23, 13.6, -6.6, 13.6, 2.6, r, { minH: 0.35 });
