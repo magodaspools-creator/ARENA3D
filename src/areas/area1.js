@@ -888,6 +888,7 @@ for (const [x, y, z, s, rot] of [
   vein.rotation.set(0, rot, 0.15);
   vein.castShadow = true;
   mineGroup.add(vein);
+  game.collision.addCircle(x, z, Math.max(0.32, s * 0.62), { projectiles: false });
 }
 
 // ---------- Stage 3 ambient prop pass ----------
@@ -1074,7 +1075,7 @@ for (const [x,z,sx,sy,sz,rot] of [
   [128.0,133.0,1.2,4.2,1.0,0.25],
   [121.0,129.8,1.0,3.2,1.1,0.1],
 ]) {
-  mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat);
+  mineRock(x,z,sx,sy,sz,rot,mineRockDarkMat, { colliderRadius: Math.max(0.45, Math.min(sx, sz) * 0.72) });
 }
 
 // Cave ceiling stalactites are visual only. They stop well above the player
@@ -1101,7 +1102,7 @@ for (const [x,z,s] of [
   [112.5,131.8,0.8],[116,127.5,0.65],[119,134,0.9],
   [126,127.8,0.7],[129,132,0.85],[123,134.2,0.65],
 ]) {
-  mineRock(x,z,s,0.7,s*0.9,r()*0.5,mineRockDarkMat);
+  mineRock(x,z,s,0.7,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.7 });
 }
 
 // A cold underground spring gives the chamber a distinct visual landmark.
