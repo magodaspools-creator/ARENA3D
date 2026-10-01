@@ -45,8 +45,9 @@ export class Player {
     // Keep the light in the scene even while inactive. Toggling a light on/off
     // changes Three.js' lighting program defines and can force a shader recompile
     // on the first cast, causing a visible frame hitch.
-    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 22, 1.35);
-    // Keep the spell light slightly above/forward so the character itself does not become the brightest object.\n    this.lightSpell.position.set(0, 0.35, 2.8);
+    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 32, 1.15);
+    // The spell light is a broad overhead source: stronger dungeon illumination without a visible hotspot beside the character.
+    this.lightSpell.position.set(0, 3.5, 0);
     this.game.scene.add(this.lightSpell);
 
     game.scene.add(this.root);
@@ -131,7 +132,7 @@ export class Player {
     if (this.lightSpellT > 0) {
       // The spell light is intentionally detached from the player rig so it illuminates
       // the dungeon around the character instead of making the character glow.
-      this.lightSpell.position.set(this.pos.x, 0.35, this.pos.z + 2.8);
+      this.lightSpell.position.set(this.pos.x, 3.5, this.pos.z);
       this.lightSpellT = Math.max(0, this.lightSpellT - dt);
       if (this.lightSpellT <= 0) {
         this.lightSpell.intensity = 0;
@@ -198,7 +199,7 @@ export class Player {
 
   castLightSpell() {
     this.lightSpellT = 10;
-    this.lightSpell.intensity = 18;
+    this.lightSpell.intensity = 30;
     this.game.ui.toast('Luz Arcana lançada por 10 segundos.');
     this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
   }
