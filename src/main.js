@@ -685,7 +685,12 @@ class Game {
     }
 
     if (p) {
-      this.rig.update(dt, p.pos, (this.state === 'play' || this.state === 'map-editor') && !this.inputLocked ? this.input : null);
+      if (this.state === 'map-editor' && this.mapEditor?.active) {
+        this.mapEditor.updateNavigation(dt);
+        this.rig.update(dt, this.mapEditor.cameraFocus, null);
+      } else {
+        this.rig.update(dt, p.pos, this.state === 'play' && !this.inputLocked ? this.input : null);
+      }
       this.moon.target.position.copy(p.pos);
       this.moon.position.copy(p.pos).add(this.moonOffset);
     }
