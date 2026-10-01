@@ -128,7 +128,10 @@ export class Player {
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
 
-    if (this.lightSpellT > 0) {\n      // The spell light is intentionally detached from the player rig so it illuminates\n      // the dungeon around the character instead of making the character glow.\n      this.lightSpell.position.set(this.pos.x, 0.35, this.pos.z + 2.8);
+    if (this.lightSpellT > 0) {
+      // The spell light is intentionally detached from the player rig so it illuminates
+      // the dungeon around the character instead of making the character glow.
+      this.lightSpell.position.set(this.pos.x, 0.35, this.pos.z + 2.8);
       this.lightSpellT = Math.max(0, this.lightSpellT - dt);
       if (this.lightSpellT <= 0) {
         this.lightSpell.intensity = 0;
