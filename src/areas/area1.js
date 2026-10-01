@@ -573,7 +573,7 @@ const mineSheetSprite = (texture, index, x, y, z, sx, sy, rotation = 0, opacity 
   const sprite = new THREE.Sprite(material);
   sprite.position.set(x, y, z);
   sprite.scale.set(sx, sy, 1);
-  sprite.rotation = rotation;
+  sprite.material.rotation = rotation;
   mineGroup.add(sprite);
   return sprite;
 };
