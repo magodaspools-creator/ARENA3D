@@ -677,7 +677,7 @@ scene.add(mineEntrance);
 // Underground ambient lighting: keep the mine dark and moody, but readable.
 // A cool base lift prevents the unlit corners from collapsing into black while
 // the warm lamps below remain the main visual accents.
-const mineAmbient = new THREE.HemisphereLight(0x71879a, 0x17120f, 1.05);
+const mineAmbient = new THREE.HemisphereLight(0x71879a, 0x17120f, 1.15);
 mineAmbient.position.set(110, 8, 118);
 mineGroup.add(mineAmbient);
 
@@ -1031,7 +1031,7 @@ const addHangingLamp = (x, z, y = 3.8, intensity = 3.5) => {
   glow.position.set(x, y - 0.02, z);
   mineGroup.add(glow);
 
-  const light = new THREE.PointLight(0xd89b54, intensity, 7, 1.8);
+  const light = new THREE.PointLight(0xd89b54, intensity, 7.5, 1.8);
   light.position.set(x, y - 0.05, z);
   mineGroup.add(light);
   mineLights.push(light);
@@ -1076,12 +1076,12 @@ const addMineTorch = (x, z, rot = 0, intensity = 4.2, range = 8.5) => {
 // Four torch stations replace the old seven broad point lights. They illuminate
 // the important junctions while leaving deeper stretches naturally darker.
 for (const [x, z, rot, intensity] of [
-  [104.0, 96.0, 0, 5.4],
-  [94.0, 113.0, Math.PI / 2, 5.0],
-  [127.0, 104.0, Math.PI, 5.4],
-  [136.0, 122.0, -Math.PI / 2, 5.4],
+  [104.0, 96.0, 0, 5.8],
+  [94.0, 113.0, Math.PI / 2, 5.4],
+  [127.0, 104.0, Math.PI, 5.8],
+  [136.0, 122.0, -Math.PI / 2, 5.8],
 ]) {
-  addMineTorch(x, z, rot, intensity, 8.5);
+  addMineTorch(x, z, rot, intensity, 9.0);
 }
 
 for (const [x, z, y, intensity] of [
