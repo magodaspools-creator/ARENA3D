@@ -656,6 +656,11 @@ export class MapEditor {
   findPlacementBlocker(candidate) {
     const candidateRadius = Math.max(0.15, (candidate.radius || 0.65) * (candidate.scale || 1));
     for (const existing of this.objects) {
+      // Walls are map geometry: adjacent wall segments are allowed to touch
+      // or overlap. The old circular blocker used the wall's gameplay radius
+      // and incorrectly rejected valid wall-to-wall placement.
+      if (candidate.kind === 'wall' && existing.kind === 'wall') continue;
+
       const existingRadius = Math.max(0.15, (existing.radius || 0.65) * (existing.scale || 1));
       const dx = candidate.x - existing.x;
       const dz = candidate.z - existing.z;
@@ -679,12 +684,12 @@ export class MapEditor {
     let visual;
     if (data.kind === 'terrain-atlas') {
       const texture = this.getKenneyDungeonTexture(data.atlasX, data.atlasY);
-      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, side: THREE.DoubleSide }));
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, transparent: true, alphaTest: 0.01, side: THREE.DoubleSide }));
       visual.rotation.x = -Math.PI / 2; visual.position.y = 0.025;
     } else if (data.kind === 'terrain') {
       const tool = TERRAIN.find((entry) => entry.terrainType === data.terrainType) || TERRAIN[0];
       const texture = this.getTerrainTexture(tool.terrainType);
-      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide }));
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1, transparent: true, alphaTest: 0.01, side: THREE.DoubleSide }));
       visual.rotation.x = -Math.PI / 2; visual.position.y = 0.025;
     } else if (data.kind === 'item') {
       const texture = this.getItemTexture(data.itemId);
