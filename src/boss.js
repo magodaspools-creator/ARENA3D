@@ -40,6 +40,7 @@ export class Boss {
 
     this.radius = 1.25;
     this.height = 4.8;
+    this.arena = null;
     this.maxHp = 1500;
     this.reset();
   }
@@ -53,7 +54,11 @@ export class Boss {
     this.phase = 1;
     this.pendingEnrage = false;
     this.leapFrom = null;
+    this.slamAt = null;
     this.summoned = 0;
+    this.roared = false;
+    this.struck = false;
+    this.waves = 0;
     this.facing = 0;
     this.root.rotation.y = 0;
     this.root.visible = true;
@@ -253,11 +258,24 @@ export class Boss {
 
     if (speed > 0) {
       g.collision.move(this.pos, Math.sin(this.facing) * speed * dt, Math.cos(this.facing) * speed * dt, this.radius);
+      this.constrainToArena();
       if (Math.random() < 0.08) g.fx.emit(V.copy(this.pos).setY(0.2), { count: 3, color: 0x6a5f55, speed: 1.2, life: 0.6, size: 0.6 });
     }
     this.root.rotation.y = this.facing;
     this.anim.update(dt, speed / 3.2);
     if (this.state !== 'dormant' && this.state !== 'dead') this.aura.intensity = 6 + Math.sin(g.time * 6) * 1.5;
+  }
+
+  constrainToArena() {
+    if (!this.arena) return;
+    const dx = this.pos.x - this.arena.x;
+    const dz = this.pos.z - this.arena.z;
+    const max = Math.max(0, this.arena.r - this.radius);
+    const d = Math.hypot(dx, dz);
+    if (d > max && d > 0.0001) {
+      this.pos.x = this.arena.x + (dx / d) * max;
+      this.pos.z = this.arena.z + (dz / d) * max;
+    }
   }
 
   toChase() {
@@ -297,6 +315,15 @@ export class Boss {
       this.tele.push(g.fx.telegraphCone(this.pos, this.facing, 6.2, 2.0, 0.9 * fast));
     } else if (choice === 'slam') {
       this.slamAt = p.pos.clone().setY(0);
+      if (this.arena) {
+        const dx = this.slamAt.x - this.arena.x, dz = this.slamAt.z - this.arena.z;
+        const max = Math.max(0, this.arena.r - 3.8);
+        const d = Math.hypot(dx, dz);
+        if (d > max && d > 0.0001) {
+          this.slamAt.x = this.arena.x + (dx / d) * max;
+          this.slamAt.z = this.arena.z + (dz / d) * max;
+        }
+      }
       this.tele.push(g.fx.telegraphCircle(this.slamAt, 3.8, 1.25 * fast));
     } else if (choice === 'ring') {
       this.waves = 0;
