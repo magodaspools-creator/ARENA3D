@@ -498,7 +498,7 @@ export class MapEditor {
       const count = this.el.querySelector('#map-editor-online-count');
       if (count) count.textContent = 'Seus mapas: ' + mine.length + '/3 · Comunidade: ' + all.length;
       this.renderOnlineMaps(all);
-      this.setOnlineStatus(mine.length >= 3 ? 'Você já usou os 3 slots. Apague um slot localmente ou use outro navegador para uma nova identidade.' : 'Você ainda pode publicar ' + (3 - mine.length) + ' mapa(s).');
+      this.setOnlineStatus(mine.length >= 3 ? 'Você já usou os 3 slots de publicação.' : 'Você ainda pode publicar ' + (3 - mine.length) + ' mapa(s).');
     } catch (error) {
       console.warn('[MapEditor] Shared maps failed:', error);
       this.setOnlineStatus('Não foi possível conectar aos mapas compartilhados.', true);
