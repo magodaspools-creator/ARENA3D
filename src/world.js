@@ -324,7 +324,7 @@ export function createGate(game, x, z, width = 7) {
       light.intensity = 20 * (1 - k);
       bars.position.y = -6.8 * smooth(k);
       if (k < 1 && Math.random() < 0.5) game.fx.emit(new THREE.Vector3(x + (Math.random() - 0.5) * width, 0.2, z), { count: 1, color: 0x8a7a66, speed: 1, up: 1, life: 1, size: 0.8 });
-      if (k >= 1) collider.enabled = false;
+      if (k >= 1) collider.setEnabled(false);
     },
   };
   return gate;
