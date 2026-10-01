@@ -1764,7 +1764,7 @@ const leaveMine = () => {
 
   const maren = new NPC(game, {
     name: 'Maren, a Vigia', x: -4.6, z: 35.2, facing: 0.6,
-    look: { skin: 0xc8977a, body: 0x4a3c30, legs: 0x2e261e, robe: 0x3e342a, hood: 0x2e3a3a, head: 'hood', accent: 0x9a8a6a },
+    look: { skin: 0xcaa27e, body: 0x3d4a42, legs: 0x26322f, robe: 0x34453d, hood: 0x263b36, head: 'hood', accent: 0xc4a85c, npcRole: 'watcher' },
     dialogue: () => {
       if (!prog.reached('braziers')) {
         return {
@@ -1790,7 +1790,7 @@ const leaveMine = () => {
   const merchant = new NPC(game, {
     name: 'Doran, o Mercador',
     x: 4.8, z: 35.2, facing: -0.6,
-    look: { skin: 0xb98268, body: 0x5a4636, legs: 0x30271f, robe: 0x6a5542, hood: 0x46372c, head: 'hood', accent: 0xd0a45f },
+    look: { skin: 0x8f5d43, body: 0x624a35, legs: 0x30231d, robe: 0x795c3f, hood: 0x4a3428, head: 'hood', accent: 0xd5aa58, npcRole: 'merchant', hat: 0x735536 },
     dialogue: () => ({
       lines: [
         'Tenho algumas mercadorias úteis para quem pretende atravessar as ruínas. Também mantenho alguns equipamentos simples para quem ainda está começando.',
