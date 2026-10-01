@@ -245,6 +245,12 @@ export function createArea2(game) {
       game.schedule(3.8, () => game.ui.toast('O portal trouxe você para um deserto que parece esconder algo sob a areia.'));
     },
 
+    // Area 1 owns progression on enemy kills. Area 2 is still a prototype,
+    // but the core game loop always calls this hook after an enemy dies.
+    // Keeping the hook here prevents the render loop from crashing on the
+    // first defeated enemy and leaving the whole screen visually frozen.
+    onEnemyKilled() {},
+
     update(dt,t) {
       entryPortal.update(dt,t);
       exitPortal.update(dt,t);
