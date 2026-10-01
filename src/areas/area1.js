@@ -2376,7 +2376,7 @@ const leaveMine = () => {
 
       if (portal.active && prog.id === 'portal' && Math.hypot(p.pos.x - portal.pos.x, p.pos.z - portal.pos.z) < 2) {
         prog.advance('complete');
-        game.completeArea();
+        game.enterArea2();
       }
 
       // ambience
