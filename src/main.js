@@ -415,6 +415,7 @@ class Game {
   }
 
   returnToCharacterSelect() {
+    this.saveWorldState();
     this.ui.hidePauseControls();
     this.ui.hidePause();
     this.ui.hideInventory();
