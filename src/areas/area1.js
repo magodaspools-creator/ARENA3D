@@ -657,7 +657,7 @@ const undergroundZones = [
   [119, 136, 99, 108],     // east corridor
   [134, 151, 102, 123],    // east chamber
   [126, 145, 116, 130],    // east lower chamber
-  [101, 126, 108, 121],    // south connector
+  [101, 126, 106, 121],    // south connector (overlaps hub with 2m of clearance)
   [94, 128, 116, 136],     // south hall
   [104, 130, 130, 139],    // deep corridor
   [109, 143, 136, 150],    // natural boss cavern
@@ -1228,7 +1228,8 @@ function addSupport(x, z, span = 4.8, rotY = 0) {
     const px = x + Math.cos(rotY) * side * half;
     const pz = z + Math.sin(rotY) * side * half;
     mineBox(0.42, 4.2, 0.42, px, 2.1, pz, mineWoodMat);
-    collision.addBox(px - 0.28, px + 0.28, pz - 0.28, pz + 0.28);
+    // Timber posts are decorative only. Their old colliders sat on corridor
+    // edges and could feel like invisible walls despite visible open space.
   }
   mineBox(span + 0.8, 0.45, 0.45, x, 4.05, z, mineWoodMat, rotY);
 };
