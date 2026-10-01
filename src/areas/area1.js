@@ -2393,15 +2393,6 @@ const leaveMine = () => {
 
       if (prog.reached('shrine') && boss.state === 'dormant' && p.pos.z < -31.5) startBossFight();
 
-      // The portal accepts both explicit interaction (E) and proximity.
-      // The progression check uses reached('portal') so a previous transition
-      // attempt cannot permanently lock the portal at the 'complete' stage.
-      if (portal.active && prog.reached('portal') && Math.hypot(p.pos.x - portal.pos.x, p.pos.z - portal.pos.z) < 2.6) {
-        prog.advance('complete');
-        game.enterArea2();
-        return;
-      }
-
       // ambience
       const fx = game.fx.particles;
       if (mine.active && !mine.loading) {
