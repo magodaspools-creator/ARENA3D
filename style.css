@@ -42,9 +42,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
   position: absolute;
   left: 18px;
   bottom: 18px;
-  width: 186px;
-  height: 186px;
-  padding: 3px;
+  width: 282px;
+  height: 282px;
+  padding: 4px;
   border: 1px solid rgba(232,199,122,.5);
   border-radius: 5px;
   background: rgba(5,8,11,.58);
@@ -55,13 +55,13 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 }
 #minimap-canvas {
   display: block;
-  width: 180px;
-  height: 180px;
+  width: 274px;
+  height: 274px;
   image-rendering: auto;
 }
 @media (max-width: 700px) {
-  #minimap { left: 10px; bottom: 10px; width: 136px; height: 136px; }
-  #minimap-canvas { width: 130px; height: 130px; }
+  #minimap { left: 10px; bottom: 10px; width: 218px; height: 218px; }
+  #minimap-canvas { width: 210px; height: 210px; }
 }
 
 /* ---------- HUD ---------- */
