@@ -70,6 +70,7 @@ class Game {
     this.deathBackpacks = [];
 
     this.area = createArea1(this);
+    this.returnArea = null;
     this.player = null;
     this.character = null;
 
@@ -187,6 +188,7 @@ class Game {
   enterArea2() {
     if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
 
+    this.returnArea = this.area;
     this.inputLocked = true;
     this.ui.hidePrompt();
     this.ui.fade(true);
@@ -195,6 +197,29 @@ class Game {
       const area2 = createArea2(this);
       this.area = area2;
       this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
+      this.rig.snap(this.player.pos);
+      this.area.onStart();
+    });
+
+    this.schedule(1.45, () => {
+      this.ui.fade(false);
+      this.inputLocked = false;
+    });
+  }
+
+  enterPreviousArea() {
+    if (this.state !== 'play' || this.inputLocked || !this.returnArea) return;
+
+    const target = this.returnArea;
+    this.inputLocked = true;
+    this.ui.hidePrompt();
+    this.dialogue.close(false);
+    this.ui.fade(true);
+
+    this.schedule(0.75, () => {
+      this.area = target;
+      const spawn = target.checkpoint || target.spawn;
+      this.player.place(spawn.x, spawn.z, spawn.facing);
       this.rig.snap(this.player.pos);
       this.area.onStart();
     });
