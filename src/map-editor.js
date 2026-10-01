@@ -619,11 +619,12 @@ export class MapEditor {
   }
 
   snapPlacement(value) {
-    // Walls are construction geometry: their placement must not be forced
-    // onto the editor's 2m gameplay grid. Short walls especially need fine
-    // positioning so they can be packed together to form curves.
-    const fineSnap = this.selectedTool?.kind === 'wall' || this.selectedTool?.kind === 'wall-short' ? 0.25 : this.core.gridSize;
-    return Math.round(Number(value) / fineSnap) * fineSnap;
+    // Construction walls are deliberately unsnapped. A fixed grid creates
+    // visible "teeth" when short segments are rotated into curves.
+    if (this.selectedTool?.kind === 'wall' || this.selectedTool?.kind === 'wall-short') {
+      return Number(value);
+    }
+    return this.core.snap(value);
   }
 
   place(x, z) {
@@ -642,8 +643,8 @@ export class MapEditor {
       scale: 1,
       collision: !!this.selectedTool.collision,
       radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'wall-short' ? 0.48 : (this.selectedTool.kind === 'stone' ? 0.42 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65)),
-      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'wall-short' ? 0.95 : (this.selectedTool.kind === 'stone' ? 0.95 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
-      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'wall-short' ? 0.9 : (this.selectedTool.kind === 'stone' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
+      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'wall-short' ? 0.75 : (this.selectedTool.kind === 'stone' ? 0.95 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'wall-short' ? 0.8 : (this.selectedTool.kind === 'stone' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
       height: this.selectedTool.kind === 'wall' || this.selectedTool.kind === 'wall-short' ? 2.6 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0.02 : 1.2,
     };
     const blockedBy = this.findPlacementBlocker(data);
