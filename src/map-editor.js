@@ -560,48 +560,68 @@ export class MapEditor {
 
     const wallWidth = stroke.wallWidth || this.getWallWidth();
     const maxTurnAngle = stroke.maxTurnAngle || (Math.PI / 12);
+    const maxAllowedTurn = THREE.MathUtils.degToRad(75);
+    const maxStepAngle = THREE.MathUtils.degToRad(20);
     const mousePoint = new THREE.Vector3(x, 0, z);
+    const startJoint = stroke.lastWall.endJoint;
 
-    // Consume the cursor movement in full wall-width chunks. Each chunk is
-    // anchored to lastWall.endJoint, never to the cursor itself.
-    let guard = 0;
-    while (guard++ < 128) {
-      const startJoint = stroke.lastWall.endJoint;
-      const toMouseX = mousePoint.x - startJoint.x;
-      const toMouseZ = mousePoint.z - startJoint.z;
-      const distance = Math.hypot(toMouseX, toMouseZ);
+    // Freehand consumes at most one wall per pointer-move. Never use a
+    // feedback loop to chase the cursor with repeated angular steps.
+    const toMouseX = mousePoint.x - startJoint.x;
+    const toMouseZ = mousePoint.z - startJoint.z;
+    const distance = Math.hypot(toMouseX, toMouseZ);
 
-      if (distance < wallWidth) break;
-
-      const targetAngle = Math.atan2(toMouseX, toMouseZ);
-      let angleDiff = targetAngle - stroke.lastWall.rotY;
-
-      // Normalize to [-PI, PI], then clamp the turn to 15 degrees.
-      angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-      const clampedDiff = Math.max(-maxTurnAngle, Math.min(maxTurnAngle, angleDiff));
-      const newRotY = stroke.lastWall.rotY + clampedDiff;
-
-      const dirX = Math.sin(newRotY);
-      const dirZ = Math.cos(newRotY);
-      const centerX = startJoint.x + dirX * (wallWidth / 2);
-      const centerZ = startJoint.z + dirZ * (wallWidth / 2);
-      const newEndJoint = new THREE.Vector3(
-        startJoint.x + dirX * wallWidth,
-        0,
-        startJoint.z + dirZ * wallWidth
-      );
-
-      stroke.segments.push({
-        x: centerX,
-        z: centerZ,
-        rotation: newRotY,
-      });
-
-      stroke.lastWall = {
-        endJoint: newEndJoint,
-        rotY: newRotY,
-      };
+    if (distance < wallWidth) {
+      this.renderWallStrokeGhosts(stroke.segments);
+      return;
     }
+
+    // The direction always comes directly from the current end joint to the
+    // cursor. The previous wall only defines the reference angle for the
+    // anti-spiral guard and the maximum smooth turn.
+    const targetAngle = Math.atan2(toMouseX, toMouseZ);
+    let angleDiff = targetAngle - stroke.lastWall.rotY;
+    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+
+    // Anti-spiral deadzone: a cursor that jumps too far to the side or behind
+    // the current wall is ignored until the user brings it back into the
+    // forward 75-degree cone. This prevents angular feedback from making
+    // circles while the pointer is effectively stationary.
+    if (Math.abs(angleDiff) > maxAllowedTurn) {
+      this.renderWallStrokeGhosts(stroke.segments);
+      return;
+    }
+
+    const clampedDiff = Math.max(-maxStepAngle, Math.min(maxStepAngle, angleDiff));
+    const newRotY = stroke.lastWall.rotY + clampedDiff;
+
+    const dirX = Math.sin(newRotY);
+    const dirZ = Math.cos(newRotY);
+    const centerX = startJoint.x + dirX * (wallWidth / 2);
+    const centerZ = startJoint.z + dirZ * (wallWidth / 2);
+    const newEndJoint = new THREE.Vector3(
+      startJoint.x + dirX * wallWidth,
+      0,
+      startJoint.z + dirZ * wallWidth
+    );
+
+    stroke.segments.push({
+      x: centerX,
+      z: centerZ,
+      rotation: newRotY,
+    });
+
+    // Advance the chain only after the new segment has passed all validation
+    // above. Actual scene objects are still instantiated on pointer-up.
+    stroke.lastWall = {
+      endJoint: newEndJoint,
+      rotY: newRotY,
+    };
+
+    // Keep the historical 15-degree value available as stroke metadata for
+    // compatibility, while the freehand brush now uses the requested 20°
+    // visual steering step.
+    stroke.maxTurnAngle = maxTurnAngle;
 
     this.renderWallStrokeGhosts(stroke.segments);
   }
