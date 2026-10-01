@@ -16,7 +16,7 @@ export function mat(color, o = {}) {
   cache.set(key, m);
   return m;
 }
-export const glow = (color, ei = 2.5) => mat(color, { emissive: color, ei });
+export const glow = (color, ei = 0.8) => mat(color, { emissive: color, ei: Math.min(ei, 1.15) });
 
 export function mesh(geo, material, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geo, material);
@@ -111,7 +111,7 @@ export function createHumanoid(look = {}) {
   torso.add(head);
   head.add(mesh(headGeo, mSkin));
   const eyes = [];
-  const eyeMat = L.eyes ? mat(L.eyes, { emissive: L.eyes, ei: 3 }) : mat(0x111111);
+  const eyeMat = L.eyes ? mat(L.eyes, { emissive: L.eyes, ei: 0.355 }) : mat(0x111111);
   for (const s of [-1, 1]) { const e = mesh(G.eye, eyeMat, s * 0.075, 0.02, 0.185); head.add(e); eyes.push(e); }
   addHeadgear(head, L);
 
@@ -125,7 +125,7 @@ export function createHumanoid(look = {}) {
     const hand = new THREE.Group();
     hand.position.y = -0.55;
     p.add(hand);
-    hand.add(mesh(handGeo, L.fistGlow ? glow(L.fistGlow, 2) : mSkin));
+    hand.add(mesh(handGeo, L.fistGlow ? glow(L.fistGlow, 0.75) : mSkin));
     if (L.shoulder) p.add(mesh(G.shoulder, mAcc, side * 0.02, 0.02, 0));
     return { p, hand };
   };
@@ -310,7 +310,7 @@ function addHeadgear(head, L) {
     case 'crown':
       for (let i = 0; i < 7; i++) {
         const a = (i / 7) * Math.PI * 2;
-        const c = mesh(new THREE.ConeGeometry(0.045, 0.24, 4), glow(L.crown ?? 0x9dffe0, 2.2), Math.sin(a) * 0.2, 0.24, Math.cos(a) * 0.2);
+        const c = mesh(new THREE.ConeGeometry(0.045, 0.24, 4), glow(L.crown ?? 0x9dffe0, 0.9), Math.sin(a) * 0.2, 0.24, Math.cos(a) * 0.2);
         c.rotation.set(Math.cos(a) * 0.3, 0, -Math.sin(a) * 0.3);
         head.add(c);
       }
@@ -341,7 +341,7 @@ export function createWeapon(type, look = {}) {
       g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 5), mat(0x1a1410)));
       g.add(mesh(new THREE.BoxGeometry(0.62, 0.08, 0.1), mat(0x3a3f48, { metal: 0.7, rough: 0.4 }), 0, 0.22, 0));
       g.add(mesh(new THREE.BoxGeometry(0.2, 1.7, 0.05), mat(0x2a2e36, { metal: 0.8, rough: 0.35 }), 0, 1.1, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.05, 1.5, 0.06), glow(0x9dffe0, 2), 0, 1.1, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.05, 1.5, 0.06), glow(0x9dffe0, 0.85), 0, 1.1, 0));
       g.rotation.x = Math.PI / 2 - 0.3;
       g.userData.rune = g.children[3];
       break;
@@ -351,7 +351,7 @@ export function createWeapon(type, look = {}) {
       g.add(s);
       const rim = mesh(new THREE.TorusGeometry(0.33, 0.03, 4, 8), mat(0xbfc7d5, { metal: 0.7, rough: 0.4 }), 0, 0.05, 0.16);
       g.add(rim);
-      g.add(mesh(new THREE.OctahedronGeometry(0.09), glow(0x8fb4ff, 1.5), 0, 0.05, 0.18));
+      g.add(mesh(new THREE.OctahedronGeometry(0.09), glow(0x8fb4ff, 0.65), 0, 0.05, 0.18));
       g.position.x = -0.06;
       break;
     }
@@ -360,13 +360,13 @@ export function createWeapon(type, look = {}) {
       geo.rotateZ(-Math.PI / 2);
       geo.rotateY(-Math.PI / 2);
       g.add(mesh(geo, mat(0x8a6a3a)));
-      g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.1, 3), glow(0xffe6a0, 1)));
+      g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.1, 3), glow(0xffe6a0, 0.45)));
       g.userData.tip = g;
       break;
     }
     case 'staff': {
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.8, 6), wood, 0, 0.45, 0));
-      const orb = mesh(new THREE.IcosahedronGeometry(0.13, 1), glow(look.orb ?? 0xffffff, 3), 0, 1.47, 0);
+      const orb = mesh(new THREE.IcosahedronGeometry(0.13, 1), glow(look.orb ?? 0xffffff, 0.95), 0, 1.47, 0);
       g.add(orb);
       for (let i = 0; i < 3; i++) {
         const a = (i / 3) * Math.PI * 2;
@@ -380,7 +380,7 @@ export function createWeapon(type, look = {}) {
     case 'lanternStaff': {
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.9, 6), wood, 0, 0.5, 0));
       g.add(mesh(new THREE.BoxGeometry(0.34, 0.04, 0.04), wood, 0.13, 1.4, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.16, 0.2, 0.16), glow(0xffc36a, 3), 0.28, 1.25, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.16, 0.2, 0.16), glow(0xffc36a, 0.9), 0.28, 1.25, 0));
       g.add(mesh(new THREE.ConeGeometry(0.13, 0.1, 4), mat(0x222222, { metal: 0.6 }), 0.28, 1.4, 0));
       break;
     }
@@ -391,16 +391,16 @@ export function createWeapon(type, look = {}) {
 /** Floating spectral enemy (no rig; animated by Enemy directly). */
 export function createWispModel() {
   const root = new THREE.Group();
-  const core = mesh(new THREE.IcosahedronGeometry(0.28, 1), mat(0xd9a0ff, { emissive: 0xb45aff, ei: 2.6 }), 0, 1.4, 0);
-  const shell = mesh(new THREE.IcosahedronGeometry(0.5, 1), mat(0x6a3a9a, { emissive: 0x6a2aa0, ei: 0.6, opacity: 0.35 }), 0, 1.4, 0);
+  const core = mesh(new THREE.IcosahedronGeometry(0.28, 1), mat(0xd9a0ff, { emissive: 0xb45aff, ei: 1.0 }), 0, 1.4, 0);
+  const shell = mesh(new THREE.IcosahedronGeometry(0.5, 1), mat(0x6a3a9a, { emissive: 0x6a2aa0, ei: 0.35, opacity: 0.35 }), 0, 1.4, 0);
   shell.castShadow = false;
-  const tail = mesh(new THREE.ConeGeometry(0.34, 1.0, 7), mat(0x4a2a6a, { emissive: 0x5a1a90, ei: 0.5, opacity: 0.3 }), 0, 0.8, 0);
+  const tail = mesh(new THREE.ConeGeometry(0.34, 1.0, 7), mat(0x4a2a6a, { emissive: 0x5a1a90, ei: 0.3, opacity: 0.3 }), 0, 0.8, 0);
   tail.rotation.x = Math.PI;
   tail.castShadow = false;
   root.add(core, shell, tail);
   const shards = [];
   for (let i = 0; i < 3; i++) {
-    const s = mesh(new THREE.OctahedronGeometry(0.09), glow(0xe0b0ff, 2), 0, 1.4, 0);
+    const s = mesh(new THREE.OctahedronGeometry(0.09), glow(0xe0b0ff, 0.7), 0, 1.4, 0);
     root.add(s);
     shards.push(s);
   }
