@@ -546,6 +546,8 @@ export class MapEditor {
 
     // Sincroniza o ponteiro no instante exato do clique.
     this.core.updatePointer(event);
+    // O raycaster legado de seleção usa as mesmas coordenadas NDC do Core.
+    this.raycaster.setFromCamera(this.core.pointer, this.camera);
 
     // Shift + clique ou botão direito remove o objeto atingido.
     if (event.button === 2 || event.shiftKey) {
