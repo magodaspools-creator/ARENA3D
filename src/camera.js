@@ -14,6 +14,7 @@ export class CameraRig {
     this.shakeAmt = 0;
     this.focus = null;
     this.focusT = 0;
+    this.editorPitchOffset = 0;
     this._v = new THREE.Vector3();
     this._r = new THREE.Vector3();
   }
@@ -35,7 +36,7 @@ export class CameraRig {
         this.yaw -= input.dragDX * 0.006;
         this.zoom = THREE.MathUtils.clamp(this.zoom + input.wheel * 0.012, 9, 27);
       }
-      goalPitch = 0.93; goalDist = this.zoom;
+      goalPitch = 0.93 + (this.editorPitchOffset || 0); goalDist = this.zoom;
       desired.copy(this.focusT > 0 ? this.focus : followPos).setY(1);
     }
     this.focusT -= dt;
