@@ -451,9 +451,12 @@ export class MapEditor {
         transparent: true,
         depthWrite: false,
         alphaTest: 0.04,
-        opacity: 0.58,
+        // Never show Three.js's 1x1 white texture while the real item image
+        // is still loading/being processed.
+        opacity: 0,
       });
       this.applyWhiteCutout(material);
+      this.bindItemTextureReady(texture, material, 0.58);
       visual = new THREE.Sprite(material);
       visual.scale.set(1.4, 1.4, 1);
       visual.position.y = 0.75;
@@ -630,8 +633,11 @@ export class MapEditor {
         transparent: true,
         depthWrite: false,
         alphaTest: 0.04,
+        // Avoid a white placeholder square before the PNG is ready.
+        opacity: 0,
       });
       this.applyWhiteCutout(material);
+      this.bindItemTextureReady(texture, material, 1);
       visual = new THREE.Sprite(material);
       visual.scale.set(1.4, 1.4, 1);
       visual.position.y = 0.75;
@@ -709,13 +715,43 @@ export class MapEditor {
   getItemTexture(itemId) {
     if (this.itemTextures.has(itemId)) return this.itemTextures.get(itemId);
     const item = ITEMS[itemId];
-    const texture = this.textureLoader.load(item.sprite, (loaded) => this.removeWhiteSpriteBackground(loaded));
+    const texture = this.textureLoader.load(
+      item.sprite,
+      (loaded) => {
+        this.removeWhiteSpriteBackground(loaded);
+        const state = loaded.userData || {};
+        state.itemReady = true;
+        loaded.userData = state;
+        for (const callback of state.itemReadyCallbacks || []) callback();
+        state.itemReadyCallbacks = [];
+      },
+      undefined,
+      () => {
+        // Keep failed/cross-origin assets invisible instead of showing
+        // Three.js's default white placeholder square.
+        texture.userData = { ...(texture.userData || {}), itemReady: false, itemLoadFailed: true };
+      },
+    );
+    texture.userData = { itemReady: false, itemReadyCallbacks: [] };
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.premultiplyAlpha = false;
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
     this.itemTextures.set(itemId, texture);
     return texture;
+  }
+
+  bindItemTextureReady(texture, material, opacity) {
+    const show = () => {
+      if (texture.userData?.itemLoadFailed) return;
+      material.opacity = opacity;
+      material.needsUpdate = true;
+    };
+    if (texture.userData?.itemReady) show();
+    else if (!texture.userData?.itemLoadFailed) {
+      texture.userData.itemReadyCallbacks ||= [];
+      texture.userData.itemReadyCallbacks.push(show);
+    }
   }
 
   removeWhiteSpriteBackground(texture) {
