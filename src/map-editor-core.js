@@ -19,6 +19,7 @@ export class MapEditorCore {
     gridSize = 2,
     createMesh,
     collisionAdapter = null,
+    objectContainer = null,
     resolveY = null,
     disposeObject = null
   }) {
@@ -36,6 +37,7 @@ export class MapEditorCore {
     this.gridSize = gridSize;
     this.createMesh = createMesh;
     this.collisionAdapter = collisionAdapter;
+    this.objectContainer = objectContainer || scene;
 
     // Y desacoplado (padrão: Y = 0).
     this.resolveY = resolveY || (() => 0);
@@ -326,7 +328,7 @@ export class MapEditorCore {
       rotY: this.ghostRotation
     };
 
-    const object = this.createMesh(data.type);
+    const object = this.createMesh(data);
     if (!object) return;
 
     object.position.set(data.x, data.y, data.z);
@@ -334,7 +336,7 @@ export class MapEditorCore {
     object.userData.editorObject = true;
     object.userData.mapData = data;
 
-    this.scene.add(object);
+    this.objectContainer.add(object);
     this.objects.set(object, data);
     this.mapData.push(data);
 
@@ -350,12 +352,8 @@ export class MapEditorCore {
     const data = this.objects.get(object);
     if (!data) return;
 
-    if (this.collisionAdapter?.remove) {
-      this.collisionAdapter.remove(object, data);
-    }
-
-    this.scene.remove(object);
-    this.objects.delete(object);
+    this.removeObject(object);
+    return;
 
     const index = this.mapData.indexOf(data);
     if (index !== -1) {
@@ -403,27 +401,25 @@ export class MapEditorCore {
   addFromData(data) {
     if (!data || typeof data.type !== 'string') return null;
 
-    const object = this.createMesh(data.type);
-    if (!object) return null;
+    const normalized = { ...data };
+    normalized.x = Number.isFinite(Number(normalized.x)) ? Number(normalized.x) : 0;
+    normalized.y = Number.isFinite(Number(normalized.y)) ? Number(normalized.y) : 0;
+    normalized.z = Number.isFinite(Number(normalized.z)) ? Number(normalized.z) : 0;
+    normalized.rotation = Number.isFinite(Number(normalized.rotation)) ? Number(normalized.rotation) : 0;
 
-    const normalized = {
-      type: data.type,
-      x: Number.isFinite(Number(data.x)) ? Number(data.x) : 0,
-      y: Number.isFinite(Number(data.y)) ? Number(data.y) : 0,
-      z: Number.isFinite(Number(data.z)) ? Number(data.z) : 0,
-      rotY: Number.isFinite(Number(data.rotY)) ? Number(data.rotY) : 0
-    };
+    const object = this.createMesh(normalized);
+    if (!object) return null;
 
     object.position.set(
       normalized.x,
       normalized.y,
       normalized.z
     );
-    object.rotation.y = normalized.rotY;
+    object.rotation.y = normalized.rotation;
     object.userData.editorObject = true;
     object.userData.mapData = normalized;
 
-    this.scene.add(object);
+    this.objectContainer.add(object);
     this.objects.set(object, normalized);
     this.mapData.push(normalized);
 
@@ -436,7 +432,7 @@ export class MapEditorCore {
 
   clear() {
     for (const object of this.objects.keys()) {
-      this.scene.remove(object);
+      this.objectContainer.remove(object);
 
       if (this.customDispose) {
         this.customDispose(object);
