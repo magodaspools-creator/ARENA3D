@@ -61,22 +61,28 @@ export class MapEditor {
     this.ground = game.ground;
     this.raycaster = new THREE.Raycaster();
 
-    // Núcleo modular: nesta primeira integração ele assume apenas o
-    // posicionamento/raycast/snap. A UI, Supabase e regras do editor continuam
-    // sob responsabilidade desta classe.
-    this.core = new MapEditorCore({
-      scene: this.scene,
-      camera: this.camera,
-      renderer: this.renderer,
-      gridSize: 2,
-      createMesh: () => new THREE.Group(),
-      resolveY: () => 0,
-    });
-
+    // O Core agora é o dono do ciclo de vida dos Object3D do editor.
     this.group = new THREE.Group();
     this.group.name = 'MapEditorObjects';
     this.scene.add(this.group);
 
+    this.core = new MapEditorCore({
+      scene: this.scene,
+      camera: this.camera,
+      renderer: this.renderer,
+      objectContainer: this.group,
+      gridSize: 2,
+      createMesh: (data) => this.createObjectVisual(typeof data === 'string' ? { kind: data, id: null, scale: 1 } : data),
+      collisionAdapter: {
+        add: (object, data) => this.applyCollision(data),
+        remove: (object, data) => this.removeCollision(data),
+        clear: () => {
+          for (const data of this.objects) this.removeCollision(data);
+        },
+      },
+      resolveY: () => 0,
+      disposeObject: (object) => this.disposeEditorObjectResources(object),
+    });
     this.objects = [];
     this.selected = null;
     this.active = false;
@@ -553,7 +559,7 @@ export class MapEditor {
     if (event.button === 2 || event.shiftKey) {
       if (event.button === 2) event.preventDefault();
 
-      const hits = this.raycaster.intersectObjects(this.group.children, true);
+      const hits = this.core.raycaster.intersectObjects([...this.core.objects.keys()], true);
       const hitObject = hits.find((hit) => {
         let o = hit.object;
         while (o && o !== this.group) {
@@ -582,7 +588,7 @@ export class MapEditor {
     const point = this.getGroundPointFromEvent(event);
     if (!point) return;
 
-    const hits = this.raycaster.intersectObjects(this.group.children, true);
+    const hits = this.core.raycaster.intersectObjects([...this.core.objects.keys()], true);
     const hitObject = hits.find((hit) => {
       let o = hit.object;
       while (o && o !== this.group) {
@@ -660,46 +666,34 @@ export class MapEditor {
   }
 
   createObject(data) {
-    const root = new THREE.Group();
-    root.position.set(data.x, data.y, data.z);
-    root.rotation.y = data.rotation;
-    root.scale.setScalar(data.scale);
-    root.userData.editorId = data.id;
+    const object = this.core.addObject(data);
+    if (!object) return null;
+    this.refreshHelper(data);
+    return object;
+  }
 
+  createObjectVisual(data) {
+    const root = new THREE.Group();
+    root.userData.editorId = data.id;
+    root.userData.mapData = data;
     let visual;
     if (data.kind === 'terrain-atlas') {
       const texture = this.getKenneyDungeonTexture(data.atlasX, data.atlasY);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, side: THREE.DoubleSide }));
-      visual.rotation.x = -Math.PI / 2;
-      visual.position.y = 0.025;
+      visual.rotation.x = -Math.PI / 2; visual.position.y = 0.025;
     } else if (data.kind === 'terrain') {
       const tool = TERRAIN.find((entry) => entry.terrainType === data.terrainType) || TERRAIN[0];
       const texture = this.getTerrainTexture(tool.terrainType);
-      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({
-        map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide,
-      }));
-      visual.rotation.x = -Math.PI / 2;
-      visual.position.y = 0.025;
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide }));
+      visual.rotation.x = -Math.PI / 2; visual.position.y = 0.025;
     } else if (data.kind === 'item') {
       const texture = this.getItemTexture(data.itemId);
-      const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        depthWrite: false,
-        alphaTest: 0.04,
-        // Avoid a white placeholder square before the PNG is ready.
-        opacity: 0,
-      });
-      this.applyWhiteCutout(material);
-      this.bindItemTextureReady(texture, material, 1);
-      visual = new THREE.Sprite(material);
-      visual.scale.set(1.4, 1.4, 1);
-      visual.position.y = 0.75;
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04, opacity: 0 });
+      this.applyWhiteCutout(material); this.bindItemTextureReady(texture, material, 1);
+      visual = new THREE.Sprite(material); visual.scale.set(1.4, 1.4, 1); visual.position.y = 0.75;
     } else if (data.kind === 'stone') {
       visual = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ color: 0x5b5e64, roughness: 1, flatShading: true }));
-      visual.scale.set(0.95, 0.8, 0.9);
-      visual.position.y = 0.55;
-      visual.rotation.set(0.1, 0.3, -0.08);
+      visual.scale.set(0.95, 0.8, 0.9); visual.position.y = 0.55; visual.rotation.set(0.1, 0.3, -0.08);
     } else if (data.kind === 'wall') {
       visual = new THREE.Mesh(new THREE.BoxGeometry(data.width, data.height, data.depth), new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 1, flatShading: true }));
       visual.position.y = data.height / 2;
@@ -711,20 +705,17 @@ export class MapEditor {
       visual.position.y = 1.35;
     } else if (data.kind === 'ore') {
       visual = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), new THREE.MeshStandardMaterial({ color: 0x4d7185, roughness: 0.75, metalness: 0.15, flatShading: true }));
-      visual.position.y = 0.55;
-      visual.scale.set(1.0, 0.7, 0.9);
+      visual.position.y = 0.55; visual.scale.set(1.0, 0.7, 0.9);
     }
-
-    if (!visual) return;
+    if (!visual) return null;
     visual.userData.editorId = data.id;
-    root.add(visual);
-    root.userData.visual = visual;
-    this.group.add(root);
-
-    this.applyCollision(data);
-    this.refreshHelper(data);
+    root.add(visual); root.userData.visual = visual; root.scale.setScalar(data.scale || 1);
+    return root;
   }
 
+  disposeEditorObjectResources(object) {
+    object.traverse((o) => { if (o.material) o.material.dispose?.(); if (o.geometry) o.geometry.dispose?.(); });
+  }
   getKenneyDungeonTexture(col, row) {
     const key = String(col) + ':' + String(row);
     if (this.terrainTextures.has('kenney:' + key)) return this.terrainTextures.get('kenney:' + key);
@@ -970,17 +961,8 @@ export class MapEditor {
   deleteSelected() {
     if (!this.selected) return this.setStatus('Selecione um objeto primeiro.');
     const id = this.selected.id;
-    this.removeCollision(this.selected);
     const root = this.group.children.find((o) => o.userData?.editorId === id);
-    if (root) {
-      root.traverse((o) => {
-        if (o.material?.map && o.material.map !== this.itemTextures.get(this.selected?.itemId)) {
-          o.material.dispose?.();
-        }
-        o.geometry?.dispose?.();
-      });
-      this.group.remove(root);
-    }
+    if (root) this.core.removeObject(root);
     const helper = this.collisionHelpers.get(id);
     if (helper) {
       helper.geometry.dispose();
