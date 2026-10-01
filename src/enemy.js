@@ -332,7 +332,8 @@ export class Enemy {
       this.anim.update(dt, spd / def.speed);
       const e = this.state === 'windup' ? 7 : 3;
       for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
-    } else this.animateWisp(dt);
+    } else if (this.spider) this.animateSpider(dt, spd / def.speed);
+    else this.animateWisp(dt);
 
     this.barT -= dt;
     const showBar = this.barT > 0 || this.state === 'chase' || this.state === 'windup';
