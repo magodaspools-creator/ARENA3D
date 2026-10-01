@@ -150,7 +150,7 @@ export class Boss {
       case 'waking': {
         const k = Math.min(1, this.stateT / 2.2);
         this.anim.kneel = 1 - k * k;
-        this.aura.intensity = k * 18;
+        this.aura.intensity = k * 8;
         this.facing = lerpAngle(this.facing, toPlayer, dt * 2);
         if (this.stateT > 1.2 && !this.roared) {
           this.roared = true;
@@ -237,7 +237,7 @@ export class Boss {
         const k = Math.min(1, this.stateT / 3);
         this.anim.kneel = Math.min(1, this.stateT * 1.5);
         this.pos.y = -k * k * 1.5;
-        this.aura.intensity = 18 * (1 - k);
+        this.aura.intensity = 8 * (1 - k);
         if (Math.random() < 0.8) {
           g.fx.particles.spawn(this.pos.x + (Math.random() - 0.5) * 3, 1 + Math.random() * 3, this.pos.z + (Math.random() - 0.5) * 3,
             0, 2 + Math.random() * 2, 0, Math.random() < 0.5 ? 0x9dffe0 : 0xffe39a, 1.4, 0.6, 0, 0.5);
@@ -257,7 +257,7 @@ export class Boss {
     }
     this.root.rotation.y = this.facing;
     this.anim.update(dt, speed / 3.2);
-    if (this.state !== 'dormant' && this.state !== 'dead') this.aura.intensity = 14 + Math.sin(g.time * 6) * 4;
+    if (this.state !== 'dormant' && this.state !== 'dead') this.aura.intensity = 6 + Math.sin(g.time * 6) * 1.5;
   }
 
   toChase() {
