@@ -1,0 +1,42 @@
+name: Import Kenney Dungeon Sprites
+
+on:
+  push:
+    branches: [feat/rpg-core-foundation]
+    paths:
+      - ".github/workflows/import-kenney-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Kenney Roguelike Caves & Dungeons
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kenney
+          curl -L --fail --retry 3 -o /tmp/kenney/pack.zip             "https://kenney.nl/media/pages/assets/roguelike-caves-dungeons/5195ceb8ca-1677694831/kenney_roguelike-caves-dungeons.zip"
+          unzip -q /tmp/kenney/pack.zip -d /tmp/kenney/unpacked
+          mkdir -p assets/map-editor/packs/kenney-roguelike-caves-dungeons
+          cp /tmp/kenney/unpacked/Spritesheet/roguelikeDungeon_transparent.png \
+            assets/map-editor/packs/kenney-roguelike-caves-dungeons/
+          cp /tmp/kenney/unpacked/License.txt \
+            assets/map-editor/packs/kenney-roguelike-caves-dungeons/
+
+      - name: Commit imported sprites
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/map-editor/packs/kenney-roguelike-caves-dungeons
+          if git diff --cached --quiet; then
+            echo "Kenney sprites already imported."
+            exit 0
+          fi
+          git commit -m "Import Kenney dungeon sprite pack"
+          git push
