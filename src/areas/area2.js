@@ -273,8 +273,7 @@ export function createArea2(game) {
     name: 'Azhur, o Guardião do Sol Sepultado',
     onSummon: () => {
       for (const [x, z] of [[142, 38], [158, 38]]) {
-        const e = spawn('hollow', x, z, 'area2-boss-add');
-        e.aggro();
+        spawn('hollow', x, z, 'area2-boss-add');
       }
     },
     onDefeated: () => {
@@ -291,6 +290,7 @@ export function createArea2(game) {
       game.rig.cinematic(exitPortal.pos, 3);
       game.schedule(1.0, () => game.ui.banner('O SOL FOI SEPULTADO', 'Azhur caiu. O portal de retorno foi despertado.', 'victory', 4));
       game.schedule(3.2, () => game.ui.hideBoss());
+      game.saveWorldState?.();
       game.ui.toast('O Guardião tombou. Um portal se abriu no extremo norte do deserto.');
     },
   });
@@ -366,9 +366,22 @@ export function createArea2(game) {
     // The main game calls this hook on death before restoring the area's
     // checkpoint. Keeping it explicit makes Area 2 safe even though it has
     // no area-specific respawn sequence yet.
+    restoreState(saved = null) {
+      if (!saved?.bossDefeated) return;
+      desertBoss.alive = false;
+      desertBoss.hp = 0;
+      desertBoss.state = 'dead';
+      desertBoss.root.visible = false;
+      desertBoss.anim.revive();
+      exitPortal.restoreActive();
+      game.ui.hideBoss();
+    },
+
     onRespawn() {
-      if (desertBoss.state === 'active' || desertBoss.state === 'enraged') {
+      // A defeated boss stays defeated. Only an interrupted fight is reset.
+      if (desertBoss.state !== 'dormant' && desertBoss.state !== 'dead') {
         desertBoss.reset();
+        game.ui.hideBoss();
       }
     },
 
