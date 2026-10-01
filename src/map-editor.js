@@ -99,6 +99,7 @@ export class MapEditor {
     this.cameraFocus = new THREE.Vector3();
     this.navKeys = new Set();
     this.edgePointer = { x: 0, y: 0, active: false };
+    this.wallStroke = null;
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
     this.terrainTextures = new Map();
@@ -125,6 +126,7 @@ export class MapEditor {
     window.addEventListener('keyup', (e) => {
       this.navKeys.delete(e.code);
     });
+    window.addEventListener('pointerup', (e) => this.onPointerUp(e));
   }
 
   get kenneyTools() {
@@ -442,8 +444,87 @@ export class MapEditor {
       return;
     }
 
-    // Ghost/preview acompanha o grid do Core, não coordenadas brutas do mouse.
-    this.updatePreview(this.snapPlacement(point.x), this.snapPlacement(point.z));
+    const x = this.snapPlacement(point.x);
+    const z = this.snapPlacement(point.z);
+
+    // Wall tools behave like a continuous construction brush while the
+    // mouse button is held. Each segment follows the tangent of the drag,
+    // so straight, diagonal and circular strokes are built automatically.
+    if (this.wallStroke?.active) {
+      this.continueWallStroke(x, z);
+      return;
+    }
+
+    this.updatePreview(x, z);
+  }
+
+  onPointerUp(event) {
+    if (!this.wallStroke?.active) return;
+    if (event?.button !== undefined && event.button !== 0) return;
+    this.wallStroke.active = false;
+    this.wallStroke.lastX = null;
+    this.wallStroke.lastZ = null;
+    this.setStatus('Sequência de parede concluída.');
+  }
+
+  beginWallStroke(x, z) {
+    this.wallStroke = {
+      active: true,
+      lastX: x,
+      lastZ: z,
+      spacing: this.selectedTool.kind === 'wall-short' ? 0.52 : 1.9,
+    };
+    this.placeWallStrokeSegment(x, z, x + Math.cos(this.placementRotation), z + Math.sin(this.placementRotation));
+  }
+
+  continueWallStroke(x, z) {
+    const stroke = this.wallStroke;
+    if (!stroke?.active) return;
+
+    let dx = x - stroke.lastX;
+    let dz = z - stroke.lastZ;
+    let distance = Math.hypot(dx, dz);
+    if (distance < stroke.spacing) return;
+
+    const angle = Math.atan2(dz, dx);
+    const ux = dx / distance;
+    const uz = dz / distance;
+
+    while (distance >= stroke.spacing) {
+      const nx = stroke.lastX + ux * stroke.spacing;
+      const nz = stroke.lastZ + uz * stroke.spacing;
+      this.placeWallStrokeSegment(nx, nz, nx + ux, nz + uz);
+      stroke.lastX = nx;
+      stroke.lastZ = nz;
+      dx = x - stroke.lastX;
+      dz = z - stroke.lastZ;
+      distance = Math.hypot(dx, dz);
+    }
+
+    this.updatePreview(x, z);
+  }
+
+  placeWallStrokeSegment(x, z, tx, tz) {
+    const angle = Math.atan2(tz - z, tx - x);
+    const data = {
+      id: 'editor-' + (++this.seq),
+      kind: this.selectedTool.kind,
+      x: Number(x.toFixed(3)),
+      y: 0,
+      z: Number(z.toFixed(3)),
+      rotation: angle,
+      scale: 1,
+      collision: !!this.selectedTool.collision,
+      radius: this.selectedTool.kind === 'wall' ? 1.35 : 0.48,
+      width: this.selectedTool.kind === 'wall' ? 3.2 : 0.75,
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : 0.8,
+      height: 2.6,
+    };
+
+    // Wall-to-wall overlap is intentional for clean joins and corners.
+    if (this.findPlacementBlocker(data)) return;
+    this.objects.push(data);
+    this.createObject(data);
   }
 
   updatePreviewFromPointer() {
@@ -589,6 +670,17 @@ export class MapEditor {
 
     const point = this.getGroundPointFromEvent(event);
     if (!point) return;
+
+    const strokeTool = this.selectedTool?.kind === 'wall' || this.selectedTool?.kind === 'wall-short';
+    if (strokeTool) {
+      this.hidePreview();
+      this.beginWallStroke(this.snapPlacement(point.x), this.snapPlacement(point.z));
+      if (typeof event.target?.setPointerCapture === 'function') {
+        try { event.target.setPointerCapture(event.pointerId); } catch {}
+      }
+      this.setStatus('Construindo parede — arraste sem soltar. Solte para finalizar.');
+      return;
+    }
 
     const hits = this.core.raycaster.intersectObjects([...this.core.objects.keys()], true);
     const hitObject = hits.find((hit) => {
