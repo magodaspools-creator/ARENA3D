@@ -188,10 +188,10 @@ export function createHumanoid(look = {}) {
 
     // Rounded arms follow the existing arm pivots, so walking/attacks still animate.
     const armMat = L.bareArms ? skin : cloth;
-    armL.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
-    armR.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
-    armL.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
-    armR.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
+    aL.p.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
+    aR.p.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
+    aL.p.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
+    aR.p.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
 
     if (L.npcRole === 'watcher') {
       // Maren: fitted field coat + short shoulder mantle + hood. Keep the
@@ -242,7 +242,6 @@ export function createHumanoid(look = {}) {
       const band = smooth(new THREE.TorusGeometry(0.235, 0.018, 5, 14), leather, 0, 0.31, -0.01);
       head.add(band);
     }
-  }
 
   return { root, body, torso, head, legL, legR, armL: aL.p, armR: aR.p, handL: aL.hand, handR: aR.hand, eyes, cape };
 }
