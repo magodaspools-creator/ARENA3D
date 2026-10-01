@@ -150,6 +150,10 @@ export class MapEditor {
 
         <div id="map-editor-palette" class="map-editor-palette"></div>
 
+        <div class="map-editor-select-row">
+          <button type="button" id="map-editor-select-tool" class="map-editor-select-tool">Selecionar</button>
+        </div>
+
         <div class="map-editor-selected" id="map-editor-selected">Nenhum objeto selecionado.</div>
 
         <div class="map-editor-actions">
@@ -204,6 +208,7 @@ export class MapEditor {
     root.querySelectorAll('[data-editor-tab]').forEach((button) => {
       button.onclick = () => this.setPalette(button.dataset.editorTab);
     });
+    root.querySelector('#map-editor-select-tool').onclick = () => this.setEditorTool('select');
     root.querySelectorAll('[data-editor-action]').forEach((button) => {
       button.onclick = () => this.action(button.dataset.editorAction);
     });
@@ -277,6 +282,18 @@ export class MapEditor {
     this.renderPalette();
   }
 
+  setEditorTool(toolId) {
+    if (toolId === 'select') {
+      this.selectedTool = { id: 'select', name: 'Selecionar', kind: 'select', collision: false };
+      this.hidePreview();
+      this.el.querySelector('#map-editor-select-tool')?.classList.add('active');
+      this.setStatus('Modo Selecionar: clique em um objeto para editar.');
+      this.renderPalette();
+      return;
+    }
+    this.el.querySelector('#map-editor-select-tool')?.classList.remove('active');
+  }
+
   renderPalette() {
     const palette = this.el.querySelector('#map-editor-palette');
     const tools = this.palette === 'items' ? this.itemTools : this.palette === 'world' ? BUILTIN : this.palette === 'kenney' ? this.kenneyTools : TERRAIN;
@@ -297,6 +314,7 @@ export class MapEditor {
         const next = tools.find((tool) => tool.id === id);
         if (!next) return;
         this.selectedTool = next;
+        this.el.querySelector('#map-editor-select-tool')?.classList.remove('active');
         this.select(null);
         this.renderPalette();
         this.setStatus('Selecionado: ' + next.name + ' — mova o mouse para posicionar.');
@@ -511,6 +529,12 @@ export class MapEditor {
       }
     }
 
+    if (this.selectedTool.kind === 'select') {
+      this.select(null);
+      this.setStatus('Nenhum objeto selecionado.');
+      return;
+    }
+
     this.place(point.x, point.z);
   }
 
@@ -648,12 +672,74 @@ export class MapEditor {
   getItemTexture(itemId) {
     if (this.itemTextures.has(itemId)) return this.itemTextures.get(itemId);
     const item = ITEMS[itemId];
-    const texture = this.textureLoader.load(item.sprite);
+    const texture = this.textureLoader.load(item.sprite, (loaded) => this.removeWhiteSpriteBackground(loaded));
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
     this.itemTextures.set(itemId, texture);
     return texture;
+  }
+
+  removeWhiteSpriteBackground(texture) {
+    const image = texture?.image;
+    if (!image || texture.userData?.whiteBackgroundRemoved) return;
+
+    try {
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      if (!width || !height) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(image, 0, 0, width, height);
+
+      const pixels = ctx.getImageData(0, 0, width, height);
+      const data = pixels.data;
+      const visited = new Uint8Array(width * height);
+      const queue = [];
+      const isWhite = (index) => data[index + 3] > 8
+        && data[index] >= 245 && data[index + 1] >= 245 && data[index + 2] >= 245;
+
+      const push = (x, y) => {
+        if (x < 0 || y < 0 || x >= width || y >= height) return;
+        const p = y * width + x;
+        if (visited[p]) return;
+        visited[p] = 1;
+        const i = p * 4;
+        if (!isWhite(i)) return;
+        queue.push(p);
+      };
+
+      for (let x = 0; x < width; x++) {
+        push(x, 0);
+        push(x, height - 1);
+      }
+      for (let y = 0; y < height; y++) {
+        push(0, y);
+        push(width - 1, y);
+      }
+
+      for (let head = 0; head < queue.length; head++) {
+        const p = queue[head];
+        data[p * 4 + 3] = 0;
+        const x = p % width;
+        const y = Math.floor(p / width);
+        push(x - 1, y);
+        push(x + 1, y);
+        push(x, y - 1);
+        push(x, y + 1);
+      }
+
+      ctx.putImageData(pixels, 0, 0);
+      texture.image = canvas;
+      texture.needsUpdate = true;
+      texture.userData = { ...(texture.userData || {}), whiteBackgroundRemoved: true };
+    } catch (error) {
+      console.warn('[MapEditor] Não foi possível remover fundo branco do sprite:', error);
+    }
   }
 
   applyCollision(data) {
