@@ -597,7 +597,14 @@ const mineRock = (x, z, sx, sy, sz, rot = 0, mat = mineRockMat, opts = {}) => {
   m.castShadow = false;
   m.receiveShadow = true;
   mineGroup.add(m);
-  if (opts.colliderRadius) game.collision.addCircle(x, z, opts.colliderRadius, { projectiles: false });
+
+  // Visible mine rocks are solid by default. Only explicitly visual-only
+  // geometry opts out. This keeps individual stones physical without adding
+  // hidden wall/zone colliders.
+  if (opts.collider !== false) {
+    const radius = opts.colliderRadius ?? Math.max(0.45, Math.min(sx, sz) * 0.72);
+    game.collision.addCircle(x, z, radius, { projectiles: false });
+  }
   return m;
 };
 
@@ -845,7 +852,7 @@ const mineWall = (x1, z1, x2, z2, h = 8.0, options = {}) => {
       1.05 + (i % 2) * 0.18,
       angle + (i % 2 ? 0.08 : -0.06),
       mineRockDarkMat,
-      collide ? { colliderRadius: Math.max(0.85, chunkLen * 0.5) } : {}
+      collide ? { colliderRadius: Math.max(0.85, chunkLen * 0.5) } : { collider: false }
     );
     rock.rotation.z = (i % 2 ? -1 : 1) * 0.035;
   }
@@ -1009,7 +1016,7 @@ const shaftVoid = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.75, 0.08, 12
 shaftVoid.position.set(110, 0.09, 109);
 mineGroup.add(shaftVoid);
 for (const [x, z, rot] of [[107.9,109,0],[112.1,109,0],[110,106.9,Math.PI/2],[110,111.1,Math.PI/2]]) {
-  mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat, { colliderRadius: 0.52 });
+  mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat);
 }
 
 // Collapsed gallery in the south-east pocket. The debris is decorative and
@@ -1259,7 +1266,7 @@ for (const [variant,x,y,z,sx,sy,rot] of [
   [3, 143.0, 3.0, 119.0, 4.9, 4.1, 0.16],
   [1, 130.8, 3.1, 127.0, 4.5, 3.8, -0.12],
 ]) {
-  mineSheetSprite(mineWebTexture, variant, x, y, z, sx, sy, rot, 0.84);
+  mineSheetSprite(mineWebTexture, variant, x, y, z, sx, sy, rot, 0.72);
 }
 
 for (const [variant,x,y,z,sx,sy,rot] of [
@@ -1268,7 +1275,7 @@ for (const [variant,x,y,z,sx,sy,rot] of [
   [3, 145.0, 2.15, 120.0, 1.9, 3.1, -0.12],
   [1, 130.5, 2.1, 129.0, 1.6, 2.8, 0.10],
 ]) {
-  mineSheetSprite(mineCocoonTexture, variant, x, y, z, sx, sy, rot, 0.96);
+  mineSheetSprite(mineCocoonTexture, variant, x, y, z, sx, sy, rot, 0.9);
 }
 
 // Extra mine dressing: a few readable silhouettes tell the story of an
