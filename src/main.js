@@ -79,7 +79,7 @@ class Game {
 
     addEventListener('resize', () => this.resize());
     addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.shiftKey && e.code === 'KeyT') {
+      if (e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyM') {
         e.preventDefault();
         this.mapEditor.toggle();
         return;
