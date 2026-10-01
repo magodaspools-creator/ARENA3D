@@ -111,7 +111,7 @@ export function createHumanoid(look = {}) {
   torso.add(head);
   head.add(mesh(headGeo, mSkin));
   const eyes = [];
-  const eyeMat = L.eyes ? mat(L.eyes, { emissive: L.eyes, ei: 0.355 }) : mat(0x111111);
+  const eyeMat = L.eyes ? mat(L.eyes, { emissive: L.eyes, ei: 0.65 }) : mat(0x111111);
   for (const s of [-1, 1]) { const e = mesh(G.eye, eyeMat, s * 0.075, 0.02, 0.185); head.add(e); eyes.push(e); }
   addHeadgear(head, L);
 
