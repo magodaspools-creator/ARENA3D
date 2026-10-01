@@ -222,7 +222,7 @@ export class UI {
     // symbols instead of collision blobs, so the minimap communicates gameplay
     // landmarks rather than just physical obstacles.
     if (!underground) {
-      const pz = { x: 0.1, z: 35.2, radius: 8.2 };
+      const protectionZone = { x: 0.1, z: 35.2, radius: 8.2 };
 
       // Protection Zone: soft boundary + shield icon.
       ctx.save();
@@ -230,13 +230,13 @@ export class UI {
       ctx.fillStyle = 'rgba(66, 132, 116, 0.16)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(px(pz.x), pz(pz.z), pz.radius * sx, 0, Math.PI * 2);
+      ctx.arc(px(protectionZone.x), pz(protectionZone.z), protectionZone.radius * sx, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = 'rgba(170, 225, 205, 0.95)';
       ctx.font = 'bold 9px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('PZ', px(pz.x), pz(pz.z) - pz.radius * sy - 4);
+      ctx.fillText('PZ', px(protectionZone.x), pz(protectionZone.z) - protectionZone.radius * sy - 4);
       ctx.textAlign = 'left';
       ctx.restore();
 
