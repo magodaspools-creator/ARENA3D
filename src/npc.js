@@ -58,11 +58,11 @@ export class NPC {
     game.collision.addCircle(x, z, 0.6);
 
     // floating quest marker
-    this.marker = mesh(new THREE.OctahedronGeometry(0.2), glow(0xffc34a, 3), 0, 2.75, 0);
+    this.marker = mesh(new THREE.OctahedronGeometry(0.2), glow(0xffc34a, 0.85), 0, 2.75, 0);
     this.marker.scale.y = 1.6;
     this.marker.castShadow = false;
     this.root.add(this.marker);
-    this.light = new THREE.PointLight(0xffb45a, 6, 7, 1.6);
+    this.light = new THREE.PointLight(0xffb45a, 2.8, 6, 1.6);
     this.light.position.set(0.3, 2, 0.3);
     this.root.add(this.light);
 
@@ -74,7 +74,7 @@ export class NPC {
   }
   setMarker(color) {
     this.marker.visible = !!color;
-    if (color) this.marker.material = glow(color, 3);
+    if (color) this.marker.material = glow(color, 0.85);
   }
   talk() {
     const d = this.dialogue();
