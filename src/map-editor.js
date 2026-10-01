@@ -36,6 +36,8 @@ export class MapEditor {
     this.seq = 0;
     this.selectionHelper = null;
     this.collisionHelpers = new Map();
+    this.preview = null;
+    this.sessionSnapshot = [];
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
     this.creatorId = this.getCreatorId();
@@ -44,6 +46,7 @@ export class MapEditor {
     this.buildUI();
     this.load();
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
   }
 
   get itemTools() {
@@ -150,20 +153,25 @@ export class MapEditor {
 
   toggle(force = !this.active) {
     if (force === this.active) return;
-    this.active = force;
-    this.el.classList.toggle('hidden', !force);
-
     if (force) {
+      this.sessionSnapshot = this.serialize();
+      this.active = true;
+      this.el.classList.remove('hidden');
       if (this.game.state === 'play') this.game.state = 'map-editor';
       this.game.inputLocked = true;
       this.game.ui.toast('Editor de mapa aberto.');
-      this.setStatus('EDITOR ATIVO — clique no chão para colocar.');
+      this.setStatus('EDITOR ATIVO — alterações só ficam permanentes ao salvar.');
       this.select(null);
+      this.updatePreviewFromPointer();
     } else {
+      this.discardSession();
+      this.active = false;
+      this.el.classList.add('hidden');
       if (this.game.state === 'map-editor') this.game.state = 'play';
       this.game.inputLocked = false;
-      this.setStatus('Ctrl+Shift+T para fechar');
+      this.setStatus('Fechado sem salvar.');
       this.select(null);
+      this.hidePreview();
     }
   }
 
@@ -215,7 +223,8 @@ export class MapEditor {
         this.selectedTool = next;
         this.select(null);
         this.renderPalette();
-        this.setStatus('Selecionado: ' + next.name);
+        this.setStatus('Selecionado: ' + next.name + ' — mova o mouse para posicionar.');
+        this.updatePreviewFromPointer();
       };
     });
   }
@@ -233,6 +242,103 @@ export class MapEditor {
     if (action === 'publish') return this.publishOnline();
     if (action === 'refreshOnline') return this.refreshOnlineMaps();
     if (action === 'loadCode') return this.loadOnlineCode();
+  }
+
+  getGroundPointFromEvent(event) {
+    const point = this.getGroundPointFromEvent(event);
+    if (!point) return;
+    return this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
+  }
+
+  onPointerMove(event) {
+    if (!this.active) return;
+    const point = this.getGroundPointFromEvent(event);
+    if (!point) {
+      this.hidePreview();
+      return;
+    }
+    this.updatePreview(point.x, point.z);
+  }
+
+  updatePreviewFromPointer() {
+    // The next pointermove will position it; hide stale previews immediately.
+    this.hidePreview();
+  }
+
+  createPreviewVisual() {
+    const tool = this.selectedTool;
+    let visual;
+    if (tool.kind === 'item') {
+      const texture = this.getItemTexture(tool.itemId);
+      visual = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false,
+        alphaTest: 0.04,
+        opacity: 0.58,
+      }));
+      visual.scale.set(1.4, 1.4, 1);
+      visual.position.y = 0.75;
+    } else if (tool.kind === 'stone') {
+      visual = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({
+        color: 0x8b9098, roughness: 1, flatShading: true, transparent: true, opacity: 0.55
+      }));
+      visual.scale.set(0.95, 0.8, 0.9);
+      visual.position.y = 0.55;
+    } else if (tool.kind === 'wall') {
+      visual = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 0.9), new THREE.MeshStandardMaterial({
+        color: 0x8b9098, roughness: 1, flatShading: true, transparent: true, opacity: 0.45
+      }));
+      visual.position.y = 1.3;
+    } else if (tool.kind === 'crate') {
+      visual = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.15, 1.25), new THREE.MeshStandardMaterial({
+        color: 0x9a7950, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.55
+      }));
+      visual.position.y = 0.58;
+    } else if (tool.kind === 'pillar') {
+      visual = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 2.7, 7), new THREE.MeshStandardMaterial({
+        color: 0x8b9098, roughness: 1, flatShading: true, transparent: true, opacity: 0.5
+      }));
+      visual.position.y = 1.35;
+    } else if (tool.kind === 'ore') {
+      visual = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), new THREE.MeshStandardMaterial({
+        color: 0x6f9ab0, roughness: 0.75, metalness: 0.15, flatShading: true, transparent: true, opacity: 0.55
+      }));
+      visual.position.y = 0.55;
+      visual.scale.set(1.0, 0.7, 0.9);
+    }
+    if (!visual) return null;
+    visual.renderOrder = 50;
+    visual.userData.editorPreview = true;
+    return visual;
+  }
+
+  updatePreview(x, z) {
+    if (!this.preview || this.preview.toolId !== this.selectedTool.id) {
+      this.hidePreview();
+      const visual = this.createPreviewVisual();
+      if (!visual) return;
+      const root = new THREE.Group();
+      root.userData.editorPreview = true;
+      root.add(visual);
+      this.scene.add(root);
+      this.preview = { root, visual, toolId: this.selectedTool.id };
+    }
+    this.preview.root.position.set(x, 0, z);
+    this.preview.root.rotation.y = 0;
+    this.preview.root.scale.setScalar(1);
+    this.preview.root.visible = true;
+  }
+
+  hidePreview() {
+    if (!this.preview) return;
+    this.scene.remove(this.preview.root);
+    this.preview.root.traverse((o) => {
+      if (o.material && o.material !== this.itemTextures.get(this.selectedTool.itemId)) {
+        o.material.dispose?.();
+      }
+    });
+    this.preview = null;
   }
 
   onPointerDown(event) {
@@ -264,8 +370,6 @@ export class MapEditor {
       }
     }
 
-    const point = this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
-    if (!point) return;
     this.place(point.x, point.z);
   }
 
@@ -285,11 +389,11 @@ export class MapEditor {
       depth: this.selectedTool.kind === 'wall' ? 0.9 : 1.4,
       height: this.selectedTool.kind === 'wall' ? 2.6 : 1.2,
     };
+    this.hidePreview();
     this.objects.push(data);
     this.createObject(data);
     this.select(data);
-    this.save();
-    this.setStatus('Colocado. C = colisão ON/OFF · R = girar.');
+    this.setStatus('Colocado. Clique em Salvar para confirmar.');
   }
 
   createObject(data) {
@@ -422,8 +526,7 @@ export class MapEditor {
     this.selected.collision = !this.selected.collision;
     this.refreshCollision(this.selected);
     this.refreshHelper(this.selected);
-    this.save();
-    this.setStatus(this.selected.collision ? 'Colisão ativada.' : 'Colisão removida.');
+    this.setStatus(this.selected.collision ? 'Colisão ativada. Clique em Salvar para confirmar.' : 'Colisão removida. Clique em Salvar para confirmar.');
     this.select(this.selected);
   }
 
@@ -432,8 +535,7 @@ export class MapEditor {
     this.selected.rotation += Math.PI / 12;
     const root = this.group.children.find((o) => o.userData?.editorId === this.selected.id);
     if (root) root.rotation.y = this.selected.rotation;
-    this.save();
-    this.setStatus('Objeto girado.');
+    this.setStatus('Objeto girado. Clique em Salvar para confirmar.');
   }
 
   scaleSelected(factor) {
@@ -443,8 +545,7 @@ export class MapEditor {
     if (root) root.scale.setScalar(this.selected.scale);
     this.refreshCollision(this.selected);
     this.refreshHelper(this.selected);
-    this.save();
-    this.setStatus('Escala: ' + this.selected.scale.toFixed(2));
+    this.setStatus('Escala: ' + this.selected.scale.toFixed(2) + ' — clique em Salvar para confirmar.');
   }
 
   deleteSelected() {
@@ -470,8 +571,7 @@ export class MapEditor {
     }
     this.objects = this.objects.filter((o) => o.id !== id);
     this.select(null);
-    this.save();
-    this.setStatus('Objeto apagado.');
+    this.setStatus('Objeto apagado. Clique em Salvar para confirmar.');
   }
 
   clearCreated() {
@@ -612,18 +712,37 @@ export class MapEditor {
       this.createObject(data);
     }
     this.save();
+    this.sessionSnapshot = this.serialize();
     this.select(null);
     this.setOnlineStatus('Carregado: ' + map.map_name + ' · código ' + map.map_code);
     this.setStatus('Mapa compartilhado carregado.');
   }
 
-  save() {
+  discardSession() {
+    this.clearWithoutPrompt();
+    for (const data of this.sessionSnapshot) {
+      const clone = { ...data, _collider: null };
+      this.objects.push(clone);
+      this.seq = Math.max(this.seq, Number(String(clone.id).replace('editor-', '')) || 0);
+      this.createObject(clone);
+    }
+    this.selected = null;
+    this.sessionSnapshot = [];
+  }
+
+  commitSession() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, objects: this.serialize() }));
-      this.setStatus('Mapa salvo neste navegador.');
+      this.sessionSnapshot = this.serialize();
+      this.setStatus('Alterações salvas neste navegador.');
     } catch (error) {
       console.warn('[MapEditor] Falha ao salvar:', error);
+      this.setStatus('Não foi possível salvar.');
     }
+  }
+
+  save() {
+    this.commitSession();
   }
 
   load() {
@@ -669,7 +788,7 @@ export class MapEditor {
           this.createObject(data);
         }
         this.save();
-        this.setStatus('JSON importado.');
+        this.setStatus('JSON importado e salvo.');
       } catch (error) {
         this.setStatus('JSON inválido.');
         console.warn('[MapEditor] Import failed:', error);
