@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512" viewBox="0 0 1024 512">
+<defs><radialGradient id="s" cx="35%" cy="25%"><stop offset="0" stop-color="#8c8178"/><stop offset=".55" stop-color="#514943"/><stop offset="1" stop-color="#211d1a"/></radialGradient><filter id="b"><feGaussianBlur stdDeviation="1"/></filter></defs>
+<g stroke="#b9aaa0" stroke-width="4" fill="none" opacity=".9">
+<g transform="translate(128 256)"><path fill="url(#s)" d="M0-155C72-155 103-75 78 0C103 75 72 155 0 155C-72 155-103 75-78 0C-103-75-72-155 0-155Z"/><path d="M-52-115Q0-75 52-115M-75-60Q0-20 75-60M-78 5Q0 42 78 5M-70 70Q0 100 70 70M-45 120Q0 145 45 120"/><path d="M0-155V155"/></g>
+<g transform="translate(384 256)"><path fill="url(#s)" d="M0-145C60-145 90-70 62 0C90 70 60 145 0 145C-60 145-90 70-62 0C-90-70-60-145 0-145Z"/><path d="M-42-112Q0-78 42-112M-62-55Q0-22 62-55M-65 8Q0 38 65 8M-56 66Q0 94 56 66M-35 112Q0 132 35 112"/></g>
+<g transform="translate(640 256)"><path fill="url(#s)" d="M0-170C78-170 111-82 82 0C111 82 78 170 0 170C-78 170-111 82-82 0C-111-82-78-170 0-170Z"/><path d="M-58-132Q0-88 58-132M-82-68Q0-25 82-68M-85 0Q0 35 85 0M-75 70Q0 108 75 70M-48 132Q0 157 48 132"/><path d="M-18-168Q-5-130-20-95Q-2-62-18-28Q0 8-14 43Q3 78-8 118"/></g>
+<g transform="translate(896 256)"><path fill="url(#s)" d="M0-135C55-135 84-65 58 0C84 65 55 135 0 135C-55 135-84 65-58 0C-84-65-55-135 0-135Z"/><path d="M-40-102Q0-72 40-102M-58-50Q0-18 58-50M-62 8Q0 36 62 8M-50 60Q0 88 50 60M-30 105Q0 122 30 105"/><path d="M0-135V135"/></g></g>
+<g fill="#d8c6b6"><circle cx="384" cy="110" r="4"/><circle cx="640" cy="88" r="4"/></g>
+</svg>
