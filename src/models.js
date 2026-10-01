@@ -141,132 +141,106 @@ export function createHumanoid(look = {}) {
     torso.add(cape);
   }
 
-  // NPC role silhouettes: replace the generic humanoid silhouette with
-  // purpose-built silhouettes. The shared rig remains only as the animation
-  // skeleton; the visible body is rebuilt around it for NPCs.
+  // NPC-only visual pass. Keep the shared rig for animation, but rebuild the
+  // visible proportions around it: longer legs, smaller head, rounded torso,
+  // and role clothing attached to the animated rig instead of floating beside it.
   if (npcSoft) {
     const skin = mat(L.skin, { rough: 0.9, flat: false });
     const cloth = mat(L.body, { rough: 0.92, flat: false });
     const cloth2 = mat(L.robe ?? L.body, { rough: 0.95, flat: false, side: THREE.DoubleSide });
-    const leather = mat(L.accent ?? 0x9a8a6a, { rough: 0.8, flat: false });
+    const leather = mat(L.accent ?? 0x9a8a6a, { rough: 0.82, flat: false });
     const dark = mat(0x211b17, { rough: 0.95, flat: false });
 
-    // Hide the generic torso/limbs. Animator groups remain alive and continue
-    // driving idle/attack motion without changing player/enemy models.
+    // Remove the old generic meshes only. The animator groups stay intact.
     body.traverse((o) => { if (o.isMesh) o.visible = false; });
 
-    const silhouette = new THREE.Group();
-    silhouette.name = 'npc-custom-silhouette';
-    body.add(silhouette);
+    const capsule = (radius, length, material, x = 0, y = 0, z = 0) => {
+      const m = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 10), material);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    };
+    const smooth = (geo, material, x = 0, y = 0, z = 0) => {
+      const m = new THREE.Mesh(geo, material);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    };
 
-    // Head/face.
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.16, 10), skin);
-    neck.position.y = 1.08;
-    silhouette.add(neck);
-    const face = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 12), skin);
-    face.scale.set(0.92, 1.05, 0.86);
-    face.position.set(0, 1.37, 0.01);
-    silhouette.add(face);
+    // Real human proportions: legs make up most of the lower silhouette and
+    // the head is deliberately smaller than the previous dwarf-like version.
+    legL.add(capsule(0.115, 0.54, mLegs, 0, -0.42, 0));
+    legR.add(capsule(0.115, 0.54, mLegs, 0, -0.42, 0));
+    legL.add(capsule(0.125, 0.12, mBoots, 0, -0.77, 0.07));
+    legR.add(capsule(0.125, 0.12, mBoots, 0, -0.77, 0.07));
 
-    // Soft eyes with tiny catchlights make the faces read at gameplay scale.
+    torso.add(smooth(new THREE.CapsuleGeometry(0.27, 0.45, 6, 12), cloth, 0, 0.31, 0));
+    torso.add(smooth(new THREE.CylinderGeometry(0.28, 0.29, 0.075, 12), leather, 0, 0.04, 0));
+
+    // Smaller, cleaner face attached to the animated head pivot.
+    head.add(smooth(new THREE.SphereGeometry(0.205, 16, 12), skin, 0, 0, 0));
     const eye = mat(0x171513, { rough: 0.35, flat: false });
     for (const s of [-1, 1]) {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), eye);
-      e.position.set(s * 0.075, 1.39, 0.205);
-      silhouette.add(e);
+      head.add(smooth(new THREE.SphereGeometry(0.022, 8, 6), eye, s * 0.068, 0.01, 0.185));
     }
 
+    // Rounded arms follow the existing arm pivots, so walking/attacks still animate.
+    const armMat = L.bareArms ? skin : cloth;
+    armL.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
+    armR.add(capsule(0.095, 0.34, armMat, 0, -0.25, 0));
+    armL.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
+    armR.add(smooth(new THREE.SphereGeometry(0.075, 10, 8), skin, 0, -0.48, 0));
+
     if (L.npcRole === 'watcher') {
-      // Maren: field scout / watch captain. Long asymmetrical cloak,
-      // shoulder mantle, leather belt, hood and a visible badge.
-      const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.58, 1.35, 16, 1, false), cloth2);
-      cloak.position.set(0, 0.72, -0.02);
-      cloak.scale.set(1, 1, 0.78);
-      silhouette.add(cloak);
-
-      const mantle = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 8), cloth);
-      mantle.scale.set(1.15, 0.38, 0.82);
-      mantle.position.set(0, 1.18, 0);
-      silhouette.add(mantle);
-
-      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 10), mat(L.hood ?? L.body, { rough: 0.9, flat: false }));
-      hood.scale.set(1.0, 0.95, 0.92);
-      hood.position.set(0, 1.43, -0.035);
-      silhouette.add(hood);
-
-      const hoodOpening = new THREE.Mesh(new THREE.SphereGeometry(0.225, 16, 10), dark);
-      hoodOpening.scale.set(0.88, 0.88, 0.55);
-      hoodOpening.position.set(0, 1.39, 0.19);
-      silhouette.add(hoodOpening);
-
-      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.10, 14), leather);
-      belt.position.y = 0.94;
-      silhouette.add(belt);
-
-      const pouch = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), leather);
-      pouch.scale.set(0.85, 1.1, 0.65);
-      pouch.position.set(0.38, 0.94, 0.12);
-      silhouette.add(pouch);
-
-      const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.035, 12), mat(0xd2b05e, { metal: 0.65, rough: 0.38, flat: false }));
+      // Maren: fitted field coat + short shoulder mantle + hood. Keep the
+      // silhouette vertical rather than turning the body into a cone.
+      const coat = smooth(new THREE.CapsuleGeometry(0.31, 0.48, 6, 12), cloth2, 0, 0.30, -0.01);
+      coat.scale.set(1.02, 1, 0.82);
+      torso.add(coat);
+      const mantle = smooth(new THREE.SphereGeometry(0.38, 16, 10), cloth, 0, 0.55, -0.01);
+      mantle.scale.set(1.18, 0.28, 0.78);
+      torso.add(mantle);
+      const hood = smooth(new THREE.SphereGeometry(0.255, 16, 10), mat(L.hood ?? L.body, { rough: 0.9, flat: false }), 0, 0.01, -0.02);
+      head.add(hood);
+      const opening = smooth(new THREE.SphereGeometry(0.19, 16, 10), dark, 0, 0.0, 0.17);
+      opening.scale.set(0.88, 0.88, 0.45);
+      head.add(opening);
+      const belt = smooth(new THREE.CylinderGeometry(0.30, 0.30, 0.075, 14), leather, 0, 0.04, 0.01);
+      torso.add(belt);
+      const pouch = smooth(new THREE.SphereGeometry(0.12, 10, 8), leather, 0.28, -0.01, 0.11);
+      pouch.scale.set(0.8, 1.15, 0.65);
+      torso.add(pouch);
+      const badge = smooth(new THREE.CylinderGeometry(0.07, 0.07, 0.028, 12), mat(0xd2b05e, { metal: 0.65, rough: 0.38, flat: false }), 0, 0.25, 0.245);
       badge.rotation.x = Math.PI / 2;
-      badge.position.set(0, 1.10, 0.30);
-      silhouette.add(badge);
-
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.20, 10, 8), leather);
-      shoulder.scale.set(1.8, 0.45, 0.9);
-      shoulder.position.set(-0.30, 1.16, 0);
-      silhouette.add(shoulder);
+      torso.add(badge);
     }
 
     if (L.npcRole === 'merchant') {
-      // Doran: traveling merchant. Broad coat, apron, belt pouches,
-      // large satchel and a recognizable merchant hat.
-      const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.58, 1.05, 16), cloth2);
-      coat.position.set(0, 0.78, 0);
-      coat.scale.z = 0.82;
-      silhouette.add(coat);
-
-      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.36, 0.62, 14, 1, true), cloth);
-      vest.position.set(0, 1.12, 0.22);
+      // Doran: long trader coat, vest/apron, pouches and a restrained hat.
+      const coat = smooth(new THREE.CapsuleGeometry(0.34, 0.50, 6, 12), cloth2, 0, 0.29, 0);
+      coat.scale.set(1.04, 1, 0.84);
+      torso.add(coat);
+      const vest = smooth(new THREE.CylinderGeometry(0.25, 0.30, 0.54, 14, 1, true), cloth, 0, 0.40, 0.19);
       vest.scale.z = 0.72;
-      silhouette.add(vest);
-
-      const apron = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.06), mat(L.robe ?? L.body, { rough: 0.95, flat: false }));
-      apron.position.set(0, 0.82, 0.34);
-      silhouette.add(apron);
-
-      const belt = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.045, 6, 16), leather);
-      belt.position.y = 0.86;
-      silhouette.add(belt);
-
+      torso.add(vest);
+      const apron = smooth(new THREE.BoxGeometry(0.34, 0.43, 0.045), mat(L.robe ?? L.body, { rough: 0.95, flat: false }), 0, 0.27, 0.285);
+      apron.rotation.x = 0.03;
+      torso.add(apron);
       for (const s of [-1, 1]) {
-        const pouch = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), leather);
-        pouch.scale.set(0.9, 1.15, 0.65);
-        pouch.position.set(s * 0.35, 0.88, 0.18);
-        silhouette.add(pouch);
+        const pouch = smooth(new THREE.SphereGeometry(0.115, 10, 8), leather, s * 0.28, 0.03, 0.14);
+        pouch.scale.set(0.85, 1.1, 0.65);
+        torso.add(pouch);
       }
-
-      const satchel = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), mat(0x69482f, { rough: 0.95, flat: false }));
-      satchel.scale.set(0.8, 1.25, 0.5);
-      satchel.position.set(-0.48, 0.78, -0.03);
-      silhouette.add(satchel);
-
-      const hat = mat(L.hat ?? L.robe ?? L.body, { rough: 0.9, flat: false });
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.07, 18), hat);
-      brim.position.y = 1.61;
-      silhouette.add(brim);
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.34, 14), hat);
-      crown.position.y = 1.80;
-      silhouette.add(crown);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.025, 5, 14), leather);
-      band.position.y = 1.72;
-      silhouette.add(band);
-
-      // Merchant neck scarf.
-      const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.10, 12), leather);
-      scarf.position.y = 1.20;
-      silhouette.add(scarf);
+      const satchel = smooth(new THREE.SphereGeometry(0.20, 12, 10), mat(0x69482f, { rough: 0.95, flat: false }), -0.30, -0.02, -0.08);
+      satchel.scale.set(0.75, 1.2, 0.52);
+      torso.add(satchel);
+      const hatMat = mat(L.hat ?? L.robe ?? L.body, { rough: 0.9, flat: false });
+      head.add(smooth(new THREE.CylinderGeometry(0.34, 0.34, 0.045, 18), hatMat, 0, 0.22, 0));
+      head.add(smooth(new THREE.CylinderGeometry(0.21, 0.25, 0.25, 14), hatMat, 0, 0.35, -0.01));
+      const band = smooth(new THREE.TorusGeometry(0.235, 0.018, 5, 14), leather, 0, 0.31, -0.01);
+      head.add(band);
     }
   }
 
