@@ -84,7 +84,7 @@ export class Collision {
             const d = Math.sqrt(d2);
             nx = cx + (ox / d) * r; nz = cz + (oz / d) * r;
           } else {
-            const l = nx - o.minX, rr = o.maxX - nx, b = nz - o.minZ, t = nz - o.maxZ;
+            const l = nx - o.minX, rr = o.maxX - nx, b = nz - o.minZ, t = o.maxZ - nz;
             const m = Math.min(l, rr, b, t);
             if (m === l) nx = o.minX - r;
             else if (m === rr) nx = o.maxX + r;
