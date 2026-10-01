@@ -33,6 +33,7 @@ export class UI {
     this.actionBarFlashT = null;
     this.minimapCtx = this.el.minimap?.getContext('2d') || null;
     this.minimapLastT = 0;
+    this.minimapCache = null;
   }
 
   // ---------- world anchored ----------
@@ -145,27 +146,77 @@ export class UI {
     ctx.fillStyle = 'rgba(5, 8, 11, 0.94)';
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle coordinate grid gives the map a deliberate cartographic feel.
-    ctx.save();
-    ctx.globalAlpha = 0.16;
-    ctx.strokeStyle = 'rgba(205, 177, 116, 0.45)';
-    ctx.lineWidth = 1;
-    const gridStep = underground ? 5 : 6;
-    for (let x = Math.ceil(viewMinX / gridStep) * gridStep; x <= viewMaxX; x += gridStep) {
-      ctx.beginPath(); ctx.moveTo(px(x), 0); ctx.lineTo(px(x), h); ctx.stroke();
+    // Build the playable silhouette from the REAL collision field instead of
+    // drawing each rectangular zone. This turns overlapping rectangles/circles/
+    // polygons into one continuous map contour, so the minimap follows the
+    // actual playable shape rather than looking like a debug grid.
+    const collision = this.game.collision;
+    const cacheKey = [minX, maxX, minZ, maxZ, underground ? 'mine' : 'surface'].join('|');
+    if (!this.minimapCache || this.minimapCache.key !== cacheKey) {
+      const mw = 320, mh = 320;
+      const map = document.createElement('canvas');
+      map.width = mw; map.height = mh;
+      const mctx = map.getContext('2d');
+      const image = mctx.createImageData(mw, mh);
+      for (let iy = 0; iy < mh; iy++) {
+        const z = minZ + ((iy + 0.5) / mh) * (maxZ - minZ);
+        for (let ix = 0; ix < mw; ix++) {
+          const x = minX + ((ix + 0.5) / mw) * (maxX - minX);
+          if (!collision.inside(x, z)) continue;
+          const k = (iy * mw + ix) * 4;
+          image.data[k] = underground ? 82 : 68;
+          image.data[k + 1] = underground ? 94 : 98;
+          image.data[k + 2] = underground ? 88 : 70;
+          image.data[k + 3] = 215;
+        }
+      }
+      mctx.putImageData(image, 0, 0);
+      this.minimapCache = { key: cacheKey, canvas: map, mw, mh };
     }
-    for (let z = Math.ceil(viewMinZ / gridStep) * gridStep; z <= viewMaxZ; z += gridStep) {
-      ctx.beginPath(); ctx.moveTo(0, pz(z)); ctx.lineTo(w, pz(z)); ctx.stroke();
+
+    const cache = this.minimapCache;
+    const srcX = ((viewMinX - minX) / (maxX - minX)) * cache.mw;
+    const srcZ = ((viewMinZ - minZ) / (maxZ - minZ)) * cache.mh;
+    const srcW = ((viewMaxX - viewMinX) / (maxX - minX)) * cache.mw;
+    const srcH = ((viewMaxZ - viewMinZ) / (maxZ - minZ)) * cache.mh;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(cache.canvas, srcX, srcZ, srcW, srcH, 0, 0, w, h);
+    ctx.restore();
+
+    // Structural collision is drawn over the silhouette as actual walls/rocks,
+    // using the same collision objects that the player encounters in the world.
+    // Small vegetation clutter is intentionally skipped.
+    ctx.save();
+    ctx.strokeStyle = underground ? 'rgba(28, 25, 23, 0.9)' : 'rgba(30, 31, 28, 0.82)';
+    ctx.fillStyle = underground ? 'rgba(24, 22, 20, 0.88)' : 'rgba(29, 31, 27, 0.72)';
+    for (const o of collision.obstacles || []) {
+      if (!o.enabled) continue;
+      const ox = o.type === 'circle' ? o.x : (o.minX + o.maxX) * 0.5;
+      const oz = o.type === 'circle' ? o.z : (o.minZ + o.maxZ) * 0.5;
+      if (ox < viewMinX - 2 || ox > viewMaxX + 2 || oz < viewMinZ - 2 || oz > viewMaxZ + 2) continue;
+      if (o.type === 'circle') {
+        if (o.r < 0.7 && !underground) continue;
+        ctx.beginPath();
+        ctx.arc(px(o.x), pz(o.z), Math.max(1.2, o.r * sx), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const rw = (o.maxX - o.minX) * sx, rh = (o.maxZ - o.minZ) * sy;
+        if (rw < 3 && rh < 3) continue;
+        ctx.fillRect(px(o.minX), pz(o.minZ), rw, rh);
+      }
     }
     ctx.restore();
 
-    // Walkable regions. The local zoom makes corridors and chambers readable.
-    ctx.fillStyle = underground
-      ? 'rgba(91, 103, 91, 0.62)'
-      : 'rgba(83, 115, 83, 0.54)';
-    for (const [x1, x2, z1, z2] of area.minimap.zones || []) {
-      ctx.fillRect(px(x1), pz(z1), (x2 - x1) * sx, (z2 - z1) * sy);
-    }
+    // A thin edge around the real playable silhouette gives the map a clean
+    // hand-drawn contour without reintroducing square zone outlines.
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.strokeStyle = underground ? 'rgba(137, 150, 137, 0.52)' : 'rgba(126, 148, 111, 0.58)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, w, h);
+    ctx.restore();
 
     // Main route / important structures.
     ctx.strokeStyle = underground
