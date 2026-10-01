@@ -159,6 +159,14 @@ export class Combat {
           }
         }
       } else if (player && !player.dead && !p.dodged) {
+        const inPz = this.game.protectionZones?.some((zone) =>
+          Math.hypot(player.pos.x - zone.x, player.pos.z - zone.z) <= zone.radius
+        );
+        if (inPz) {
+          // Enemy projectiles cannot enter or damage a protection zone.
+          this.explode(p);
+          continue;
+        }
         if (Math.hypot(player.pos.x - p.pos.x, player.pos.z - p.pos.z) < player.radius + p.radius) {
           if (player.invulnerable) { p.dodged = true; this.game.ui.floatText(V.copy(player.pos).setY(2.2), 'Esquiva!', 'info'); }
           else { player.takeDamage(this.roll(p.damage, 0).amount, p.pos); this.explode(p); }
