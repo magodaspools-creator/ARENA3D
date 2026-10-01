@@ -528,7 +528,7 @@ export class MapEditor {
       this.preview = { root, visual, toolId: this.selectedTool.id, rotation: this.placementRotation || 0 };
     }
     this.preview.root.position.set(x, 0, z);
-    this.preview.root.rotation.y = this.preview.rotation || 0;
+    this.preview.root.rotation.y = this.preview.rotation ?? this.placementRotation ?? 0;
     this.preview.root.scale.setScalar(1);
     this.preview.root.visible = true;
   }
@@ -631,9 +631,9 @@ export class MapEditor {
       rotation: this.placementRotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
-      radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65,
-      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4,
-      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4,
+      radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'stone' ? 0.42 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65),
+      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'stone' ? 0.95 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4),
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'stone' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4),
       height: this.selectedTool.kind === 'wall' ? 2.6 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0.02 : 1.2,
     };
     const blockedBy = this.findPlacementBlocker(data);
@@ -1212,7 +1212,21 @@ export class MapEditor {
   handleKey(e) {
     if (!this.active) return false;
     if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) { e.preventDefault(); return true; }
-    if (e.code === 'KeyR') { e.preventDefault(); this.rotateSelected(); return true; }
+    if (e.code === 'KeyR') {
+      e.preventDefault();
+      if (this.selectedTool?.kind !== 'select') {
+        const step = THREE.MathUtils.degToRad(5);
+        this.placementRotation += step;
+        if (this.preview) {
+          this.preview.rotation = this.placementRotation;
+          this.preview.root.rotation.y = this.placementRotation;
+        }
+        this.setStatus('Rotação do item em mãos: ' + Math.round(THREE.MathUtils.radToDeg(this.placementRotation)) + '°');
+        return true;
+      }
+      this.rotateSelected();
+      return true;
+    }
     if (e.code === 'BracketLeft') { e.preventDefault(); this.scaleSelected(0.9); return true; }
     if (e.code === 'BracketRight') { e.preventDefault(); this.scaleSelected(1.1); return true; }
     if (e.code === 'KeyC') { e.preventDefault(); this.toggleCollision(); return true; }
