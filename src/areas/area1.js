@@ -632,6 +632,29 @@ for (const x of [-1.7, 1.7]) {
   l.position.set(x, 2.4, 0);
   mineEntrance.add(l);
 }
+
+// Rope descent detail: a real rope follows the mine mouth/steps so the entrance
+// reads as a climb-down rather than a teleport doorway.
+const ropeMat = new THREE.MeshStandardMaterial({
+  color: 0x6b4a2d,
+  roughness: 0.95,
+  flatShading: true,
+});
+for (const side of [-1, 1]) {
+  const ropeCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(side * 1.55, 2.85, 0.10),
+    new THREE.Vector3(side * 1.62, 2.15, -0.10),
+    new THREE.Vector3(side * 1.58, 1.35, -0.55),
+    new THREE.Vector3(side * 1.48, 0.55, -1.35),
+  ]);
+  const rope = new THREE.Mesh(
+    new THREE.TubeGeometry(ropeCurve, 10, 0.075, 6, false),
+    ropeMat
+  );
+  rope.castShadow = true;
+  mineEntrance.add(rope);
+}
+
 scene.add(mineEntrance);
 
 // ---------- Stage 2 underground route layout ----------
@@ -649,6 +672,32 @@ scene.add(mineEntrance);
 //            [ SOUTH CHAMBER ]
 //
 // The future boss cave will extend north-east from the hub in a later stage.
+
+// Underground ambient lighting: keep the mine dark and moody, but readable.
+// A cool base lift prevents the unlit corners from collapsing into black while
+// the warm lamps below remain the main visual accents.
+const mineAmbient = new THREE.HemisphereLight(0x6f8190, 0x17120f, 0.72);
+mineAmbient.position.set(110, 8, 118);
+mineGroup.add(mineAmbient);
+
+for (const [x, z, intensity, distance] of [
+  [104, 96, 2.2, 11],
+  [92, 104, 2.0, 10],
+  [136, 104, 2.2, 11],
+  [94, 122, 2.1, 10],
+  [137, 121, 2.2, 11],
+  [108, 139, 2.5, 12],
+  [140, 142, 2.6, 12],
+]) {
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 6), mineGlowMat);
+  glow.position.set(x, 2.25, z);
+  mineGroup.add(glow);
+
+  const light = new THREE.PointLight(0xd89b54, intensity, distance, 1.8);
+  light.position.set(x, 2.25, z);
+  mineGroup.add(light);
+  mineLights.push(light);
+}
 
 const undergroundBoundary = [
   [104, 80], [116, 80], [124, 84], [138, 82], [151, 91],
