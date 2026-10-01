@@ -145,7 +145,8 @@ export function createArea2(game) {
   collision.addBox(166.9,169.1,27,35);   // east entrance wall
   collision.addBox(136,146,45.9,49);      // north-left ruined wall
   collision.addBox(154,164,45.9,49);       // north-right ruined wall
-  collision.addBox(142.5,157.5,29.5,40.5); // raised inner dais
+  // The 15x11 temple slab is a floor/platform, not a wall. It must stay
+  // non-colliding or the boss would spawn inside its collider at z=40.
 
   // Sun glyph over the buried doorway.
   const sun = new THREE.Group();
