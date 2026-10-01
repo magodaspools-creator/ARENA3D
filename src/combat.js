@@ -19,11 +19,11 @@ const GEO = {
 function makeVisual(kind, color) {
   const g = new THREE.Group();
   if (kind === 'arrow') {
-    g.add(new THREE.Mesh(GEO.shaft, glow(0xfff1c8, 1.6)));
-    g.add(new THREE.Mesh(GEO.tip, glow(color, 3)));
-  } else if (kind === 'thorn') g.add(new THREE.Mesh(GEO.thorn, glow(color, 2.5)));
-  else if (kind === 'bigOrb') g.add(new THREE.Mesh(GEO.bigOrb, glow(color, 3)));
-  else g.add(new THREE.Mesh(kind === 'fire' ? GEO.fire : GEO.orb, glow(color, 3.2)));
+    g.add(new THREE.Mesh(GEO.shaft, glow(0xfff1c8, 0.65)));
+    g.add(new THREE.Mesh(GEO.tip, glow(color, 1.0)));
+  } else if (kind === 'thorn') g.add(new THREE.Mesh(GEO.thorn, glow(color, 0.9)));
+  else if (kind === 'bigOrb') g.add(new THREE.Mesh(GEO.bigOrb, glow(color, 1.0)));
+  else g.add(new THREE.Mesh(kind === 'fire' ? GEO.fire : GEO.orb, glow(color, 1.05)));
   return g;
 }
 
