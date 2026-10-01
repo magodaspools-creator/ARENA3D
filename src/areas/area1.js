@@ -787,7 +787,10 @@ const undergroundZones = [
   [[109, 128], [115, 126], [126, 127], [131, 132], [130, 138], [144, 139], [149, 146], [143, 153], [124, 154], [110, 151], [104, 144], [106, 136]],
 ];
 
-collision.addPolygonZone(undergroundBoundary);
+// The visible mine perimeter is only the outer shell. The actual walkable
+// shape is the branching dungeon layout above, so the player cannot roam the
+// old round pocket between rooms.
+for (const zone of undergroundZones) collision.addPolygonZone(zone);
 
 // The mine is deliberately larger than the old 30x40 pocket. It is built as
 // chambers connected by long corridors, not as one rectangular room.
