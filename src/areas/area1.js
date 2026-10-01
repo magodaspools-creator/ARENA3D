@@ -512,14 +512,14 @@ export function createArea1(game) {
   scene.add(runes);
   const arenaLights = [];
   for (const s of [-1, 1]) {
-    const l = new THREE.PointLight(0xff5a3a, 30, 26, 1.5);
+    const l = new THREE.PointLight(0xff5a3a, 16, 24, 1.5);
     l.position.set(ARENA.x + s * 12, 5, ARENA.z - 3);
     scene.add(l);
     arenaLights.push(l);
     for (const off of [-0.5, 0.5]) {
       const a = s * (Math.PI / 2 + off);
       const fx = ARENA.x + Math.sin(a) * 15, fz = ARENA.z + Math.cos(a) * 15;
-      const f = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 6), new THREE.MeshBasicMaterial({ color: 0xff5a2a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 6), new THREE.MeshBasicMaterial({ color: 0xff5a2a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
       f.position.set(fx, 2.3, fz);
       scene.add(f);
       decor.columns.add(fx, 0, fz, 0.9, 1.6, 0.9, 0, 0x3a3a40);
@@ -545,8 +545,8 @@ const mineRockMat = new THREE.MeshStandardMaterial({ color: 0x34302d, roughness:
 const mineRockDarkMat = new THREE.MeshStandardMaterial({ color: 0x211f1d, roughness: 1, flatShading: true });
 const mineWoodMat = new THREE.MeshStandardMaterial({ color: 0x33251b, roughness: 0.95, flatShading: true });
 const mineMetalMat = new THREE.MeshStandardMaterial({ color: 0x3e4144, roughness: 0.75, metalness: 0.55, flatShading: true });
-const mineOreMat = new THREE.MeshStandardMaterial({ color: 0x4d6770, emissive: 0x172a30, emissiveIntensity: 0.35, roughness: 0.7, flatShading: true });
-const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+const mineOreMat = new THREE.MeshStandardMaterial({ color: 0x4d6770, emissive: 0x172a30, emissiveIntensity: 0.22, roughness: 0.7, flatShading: true });
+const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: true, opacity: 0.58, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 const mineLights = [];
 let mineLightTick = 0;
 
@@ -753,10 +753,10 @@ mineGroup.add(exitLantern);
 const exitGlow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mineGlowMat);
 exitGlow.position.set(exitX + 1.95, 2.15, exitZ - 0.05);
 mineGroup.add(exitGlow);
-const exitLight = new THREE.PointLight(0xd89b54, 4.5, 9, 1.8);
+const exitLight = new THREE.PointLight(0xd89b54, 3.2, 8, 1.8);
 exitLight.position.copy(exitGlow.position);
 mineGroup.add(exitLight);
-exitLight.userData.baseIntensity = 4.5;
+exitLight.userData.baseIntensity = 3.2;
 mineLights.push(exitLight);
 
 const undergroundZones = [
@@ -2174,7 +2174,7 @@ const leaveMine = () => {
       secretMist.visible = insideSecret;
       portal.update(dt, t);
       barrierMat.opacity += ((barrierCol.enabled ? 0.45 + Math.sin(t * 4) * 0.1 : 0) - barrierMat.opacity) * Math.min(1, dt * 4);
-      for (const l of arenaLights) if (l.isPointLight) l.intensity = 28 + Math.sin(t * 7 + l.position.x) * 4; else l.scale.y = 1 + Math.sin(t * 11 + l.position.z) * 0.15;
+      for (const l of arenaLights) if (l.isPointLight) l.intensity = 15 + Math.sin(t * 7 + l.position.x) * 2; else l.scale.y = 1 + Math.sin(t * 11 + l.position.z) * 0.15;
       runes.rotation.y = t * 0.05;
 
       if (game.state !== 'play' || p.dead) return;
