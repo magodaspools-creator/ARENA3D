@@ -313,6 +313,15 @@ export function createArea1(game) {
   game.addEnemy(boss);
   let fightStart = 0;
 
+  function cancelBossFight() {
+    boss.reset();
+    barrierCol.setEnabled(false);
+    game.ui.hideBoss();
+    for (const e of adds) e.dispose();
+    adds.length = 0;
+    game.enemies = game.enemies.filter((e) => !e.removed);
+  }
+
   function startBossFight() {
     prog.advance('boss');
     barrierCol.setEnabled(true);
@@ -352,6 +361,13 @@ export function createArea1(game) {
 
       if (prog.reached('shrine') && boss.state === 'dormant' && p.pos.z < -31.5) startBossFight();
 
+      // Leaving the boss arena cancels the encounter. Reset everything and
+      // remove the HP bar so a stale dungeon boss life cannot remain on screen.
+      if (prog.id === 'boss' && boss.state !== 'dormant' && boss.state !== 'dead') {
+        const arenaDist = Math.hypot(p.pos.x - ARENA.x, p.pos.z - ARENA.z);
+        if (arenaDist > ARENA.r + 3) cancelBossFight();
+      }
+
       if (portal.active && prog.id === 'portal' && Math.hypot(p.pos.x - portal.pos.x, p.pos.z - portal.pos.z) < 2) {
         prog.advance('complete');
         game.completeArea();
@@ -379,14 +395,7 @@ export function createArea1(game) {
 
     /** Called after the player dies: reset the boss fight if it was running. */
     onRespawn() {
-      if (prog.id === 'boss') {
-        boss.reset();
-        barrierCol.setEnabled(false);
-        game.ui.hideBoss();
-        for (const e of adds) e.dispose();
-        adds.length = 0;
-        game.enemies = game.enemies.filter((e) => !e.removed);
-      }
+      if (prog.id === 'boss') cancelBossFight();
     },
   };
   return area;
