@@ -658,6 +658,11 @@ for (const side of [-1, 1]) {
 
 scene.add(mineEntrance);
 
+// Tutorial rune beside the mine entrance. It sits on the left side of the
+// mouth, close enough to be discovered before descending without blocking the
+// approved entrance or the path from the NPCs.
+const mineLightRune = createRuneStone(game, 7.1, 35.3);
+
 // ---------- Stage 2 underground route layout ----------
   // Stage 1 established the enclosed physical pocket. Stage 2 turns that
   // pocket into a readable mine: entrance tunnel -> central shaft -> three
@@ -1828,6 +1833,19 @@ const leaveMine = () => {
     label: () => mine.active ? 'Descer para a mina abandonada' : 'Entrar na mina abandonada',
     enabled: () => !mine.active,
     onInteract: enterMine,
+  });
+
+  game.interaction.add({
+    pos: mineLightRune.pos,
+    radius: 2.4,
+    height: 4.0,
+    label: 'Ler Runa da Luz Arcana',
+    onInteract: () => game.dialogue.open('Runa da Luz Arcana', [
+      '"Nas profundezas, a luz comum não alcança todos os caminhos."',
+      '"Concentre sua energia arcana para iluminar o que está oculto."',
+      'Pressione L para lançar a Luz Arcana.',
+      'A luz permanece por 10 segundos e então se desfaz.',
+    ], mineLightRune.anchor),
   });
 
   const mineExitAnchor = new THREE.Object3D();
