@@ -245,8 +245,12 @@ export class MapEditor {
   }
 
   getGroundPointFromEvent(event) {
-    const point = this.getGroundPointFromEvent(event);
-    if (!point) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(ndc, this.camera);
     return this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
   }
 
@@ -344,12 +348,8 @@ export class MapEditor {
   onPointerDown(event) {
     if (!this.active || event.button !== 0) return;
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    this.raycaster.setFromCamera(ndc, this.camera);
+    const point = this.getGroundPointFromEvent(event);
+    if (!point) return;
 
     const hits = this.raycaster.intersectObjects(this.group.children, true);
     const hitObject = hits.find((hit) => {
