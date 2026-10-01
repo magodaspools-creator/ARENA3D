@@ -549,17 +549,18 @@ const mineOreMat = new THREE.MeshStandardMaterial({ color: 0x4d6770, emissive: 0
 const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 const mineLights = [];
 
-const mineBox = (w, h, d, x, y, z, mat, rotY = 0) => {
+const mineBox = (w, h, d, x, y, z, mat, rotY = 0, opts = {}) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
   m.rotation.y = rotY;
   m.castShadow = true;
   m.receiveShadow = true;
   mineGroup.add(m);
+  if (opts.colliderRadius) game.collision.addCircle(x, z, opts.colliderRadius, { projectiles: false });
   return m;
 };
 
-const mineRock = (x, z, sx, sy, sz, rot = 0, mat = mineRockMat) => {
+const mineRock = (x, z, sx, sy, sz, rot = 0, mat = mineRockMat, opts = {}) => {
   const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), mat);
   m.position.set(x, sy * 0.48, z);
   m.scale.set(sx, sy, sz);
@@ -567,6 +568,7 @@ const mineRock = (x, z, sx, sy, sz, rot = 0, mat = mineRockMat) => {
   m.castShadow = true;
   m.receiveShadow = true;
   mineGroup.add(m);
+  if (opts.colliderRadius) game.collision.addCircle(x, z, opts.colliderRadius, { projectiles: false });
   return m;
 };
 
@@ -701,7 +703,8 @@ const mineWall = (x1, z1, x2, z2, h = 8.0, options = {}) => {
       h * (0.38 + (i % 3) * 0.035),
       1.05 + (i % 2) * 0.18,
       angle + (i % 2 ? 0.08 : -0.06),
-      mineRockDarkMat
+      mineRockDarkMat,
+      collide ? { colliderRadius: Math.max(0.85, chunkLen * 0.5) } : {}
     );
     rock.rotation.z = (i % 2 ? -1 : 1) * 0.035;
   }
@@ -821,7 +824,7 @@ for (const [x,z,s] of [
   [83,114,1.1],[88,132,0.9],[143,111,1.2],[139,123,0.95],
   [112,143,1.0],[132,143,1.2],[126,146,0.8],
 ]) {
-  mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat);
+  mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.75 });
 }
 
 // Central shaft landmark: a shallow dark ring and four stone uprights give
@@ -846,7 +849,7 @@ for (const [x, z, sx, sy, sz, ry] of [
   [122.5, 127.2, 1.5, 0.45, 0.7, 0.15],
   [125.8, 124.8, 0.9, 1.0, 0.8, 0.4],
 ]) {
-  mineBox(sx, sy, sz, x, sy * 0.5, z, mineRockDarkMat, ry);
+  mineBox(sx, sy, sz, x, sy * 0.5, z, mineRockDarkMat, ry, { colliderRadius: Math.max(sx, sz) * 0.58 });
 }
 
 // A mine cart marks the end of the west extraction line. It is kept outside
@@ -868,6 +871,7 @@ for (const wheelX of [-0.68, 0.68]) {
   cart.add(wheel2);
 }
 mineGroup.add(cart);
+  game.collision.addCircle(100.2, 123.0, 1.0, { projectiles: false });
 
 // Additional ore clusters are placed at the end of branches so each route has
 // a visual reward target before Stage 5 loot interaction is added.
@@ -953,7 +957,7 @@ for (const [x, z, sx, sy, sz, ry] of [
   [95.8, 124.8, 1.2, 0.7, 0.9, 0.2],
   [125.5, 123.0, 1.1, 0.8, 0.9, -0.15],
 ]) {
-  mineBox(sx, sy, sz, x, sy * 0.5, z, mineWoodMat, ry);
+  mineBox(sx, sy, sz, x, sy * 0.5, z, mineWoodMat, ry, { colliderRadius: Math.max(sx, sz) * 0.62 });
 }
 
 // Loose rock/debris clusters break up the floor edges. They are decorative and
@@ -1022,7 +1026,7 @@ for (const [x, z, len, rot] of [
   [106.0, 126.0, 2.4, 0.2],
   [117.5, 125.0, 1.8, -0.25],
 ]) {
-  mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot);
+  mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot, { colliderRadius: 0.34 });
 }
 
 // Fine dust hanging in the air is handled by the existing particle ambience.
@@ -1224,7 +1228,7 @@ function addSupport(x, z, span = 4.8, rotY = 0) {
   for (const side of [-1, 1]) {
     const px = x + Math.cos(rotY) * side * half;
     const pz = z + Math.sin(rotY) * side * half;
-    mineBox(0.42, 4.2, 0.42, px, 2.1, pz, mineWoodMat);
+    mineBox(0.42, 4.2, 0.42, px, 2.1, pz, mineWoodMat, 0, { colliderRadius: 0.32 });
     // Timber posts are decorative only. Their old colliders sat on corridor
     // edges and could feel like invisible walls despite visible open space.
   }
