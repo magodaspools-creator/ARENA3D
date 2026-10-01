@@ -29,6 +29,14 @@ const TERRAIN = [
   { id:'sand-rocky', name:'Areia pedregosa', icon:'░', kind:'terrain', terrainType:'sand-rocky', collision:false, color:0x907a55, sprite:TERRAIN_ASSET('sand-rocky') },
   { id:'mud', name:'Lama molhada', icon:'≈', kind:'terrain', terrainType:'mud-wet', collision:false, color:0x403832, sprite:TERRAIN_ASSET('mud-wet') },
   { id:'mud-stones', name:'Lama com pedras', icon:'≈', kind:'terrain', terrainType:'mud-stones', collision:false, color:0x463b32, sprite:TERRAIN_ASSET('mud-stones') },
+  { id:'water', name:'Água', icon:'≈', kind:'terrain', terrainType:'water', collision:false, color:0x234c63, sprite:TERRAIN_ASSET('water') },
+  { id:'deep-water', name:'Água profunda', icon:'≈', kind:'terrain', terrainType:'deep-water', collision:true, color:0x18384e, sprite:TERRAIN_ASSET('deep-water') },
+  { id:'snow', name:'Neve', icon:'*', kind:'terrain', terrainType:'snow', collision:false, color:0xb7c4c7, sprite:TERRAIN_ASSET('snow') },
+  { id:'ice', name:'Gelo', icon:'◇', kind:'terrain', terrainType:'ice', collision:false, color:0x6e9ba7, sprite:TERRAIN_ASSET('ice') },
+  { id:'gravel', name:'Cascalho', icon:'·', kind:'terrain', terrainType:'gravel', collision:false, color:0x66635d, sprite:TERRAIN_ASSET('gravel') },
+  { id:'volcanic', name:'Rocha vulcânica', icon:'◆', kind:'terrain', terrainType:'volcanic', collision:false, color:0x3f2925, sprite:TERRAIN_ASSET('volcanic') },
+  { id:'wood-floor', name:'Piso de madeira', icon:'═', kind:'terrain', terrainType:'wood-floor', collision:false, color:0x65452f, sprite:TERRAIN_ASSET('wood-floor') },
+  { id:'marble', name:'Mármore', icon:'▦', kind:'terrain', terrainType:'marble', collision:false, color:0x77787a, sprite:TERRAIN_ASSET('marble') },
 ];
 
 const BUILTIN = [
