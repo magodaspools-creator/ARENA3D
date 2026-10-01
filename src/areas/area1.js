@@ -787,10 +787,9 @@ const undergroundZones = [
   [[109, 128], [115, 126], [126, 127], [131, 132], [130, 138], [144, 139], [149, 146], [143, 153], [124, 154], [110, 151], [104, 144], [106, 136]],
 ];
 
-// The visible mine perimeter is only the outer shell. The actual walkable
-// shape is the branching dungeon layout above, so the player cannot roam the
-// old round pocket between rooms.
-for (const zone of undergroundZones) collision.addPolygonZone(zone);
+// The outer mine polygon remains the single gameplay boundary.
+// Interior visual walls do not create hidden collision barriers.
+collision.addPolygonZone(undergroundBoundary);
 
 // The mine is deliberately larger than the old 30x40 pocket. It is built as
 // chambers connected by long corridors, not as one rectangular room.
@@ -951,103 +950,6 @@ for (const [x,z,s] of [
 ]) {
   mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.75 });
 }
-
-// ---------- Mine infestation: webs, nests and cocoons ----------
-const webMat = new THREE.MeshBasicMaterial({
-  color: 0xb9b2a6,
-  transparent: true,
-  opacity: 0.34,
-  depthWrite: false,
-});
-const cocoonMat = new THREE.MeshStandardMaterial({
-  color: 0x8c857b,
-  roughness: 1,
-  flatShading: true,
-});
-const nestMat = new THREE.MeshStandardMaterial({
-  color: 0x5d514a,
-  roughness: 1,
-  flatShading: true,
-});
-
-const addWeb = (x, y, z, sx, sy, rot = 0) => {
-  const web = new THREE.Group();
-  web.position.set(x, y, z);
-  web.rotation.y = rot;
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI;
-    const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(Math.cos(a) * sx, Math.sin(a) * sy, 0),
-    ]);
-    web.add(new THREE.Line(geo, webMat));
-  }
-  const ring = new THREE.Mesh(new THREE.RingGeometry(Math.min(sx, sy) * 0.18, Math.min(sx, sy) * 0.22, 8), webMat);
-  ring.position.z = 0.01;
-  web.add(ring);
-  mineGroup.add(web);
-};
-
-const addCocoon = (x, y, z, s = 1, rot = 0) => {
-  const cocoon = new THREE.Mesh(new THREE.CapsuleGeometry(0.22 * s, 0.58 * s, 4, 7), cocoonMat);
-  cocoon.position.set(x, y, z);
-  cocoon.rotation.z = rot;
-  cocoon.rotation.x = 0.08;
-  cocoon.castShadow = false;
-  mineGroup.add(cocoon);
-  // Loose web bands make the object read as a wrapped body rather than a plain prop.
-  for (let i = -1; i <= 1; i++) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.23 * s, 0.018 * s, 4, 10), webMat);
-    band.position.set(x, y + i * 0.16 * s, z);
-    band.rotation.y = Math.PI / 2;
-    band.rotation.z = rot;
-    mineGroup.add(band);
-  }
-};
-
-const addNest = (x, z, s = 1) => {
-  const nest = new THREE.Group();
-  nest.position.set(x, 0, z);
-  const base = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 * s, 0), nestMat);
-  base.scale.set(1.25, 0.55, 1.0);
-  base.position.y = 0.35 * s;
-  nest.add(base);
-  for (let i = 0; i < 7; i++) {
-    const strand = new THREE.Mesh(new THREE.TorusGeometry((0.32 + (i % 3) * 0.08) * s, 0.025 * s, 4, 10), webMat);
-    strand.rotation.x = Math.PI / 2;
-    strand.rotation.z = i * 0.35;
-    strand.position.y = 0.45 * s + (i % 2) * 0.03;
-    nest.add(strand);
-  }
-  mineGroup.add(nest);
-  addWeb(x, 1.0 + 0.5 * s, z, 1.4 * s, 0.9 * s, 0.3);
-};
-
-// Large web sheets occupy corners and ceiling edges, never the central walking lanes.
-for (const [x, y, z, sx, sy, rot] of [
-  [92, 3.0, 101, 2.0, 1.5, 0.1],
-  [136, 3.1, 101, 2.2, 1.4, -0.3],
-  [145, 3.0, 116, 2.0, 1.5, 0.5],
-  [84, 2.7, 118, 2.1, 1.4, -0.2],
-  [124, 4.6, 132, 2.4, 1.6, 0.2],
-]) addWeb(x, y, z, sx, sy, rot);
-
-for (const [x, z, s] of [
-  [91.5, 103.0, 1.0],
-  [94.0, 120.0, 1.15],
-  [136.0, 105.0, 1.0],
-  [142.0, 120.0, 1.1],
-  [116.0, 130.5, 1.0],
-]) addNest(x, z, s);
-
-for (const [x, y, z, s, rot] of [
-  [103.2, 86.5, 0.95, 1.0, 0.18],
-  [116.4, 90.0, 0.80, 1.0, -0.2],
-  [147.0, 96.0, 0.85, 1.0, 0.1],
-  [143.5, 123.0, 0.90, 1.0, -0.3],
-  [87.5, 122.0, 0.75, 1.0, 0.2],
-  [121.0, 133.0, 0.82, 1.0, -0.15],
-]) addCocoon(x, y, z, s, rot);
 
 // ---------- Mine room identity ----------
 const mineLandmarkMat = new THREE.MeshStandardMaterial({ color: 0x3b3733, roughness: 1, flatShading: true });
