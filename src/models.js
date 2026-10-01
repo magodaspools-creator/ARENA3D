@@ -179,12 +179,31 @@ export function createHumanoid(look = {}) {
     torso.add(smooth(new THREE.CapsuleGeometry(0.27, 0.45, 6, 12), cloth, 0, 0.31, 0));
     torso.add(smooth(new THREE.CylinderGeometry(0.28, 0.29, 0.075, 12), leather, 0, 0.04, 0));
 
-    // Smaller, cleaner face attached to the animated head pivot.
-    head.add(smooth(new THREE.SphereGeometry(0.205, 16, 12), skin, 0, 0, 0));
-    const eye = mat(0x171513, { rough: 0.35, flat: false });
+    // Expressive face: visible skin plane, white eyes with pupils, brows,
+    // a small nose and a simple mouth. These sit in front of the hood instead
+    // of being hidden by a dark "opening" sphere.
+    const face = smooth(new THREE.SphereGeometry(0.205, 16, 12), skin, 0, 0, 0.035);
+    face.scale.set(1, 1.02, 0.86);
+    head.add(face);
+
+    const eyeWhite = mat(0xf1e8d7, { rough: 0.55, flat: false });
+    const pupil = mat(0x181412, { rough: 0.3, flat: false });
+    const brow = mat(0x35251d, { rough: 0.8, flat: false });
     for (const s of [-1, 1]) {
-      head.add(smooth(new THREE.SphereGeometry(0.022, 8, 6), eye, s * 0.068, 0.01, 0.185));
+      head.add(smooth(new THREE.SphereGeometry(0.028, 10, 8), eyeWhite, s * 0.068, 0.035, 0.205));
+      head.add(smooth(new THREE.SphereGeometry(0.013, 8, 6), pupil, s * 0.068, 0.035, 0.229));
+      const eyebrow = smooth(new THREE.BoxGeometry(0.058, 0.012, 0.018), brow, s * 0.068, 0.09, 0.205);
+      eyebrow.rotation.z = s * -0.08;
+      head.add(eyebrow);
     }
+
+    const nose = smooth(new THREE.SphereGeometry(0.026, 8, 6), skin, 0, -0.005, 0.222);
+    nose.scale.set(0.72, 1.0, 0.75);
+    head.add(nose);
+
+    const mouth = smooth(new THREE.BoxGeometry(0.072, 0.012, 0.012), dark, 0, -0.085, 0.215);
+    mouth.scale.set(0.82, 1, 1);
+    head.add(mouth);
 
     // Rounded arms follow the existing arm pivots, so walking/attacks still animate.
     const armMat = L.bareArms ? skin : cloth;
@@ -202,11 +221,14 @@ export function createHumanoid(look = {}) {
       const mantle = smooth(new THREE.SphereGeometry(0.38, 16, 10), cloth, 0, 0.55, -0.01);
       mantle.scale.set(1.18, 0.28, 0.78);
       torso.add(mantle);
-      const hood = smooth(new THREE.SphereGeometry(0.255, 16, 10), mat(L.hood ?? L.body, { rough: 0.9, flat: false }), 0, 0.01, -0.02);
-      head.add(hood);
-      const opening = smooth(new THREE.SphereGeometry(0.19, 16, 10), dark, 0, 0.0, 0.17);
-      opening.scale.set(0.88, 0.88, 0.45);
-      head.add(opening);
+      const hoodMat = mat(L.hood ?? L.body, { rough: 0.9, flat: false });
+      // Keep the hood behind the face. A torus frames the face without
+      // creating the old black ball that completely swallowed the features.
+      const hoodBack = smooth(new THREE.SphereGeometry(0.255, 16, 10), hoodMat, 0, 0.0, -0.09);
+      hoodBack.scale.set(1.02, 1.02, 0.72);
+      head.add(hoodBack);
+      const hoodFrame = smooth(new THREE.TorusGeometry(0.205, 0.035, 8, 18), hoodMat, 0, 0.0, 0.17);
+      head.add(hoodFrame);
       const belt = smooth(new THREE.CylinderGeometry(0.30, 0.30, 0.075, 14), leather, 0, 0.04, 0.01);
       torso.add(belt);
       const pouch = smooth(new THREE.SphereGeometry(0.12, 10, 8), leather, 0.28, -0.01, 0.11);
