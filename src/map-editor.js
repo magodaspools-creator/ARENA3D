@@ -100,6 +100,7 @@ export class MapEditor {
     this.navKeys = new Set();
     this.edgePointer = { x: 0, y: 0, active: false };
     this.wallStroke = null;
+    this.wallMode = 'freehand';
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
     this.terrainTextures = new Map();
@@ -179,6 +180,8 @@ export class MapEditor {
 
         <div class="map-editor-select-row">
           <button type="button" id="map-editor-select-tool" class="map-editor-select-tool">Selecionar</button>
+          <button type="button" data-wall-mode="freehand" class="map-editor-select-tool active">Pincel Livre</button>
+          <button type="button" data-wall-mode="arc" class="map-editor-select-tool">Arco Dinâmico</button>
         </div>
 
         <div class="map-editor-selected" id="map-editor-selected">Nenhum objeto selecionado.</div>
@@ -223,8 +226,8 @@ export class MapEditor {
         </div>
 
         <div class="map-editor-help">
-          <b>Esquerdo:</b> colocar/selecionar · <b>R:</b> girar · <b>[ / ]:</b> escala ·
-          <b>C:</b> colisão · <b>Delete:</b> apagar · <b>Ctrl+Shift+T:</b> sair · <b>Kenney:</b> 522 tiles reais
+          <b>Esquerdo:</b> colocar/selecionar · <b>Pincel Livre:</b> curvas/S · <b>Arco Dinâmico:</b> centro + raio ·
+          <b>R:</b> girar · <b>[ / ]:</b> escala · <b>C:</b> colisão · <b>Delete:</b> apagar · <b>Ctrl+Shift+T:</b> sair · <b>Kenney:</b> 522 tiles reais
         </div>
       </div>
     `;
@@ -236,6 +239,10 @@ export class MapEditor {
       button.onclick = () => this.setPalette(button.dataset.editorTab);
     });
     root.querySelector('#map-editor-select-tool').onclick = () => this.setEditorTool('select');
+    root.querySelectorAll('[data-wall-mode]').forEach((button) => {
+      button.onclick = () => this.setWallMode(button.dataset.wallMode);
+    });
+    this.renderWallModeControls();
     root.querySelectorAll('[data-editor-action]').forEach((button) => {
       button.onclick = () => this.action(button.dataset.editorAction);
     });
@@ -309,6 +316,32 @@ export class MapEditor {
     this.renderPalette();
   }
 
+  setWallMode(mode) {
+    this.wallMode = mode === 'arc' ? 'arc' : 'freehand';
+    this.renderWallModeControls();
+
+    // The wall modes operate on the currently selected wall type. If the
+    // user enters a construction mode from another palette, default to the
+    // normal wall without changing the wall-short option when already chosen.
+    if (this.selectedTool?.kind !== 'wall' && this.selectedTool?.kind !== 'wall-short') {
+      this.selectedTool = BUILTIN.find((tool) => tool.kind === 'wall') || BUILTIN[1];
+      this.placementRotation = 0;
+      this.select(null);
+      this.hidePreview();
+      this.renderPalette();
+    }
+
+    const label = this.wallMode === 'arc' ? 'Arco Dinâmico' : 'Pincel Livre';
+    this.setStatus(label + ' ativo — use Parede ou Parede Curta e arraste no chão 3D.');
+  }
+
+  renderWallModeControls() {
+    if (!this.el) return;
+    this.el.querySelectorAll('[data-wall-mode]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.wallMode === this.wallMode);
+    });
+  }
+
   setEditorTool(toolId) {
     if (toolId === 'select') {
       this.selectedTool = { id: 'select', name: 'Selecionar', kind: 'select', collision: false };
@@ -342,6 +375,7 @@ export class MapEditor {
         if (!next) return;
         this.selectedTool = next;
         this.placementRotation = 0;
+        this.renderWallModeControls();
         this.el.querySelector('#map-editor-select-tool')?.classList.remove('active');
         this.select(null);
         this.renderPalette();
@@ -440,17 +474,20 @@ export class MapEditor {
 
     const point = this.getGroundPointFromEvent(event);
     if (!point) {
-      this.hidePreview();
+      if (this.wallStroke?.active) this.clearWallStrokeGhosts();
+      else this.hidePreview();
       return;
     }
 
     const x = this.snapPlacement(point.x);
     const z = this.snapPlacement(point.z);
 
-    // Wall drawing is radial now: the first click fixes the radius and the
-    // arena center fixes the circle. The mouse only changes the swept angle.
     if (this.wallStroke?.active) {
-      this.continueWallStroke(x, z);
+      if (this.wallStroke.mode === 'arc') {
+        this.continueDynamicArc(x, z);
+      } else {
+        this.continueFreehandWall(x, z);
+      }
       return;
     }
 
@@ -464,9 +501,8 @@ export class MapEditor {
     const stroke = this.wallStroke;
     stroke.active = false;
 
-    // Ghosts are only visual while dragging. Real editor objects are created
-    // once, here, so a long drag never pollutes the map with intermediate
-    // mouse-trail pieces.
+    // Both wall tools preview ghosts during the drag and commit only the
+    // final sequence here. This keeps an aborted drag from polluting the map.
     this.clearWallStrokeGhosts();
 
     for (const segment of stroke.segments || []) {
@@ -477,98 +513,146 @@ export class MapEditor {
     }
 
     this.wallStroke = null;
-    this.setStatus('Sequência de parede concluída.');
+    this.setStatus(stroke.mode === 'arc'
+      ? 'Arco de parede concluído.'
+      : 'Pincel de parede concluído.');
   }
 
-  beginWallStroke(x, z) {
-    // The arc is calculated entirely in world space. Screen X/Y never
-    // participates in the angular calculation.
-    const center = { x: 0, z: 0 };
-    const radius = Math.max(0.001, Math.hypot(x - center.x, z - center.z));
-
-    let angleStart = Math.atan2(z - center.z, x - center.x);
-    if (angleStart < 0) angleStart += Math.PI * 2;
-
+  beginFreehandWall(x, z) {
     this.wallStroke = {
       active: true,
-      center,
-      radius,
-      angleStart,
-      angleCurrent: angleStart,
-      angleAccumulated: 0,
-      lastAngle: angleStart,
-      direction: 0,
+      mode: 'freehand',
+      lastWallPosition: new THREE.Vector3(x, 0, z),
       segments: [],
       ghosts: [],
     };
 
-    this.updateWallStrokeArc(angleStart);
+    // The first wall anchors the brush exactly where the pointer hit the
+    // ground. Subsequent walls are spaced by the physical wall width.
+    this.wallStroke.segments.push({
+      x,
+      z,
+      rotation: this.placementRotation || 0,
+    });
+    this.renderWallStrokeGhosts(this.wallStroke.segments);
   }
 
-  continueWallStroke(x, z) {
+  continueFreehandWall(x, z) {
     const stroke = this.wallStroke;
-    if (!stroke?.active) return;
+    if (!stroke?.active || stroke.mode !== 'freehand') return;
 
-    // PointerMove also supplies a world-space ground point. Normalize it to
-    // [0, 2PI) so the drag works consistently in every quadrant.
-    let angleCurrent = Math.atan2(
-      z - stroke.center.z,
-      x - stroke.center.x
-    );
+    const wallWidth = this.getWallWidth();
+    const current = new THREE.Vector3(x, 0, z);
+    const delta = current.clone().sub(stroke.lastWallPosition);
+    const distance = Math.hypot(delta.x, delta.z);
+
+    if (distance < wallWidth) return;
+
+    // Interpolate every wall-width instead of placing only at the last mouse
+    // event. This prevents gaps when the pointer moves quickly between frames.
+    const dx = delta.x / distance;
+    const dz = delta.z / distance;
+    const steps = Math.floor(distance / wallWidth);
+
+    for (let i = 1; i <= steps; i++) {
+      const px = stroke.lastWallPosition.x + dx * wallWidth;
+      const pz = stroke.lastWallPosition.z + dz * wallWidth;
+      const rotation = Math.atan2(px - stroke.lastWallPosition.x, pz - stroke.lastWallPosition.z);
+
+      stroke.segments.push({ x: px, z: pz, rotation });
+      stroke.lastWallPosition.set(px, 0, pz);
+    }
+
+    this.renderWallStrokeGhosts(stroke.segments);
+  }
+
+  beginDynamicArc(x, z) {
+    // The pointer-down point is the actual center of the arc. Nothing is
+    // fixed to world (0,0), and the radius is deliberately not stored here.
+    this.wallStroke = {
+      active: true,
+      mode: 'arc',
+      center: new THREE.Vector3(x, 0, z),
+      radius: 0,
+      angleStart: null,
+      angleCurrent: null,
+      angleAccumulated: 0,
+      lastAngle: null,
+      segments: [],
+      ghosts: [],
+    };
+    this.clearWallStrokeGhosts();
+  }
+
+  continueDynamicArc(x, z) {
+    const stroke = this.wallStroke;
+    if (!stroke?.active || stroke.mode !== 'arc') return;
+
+    const dx = x - stroke.center.x;
+    const dz = z - stroke.center.z;
+    const radius = Math.hypot(dx, dz);
+    const minRadius = this.getWallWidth() * 0.5;
+
+    if (radius < minRadius) {
+      stroke.radius = radius;
+      stroke.segments = [];
+      this.clearWallStrokeGhosts();
+      return;
+    }
+
+    stroke.radius = radius;
+
+    let angleCurrent = Math.atan2(dz, dx);
     if (angleCurrent < 0) angleCurrent += Math.PI * 2;
 
-    let deltaAngle = angleCurrent - stroke.lastAngle;
+    // The first movement away from the center defines the starting angle.
+    // From that point onward, only the world-space X/Z angle controls the
+    // sweep; radius remains dynamic and follows the pointer.
+    if (stroke.angleStart === null) {
+      stroke.angleStart = angleCurrent;
+      stroke.angleCurrent = angleCurrent;
+      stroke.lastAngle = angleCurrent;
+      stroke.angleAccumulated = 0;
+    } else {
+      let deltaAngle = angleCurrent - stroke.lastAngle;
+      if (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+      if (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
 
-    // Detect the local drag direction using only the 3D world angle.
-    // This avoids the old -PI/PI discontinuity at the X/Z axes.
-    if (Math.abs(deltaAngle) > Math.PI) {
-      deltaAngle += deltaAngle < 0 ? Math.PI * 2 : -Math.PI * 2;
+      stroke.angleAccumulated += deltaAngle;
+      stroke.lastAngle = angleCurrent;
+      stroke.angleCurrent = stroke.angleStart + stroke.angleAccumulated;
     }
 
-    if (stroke.direction === 0 && Math.abs(deltaAngle) > 0.0001) {
-      stroke.direction = deltaAngle >= 0 ? 1 : -1;
-    }
-
-    // Preserve the selected direction for the entire stroke. This allows
-    // clockwise and counter-clockwise arcs and full 360-degree circles.
-    if (stroke.direction > 0 && deltaAngle < 0) {
-      deltaAngle += Math.PI * 2;
-    } else if (stroke.direction < 0 && deltaAngle > 0) {
-      deltaAngle -= Math.PI * 2;
-    }
-
-    stroke.angleAccumulated += deltaAngle;
-    stroke.lastAngle = angleCurrent;
-    stroke.angleCurrent = stroke.angleStart + stroke.angleAccumulated;
-
-    this.updateWallStrokeArc(stroke.angleCurrent);
+    this.updateDynamicArcGhosts();
   }
 
-  updateWallStrokeArc(angleCurrent) {
+  updateDynamicArcGhosts() {
     const stroke = this.wallStroke;
-    if (!stroke?.active) return;
+    if (!stroke?.active || stroke.mode !== 'arc' || stroke.angleStart === null) return;
 
-    const wallWidth = stroke.wallWidth || (this.selectedTool.kind === 'wall-short' ? 0.75 : 3.2);
-    const stepAngle = wallWidth / Math.max(stroke.radius, 0.001);
-    const deltaAngle = angleCurrent - stroke.angleStart;
-    const direction = deltaAngle < 0 ? -1 : 1;
-    const totalAngle = Math.abs(deltaAngle);
-
-    // Always keep the first wall at the exact clicked point.
-    const count = Math.max(1, Math.floor(totalAngle / stepAngle) + 1);
+    const wallWidth = this.getWallWidth();
+    const radius = Math.max(stroke.radius, wallWidth * 0.5);
+    const totalAngle = Math.abs(stroke.angleAccumulated);
+    const direction = stroke.angleAccumulated < 0 ? -1 : 1;
+    const arcLength = totalAngle * radius;
+    const count = Math.max(1, Math.floor(arcLength / wallWidth) + 1);
     const segments = [];
 
     for (let i = 0; i < count; i++) {
-      const angle = stroke.angleStart + direction * Math.min(i * stepAngle, totalAngle);
-      const x = stroke.center.x + stroke.radius * Math.cos(angle);
-      const z = stroke.center.z + stroke.radius * Math.sin(angle);
+      const distance = Math.min(i * wallWidth, arcLength);
+      const angle = stroke.angleStart + direction * (distance / radius);
+      const px = stroke.center.x + radius * Math.cos(angle);
+      const pz = stroke.center.z + radius * Math.sin(angle);
       const rotation = -angle + (Math.PI / 2);
-
-      segments.push({ x, z, rotation });
+      segments.push({ x: px, z: pz, rotation });
     }
 
     stroke.segments = segments;
     this.renderWallStrokeGhosts(segments);
+  }
+
+  getWallWidth() {
+    return this.selectedTool?.kind === 'wall-short' ? 0.75 : 3.2;
   }
 
   renderWallStrokeGhosts(segments) {
@@ -766,11 +850,20 @@ export class MapEditor {
     const strokeTool = this.selectedTool?.kind === 'wall' || this.selectedTool?.kind === 'wall-short';
     if (strokeTool) {
       this.hidePreview();
-      this.beginWallStroke(this.snapPlacement(point.x), this.snapPlacement(point.z));
+      const x = this.snapPlacement(point.x);
+      const z = this.snapPlacement(point.z);
+
+      if (this.wallMode === 'arc') {
+        this.beginDynamicArc(x, z);
+        this.setStatus('Arco Dinâmico — clique no centro e arraste para definir raio e ângulo.');
+      } else {
+        this.beginFreehandWall(x, z);
+        this.setStatus('Pincel Livre — desenhe a parede no chão 3D e solte para finalizar.');
+      }
+
       if (typeof event.target?.setPointerCapture === 'function') {
         try { event.target.setPointerCapture(event.pointerId); } catch {}
       }
-      this.setStatus('Construindo parede — arraste sem soltar. Solte para finalizar.');
       return;
     }
 
