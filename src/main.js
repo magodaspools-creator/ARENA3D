@@ -676,9 +676,13 @@ class Game {
       this.interaction.update();
       this.dialogue.update(dt);
     }
-    for (const n of this.npcs) n.update(dt);
-    this.area.update(dt, this.time);
-    this.fx.update(dt);
+    // The map editor is a frozen authoring mode. Gameplay/world animation
+    // must not continue changing underneath the working copy.
+    if (this.state !== 'map-editor') {
+      for (const n of this.npcs) n.update(dt);
+      this.area.update(dt, this.time);
+      this.fx.update(dt);
+    }
 
     if (p) {
       this.rig.update(dt, p.pos, (this.state === 'play' || this.state === 'map-editor') && !this.inputLocked ? this.input : null);
