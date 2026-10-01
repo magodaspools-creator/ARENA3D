@@ -5,7 +5,9 @@ import { listSharedMaps, publishSharedMap } from './map-editor-api.js';
 const STORAGE_KEY = 'arena3d.map-editor.v1';
 const CREATOR_ID_KEY = 'arena3d.map-editor.creator-id.v1';
 const CREATOR_NAME_KEY = 'arena3d.map-editor.creator-name.v1';
-const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name + '.svg', import.meta.url).href;\nconst KENNEY_DUNGEON_ASSET = new URL('../assets/map-editor/packs/kenney-roguelike-caves-dungeons/roguelikeDungeon_transparent.png', import.meta.url).href;\nconst KENNEY_DUNGEON = { width: 492, height: 305, tile: 16, spacing: 1, columns: 29, rows: 18 };
+const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name + '.svg', import.meta.url).href;
+const KENNEY_DUNGEON_ASSET = new URL('../assets/map-editor/packs/kenney-roguelike-caves-dungeons/roguelikeDungeon_transparent.png', import.meta.url).href;
+const KENNEY_DUNGEON = { width: 492, height: 305, tile: 16, spacing: 1, columns: 29, rows: 18 };
 
 const TERRAIN = [
   { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329, sprite:TERRAIN_ASSET('floor') },
@@ -100,7 +102,18 @@ export class MapEditor {
     });
   }
 
-  get kenneyTools() {\n    const tools = [];\n    for (let row = 0; row < KENNEY_DUNGEON.rows; row++) {\n      for (let col = 0; col < KENNEY_DUNGEON.columns; col++) {\n        const index = row * KENNEY_DUNGEON.columns + col + 1;\n        tools.push({ id: 'kenney-dungeon:' + col + ':' + row, name: 'Tile ' + index, kind: 'terrain-atlas', atlas: 'kenney-dungeon', atlasX: col, atlasY: row, collision: false });\n      }\n    }\n    return tools;\n  }\n\n  get itemTools() {
+  get kenneyTools() {
+    const tools = [];
+    for (let row = 0; row < KENNEY_DUNGEON.rows; row++) {
+      for (let col = 0; col < KENNEY_DUNGEON.columns; col++) {
+        const index = row * KENNEY_DUNGEON.columns + col + 1;
+        tools.push({ id: 'kenney-dungeon:' + col + ':' + row, name: 'Tile ' + index, kind: 'terrain-atlas', atlas: 'kenney-dungeon', atlasX: col, atlasY: row, collision: false });
+      }
+    }
+    return tools;
+  }
+
+  get itemTools() {
     return Object.values(ITEMS)
       .filter((item) => item?.sprite)
       .map((item) => ({
@@ -131,7 +144,8 @@ export class MapEditor {
         <div class="map-editor-tabs">
           <button type="button" data-editor-tab="terrain" class="active">Terreno</button>
           <button type="button" data-editor-tab="world">Objetos</button>
-          <button type="button" data-editor-tab="items">Itens</button>\n          <button type="button" data-editor-tab="kenney">Kenney</button>
+          <button type="button" data-editor-tab="items">Itens</button>
+          <button type="button" data-editor-tab="kenney">Kenney</button>
         </div>
 
         <div id="map-editor-palette" class="map-editor-palette"></div>
@@ -386,7 +400,12 @@ export class MapEditor {
   createPreviewVisual() {
     const tool = this.selectedTool;
     let visual;
-    if (tool.kind === 'terrain-atlas') {\n      const texture = this.getKenneyDungeonTexture(tool.atlasX, tool.atlasY);\n      visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, transparent: true, opacity: 0.62, side: THREE.DoubleSide }));\n      visual.rotation.x = -Math.PI / 2;\n      visual.position.y = 0.025;\n    } else if (tool.kind === 'terrain') {
+    if (tool.kind === 'terrain-atlas') {
+      const texture = this.getKenneyDungeonTexture(tool.atlasX, tool.atlasY);
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, transparent: true, opacity: 0.62, side: THREE.DoubleSide }));
+      visual.rotation.x = -Math.PI / 2;
+      visual.position.y = 0.025;
+    } else if (tool.kind === 'terrain') {
       const texture = this.getTerrainTexture(tool.terrainType);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({
         map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1,
@@ -597,7 +616,23 @@ export class MapEditor {
     this.refreshHelper(data);
   }
 
-  getKenneyDungeonTexture(col, row) {\n    const key = String(col) + ':' + String(row);\n    if (this.terrainTextures.has('kenney:' + key)) return this.terrainTextures.get('kenney:' + key);\n    const texture = this.textureLoader.load(KENNEY_DUNGEON_ASSET);\n    texture.colorSpace = THREE.SRGBColorSpace;\n    texture.wrapS = THREE.ClampToEdgeWrapping;\n    texture.wrapT = THREE.ClampToEdgeWrapping;\n    texture.minFilter = THREE.NearestFilter;\n    texture.magFilter = THREE.NearestFilter;\n    texture.flipY = false;\n    texture.repeat.set(KENNEY_DUNGEON.tile / KENNEY_DUNGEON.width, KENNEY_DUNGEON.tile / KENNEY_DUNGEON.height);\n    texture.offset.set((col * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.width, (row * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.height);\n    this.terrainTextures.set('kenney:' + key, texture);\n    return texture;\n  }\n\n  getTerrainTexture(terrainType) {
+  getKenneyDungeonTexture(col, row) {
+    const key = String(col) + ':' + String(row);
+    if (this.terrainTextures.has('kenney:' + key)) return this.terrainTextures.get('kenney:' + key);
+    const texture = this.textureLoader.load(KENNEY_DUNGEON_ASSET);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+    texture.flipY = false;
+    texture.repeat.set(KENNEY_DUNGEON.tile / KENNEY_DUNGEON.width, KENNEY_DUNGEON.tile / KENNEY_DUNGEON.height);
+    texture.offset.set((col * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.width, (row * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.height);
+    this.terrainTextures.set('kenney:' + key, texture);
+    return texture;
+  }
+
+  getTerrainTexture(terrainType) {
     if (this.terrainTextures.has(terrainType)) return this.terrainTextures.get(terrainType);
     const tool = TERRAIN.find((entry) => entry.terrainType === terrainType) || TERRAIN[0];
     const texture = this.textureLoader.load(tool.sprite);
