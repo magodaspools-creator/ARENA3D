@@ -500,7 +500,7 @@ export class MapEditor {
       root.userData.editorPreview = true;
       root.add(visual);
       this.scene.add(root);
-      this.preview = { root, visual, toolId: this.selectedTool.id, rotation: 0 };
+      this.preview = { root, visual, toolId: this.selectedTool.id, rotation: this.placementRotation || 0 };
     }
     this.preview.root.position.set(x, 0, z);
     this.preview.root.rotation.y = this.preview.rotation || 0;
