@@ -10,6 +10,61 @@ const WHITE = new THREE.Color(0xffffff);
 const POISON_GREEN = 0x65d66f;
 const V = new THREE.Vector3();
 
+const SPIDER_LEG_MAT = new THREE.MeshStandardMaterial({ color: 0x211816, roughness: 1, flatShading: true });
+const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughness: 0.92, flatShading: true });
+const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
+const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
+
+function createSpiderModel(scale = 1) {
+  const root = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 0), SPIDER_BODY_MAT);
+  body.position.y = 0.58;
+  body.scale.set(1.15, 0.72, 1.25);
+  root.add(body);
+
+  const abdomen = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62, 0), SPIDER_ABDOMEN_MAT);
+  abdomen.position.set(0, 0.66, -0.38);
+  abdomen.scale.set(1.0, 0.82, 1.25);
+  root.add(abdomen);
+
+  const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 0), SPIDER_BODY_MAT);
+  head.position.set(0, 0.55, 0.55);
+  head.scale.set(1.05, 0.82, 0.9);
+  root.add(head);
+
+  const eyes = [];
+  for (const [x, y, z, s] of [
+    [-0.18,0.66,0.80,0.07],[0.18,0.66,0.80,0.07],
+    [-0.28,0.57,0.74,0.045],[0.28,0.57,0.74,0.045],
+  ]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(s, 6, 5), SPIDER_EYE_MAT);
+    eye.position.set(x,y,z);
+    root.add(eye);
+    eyes.push(eye);
+  }
+
+  const legs = [];
+  for (let i = 0; i < 8; i++) {
+    const side = i < 4 ? -1 : 1;
+    const row = i % 4;
+    const z = 0.48 - row * 0.36;
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.26, 0.52, z);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.82, 5), SPIDER_LEG_MAT);
+    upper.position.set(side * 0.30, 0.02, side * 0.05);
+    upper.rotation.z = side * 0.95;
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.72, 5), SPIDER_LEG_MAT);
+    lower.position.set(side * 0.70, -0.16, side * 0.08);
+    lower.rotation.z = -side * 0.72;
+    leg.add(upper, lower);
+    root.add(leg);
+    legs.push(leg);
+  }
+
+  root.scale.setScalar(scale);
+  return { root, body, abdomen, legs, eyes };
+}
+
 export const ENEMY_TYPES = {
   zombie: { name: 'Zumbi', hp: 105, speed: 2.7, resistances: { physical: 0.05, magic: 0 }, rewards: { xp: 42, gold: 14 }, loot: [
     { itemId: 'iron_scrap', chance: 0.55, min: 1, max: 2 },
@@ -30,6 +85,14 @@ export const ENEMY_TYPES = {
     { itemId: 'worn_boots', chance: 0.04 },
     { itemId: 'moon_herb', chance: 0.2 },
   ], aggro: 11, range: 9, keep: 6.5, damage: [10, 13], windup: 0.75, cooldown: 2.3, radius: 0.45, height: 2.1, ranged: true, knock: 7 },
+  spider: { name: 'Aranha da Mina', hp: 72, speed: 3.65, resistances: { physical: 0.03, magic: 0 }, rewards: { xp: 38, gold: 15 }, loot: [
+    { itemId: 'moon_herb', chance: 0.20, min: 1, max: 1 },
+    { itemId: 'iron_scrap', chance: 0.38, min: 1, max: 2 },
+    { itemId: 'red_potion', chance: 0.035 },
+  ], aggro: 9.5, range: 1.45, damage: [9, 13], windup: 0.42, cooldown: 1.45, radius: 0.48, height: 1.2, knock: 3, poison: { damage: [2, 4], duration: 4, tick: 1 } },
+  spiderling: { name: 'Filhote de Aranha', hp: 38, speed: 4.5, resistances: { physical: 0 }, rewards: { xp: 18, gold: 6 }, loot: [
+    { itemId: 'iron_scrap', chance: 0.20, min: 1, max: 1 },
+  ], aggro: 7.5, range: 1.05, damage: [5, 8], windup: 0.28, cooldown: 1.1, radius: 0.28, height: 0.75, knock: 2, poison: { damage: [1, 2], duration: 3, tick: 1 } },
 };
 
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
@@ -46,6 +109,11 @@ export class Enemy {
     if (type === 'wisp') {
       this.model = createWispModel();
       this.root = this.model.root;
+    } else if (type === 'spider' || type === 'spiderling') {
+      const spiderScale = type === 'spiderling' ? 0.62 : 1;
+      this.model = createSpiderModel(spiderScale);
+      this.root = this.model.root;
+      this.spider = true;
     } else {
       const isZombie = type === 'zombie';
       this.rig = createHumanoid({
@@ -145,7 +213,7 @@ export class Enemy {
     this.anim?.die();
     this.game.ui.removeAnchor(this.bar);
     const fx = this.game.fx;
-    const c = this.type === 'wisp' ? 0xc07aff : 0x8affd8;
+    const c = this.type === 'wisp' ? 0xc07aff : (this.spider ? 0xb85b55 : 0x8affd8);
     fx.emit(V.copy(this.pos).setY(1.2), { count: 40, color: c, speed: 5, up: 1, life: 0.9, size: 0.4, drag: 2 });
     fx.emit(V.copy(this.pos).setY(1.0), { count: 16, color: c, speed: 0.6, up: 3, life: 1.6, size: 0.5, drag: 0.5 });
     this.game.onEnemyKilled(this, rollLoot(this.lootTable));
@@ -276,6 +344,21 @@ export class Enemy {
     this.state = 'windup';
     this.stateT = 0;
     if (this.anim) this.anim.attack('slash', this.def.windup / 0.5);
+  }
+
+  animateSpider(dt, stride = 0) {
+    if (!this.model?.legs) return;
+    const moving = stride > 0.05 && this.state !== 'windup';
+    const phase = this.t * (moving ? 11 : 3);
+    this.model.body.position.y = 0.58 + Math.sin(this.t * 4.5) * (moving ? 0.025 : 0.012);
+    this.model.abdomen.rotation.y = Math.sin(this.t * 1.7) * 0.04;
+    this.model.legs.forEach((leg, i) => {
+      const side = i < 4 ? -1 : 1;
+      const row = i % 4;
+      const swing = moving ? Math.sin(phase + row * 1.45 + side * 0.7) * 0.16 : Math.sin(phase + row) * 0.025;
+      leg.rotation.y = swing * side;
+      leg.rotation.x = Math.cos(phase + row * 1.2) * (moving ? 0.08 : 0.02);
+    });
   }
 
   animateWisp(dt) {
