@@ -5,6 +5,11 @@ await RAPIER.init();
 
 const STATIC = 1;
 const ACTOR = 2;
+// Static colliders accept actors; actors accept static colliders.
+// The previous STATIC↔STATIC / ACTOR↔ACTOR groups prevented Rapier's
+// character controller from seeing the dungeon walls at the broad phase.
+const STATIC_GROUPS = (STATIC << 16) | ACTOR;
+const ACTOR_GROUPS = (ACTOR << 16) | STATIC;
 const COLLISION_HEIGHT = 4.0;
 const ACTOR_HALF_HEIGHT = 0.55;
 const FLOOR_Y = -0.12;
@@ -34,7 +39,7 @@ export class Collision {
     const floor = this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(80, 0.12, 100)
         .setTranslation(0, FLOOR_Y, -10)
-        .setCollisionGroups((STATIC << 16) | STATIC),
+        .setCollisionGroups(STATIC_GROUPS),
     );
     floor.userData = STATIC;
     this.staticColliders.add(floor);
@@ -198,7 +203,7 @@ export class Collision {
 
     const desc = RAPIER.ColliderDesc.capsule(ACTOR_HALF_HEIGHT, radius)
       .setTranslation(pos.x, ACTOR_HALF_HEIGHT + radius, pos.z)
-      .setCollisionGroups((ACTOR << 16) | ACTOR)
+      .setCollisionGroups(ACTOR_GROUPS)
       .setFriction(0);
 
     collider = this.world.createCollider(desc);
@@ -246,7 +251,8 @@ export class Collision {
   resolveObstacles(x, z, r) {
     const probe = { x, y: ACTOR_HALF_HEIGHT + r, z };
     const collider = RAPIER.ColliderDesc.capsule(ACTOR_HALF_HEIGHT, r)
-      .setTranslation(probe.x, probe.y, probe.z);
+      .setTranslation(probe.x, probe.y, probe.z)
+      .setCollisionGroups(ACTOR_GROUPS);
     const temp = this.world.createCollider(collider);
     temp.userData = ACTOR;
 
