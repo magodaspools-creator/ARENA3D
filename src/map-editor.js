@@ -443,7 +443,7 @@ export class MapEditor {
     }
 
     // Ghost/preview acompanha o grid do Core, não coordenadas brutas do mouse.
-    this.updatePreview(this.core.snap(point.x), this.core.snap(point.z));
+    this.updatePreview(this.snapPlacement(point.x), this.snapPlacement(point.z));
   }
 
   updatePreviewFromPointer() {
@@ -618,6 +618,14 @@ export class MapEditor {
     this.place(point.x, point.z);
   }
 
+  snapPlacement(value) {
+    // Walls are construction geometry: their placement must not be forced
+    // onto the editor's 2m gameplay grid. Short walls especially need fine
+    // positioning so they can be packed together to form curves.
+    const fineSnap = this.selectedTool?.kind === 'wall' || this.selectedTool?.kind === 'wall-short' ? 0.25 : this.core.gridSize;
+    return Math.round(Number(value) / fineSnap) * fineSnap;
+  }
+
   place(x, z) {
     const data = {
       id: 'editor-' + (++this.seq),
@@ -627,9 +635,9 @@ export class MapEditor {
       atlasX: Number.isInteger(this.selectedTool.atlasX) ? this.selectedTool.atlasX : null,
       atlasY: Number.isInteger(this.selectedTool.atlasY) ? this.selectedTool.atlasY : null,
       itemId: this.selectedTool.itemId || null,
-      x: Number(this.core.snap(x).toFixed(3)),
+      x: Number(this.snapPlacement(x).toFixed(3)),
       y: 0,
-      z: Number(this.core.snap(z).toFixed(3)),
+      z: Number(this.snapPlacement(z).toFixed(3)),
       rotation: this.placementRotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
