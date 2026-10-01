@@ -519,21 +519,38 @@ export class MapEditor {
   }
 
   beginFreehandWall(x, z) {
+    const wallWidth = this.getWallWidth();
+    const rotation = this.placementRotation || 0;
+
+    // Freehand is a chained construction tool. The mouse only chooses the
+    // desired direction; every new wall starts exactly at the previous wall's
+    // exit joint. This prevents gaps and the old "mouse trail" teeth.
+    const dirX = Math.sin(rotation);
+    const dirZ = Math.cos(rotation);
+    const firstCenter = new THREE.Vector3(x, 0, z);
+    const firstEndJoint = new THREE.Vector3(
+      x + dirX * wallWidth,
+      0,
+      z + dirZ * wallWidth
+    );
+
     this.wallStroke = {
       active: true,
       mode: 'freehand',
-      lastWallPosition: new THREE.Vector3(x, 0, z),
-      segments: [],
+      maxTurnAngle: Math.PI / 12,
+      wallWidth,
+      lastWall: {
+        endJoint: firstEndJoint,
+        rotY: rotation,
+      },
+      segments: [{
+        x: firstCenter.x,
+        z: firstCenter.z,
+        rotation,
+      }],
       ghosts: [],
     };
 
-    // The first wall anchors the brush exactly where the pointer hit the
-    // ground. Subsequent walls are spaced by the physical wall width.
-    this.wallStroke.segments.push({
-      x,
-      z,
-      rotation: this.placementRotation || 0,
-    });
     this.renderWallStrokeGhosts(this.wallStroke.segments);
   }
 
@@ -541,26 +558,49 @@ export class MapEditor {
     const stroke = this.wallStroke;
     if (!stroke?.active || stroke.mode !== 'freehand') return;
 
-    const wallWidth = this.getWallWidth();
-    const current = new THREE.Vector3(x, 0, z);
-    const delta = current.clone().sub(stroke.lastWallPosition);
-    const distance = Math.hypot(delta.x, delta.z);
+    const wallWidth = stroke.wallWidth || this.getWallWidth();
+    const maxTurnAngle = stroke.maxTurnAngle || (Math.PI / 12);
+    const mousePoint = new THREE.Vector3(x, 0, z);
 
-    if (distance < wallWidth) return;
+    // Consume the cursor movement in full wall-width chunks. Each chunk is
+    // anchored to lastWall.endJoint, never to the cursor itself.
+    let guard = 0;
+    while (guard++ < 128) {
+      const startJoint = stroke.lastWall.endJoint;
+      const toMouseX = mousePoint.x - startJoint.x;
+      const toMouseZ = mousePoint.z - startJoint.z;
+      const distance = Math.hypot(toMouseX, toMouseZ);
 
-    // Interpolate every wall-width instead of placing only at the last mouse
-    // event. This prevents gaps when the pointer moves quickly between frames.
-    const dx = delta.x / distance;
-    const dz = delta.z / distance;
-    const steps = Math.floor(distance / wallWidth);
+      if (distance < wallWidth) break;
 
-    for (let i = 1; i <= steps; i++) {
-      const px = stroke.lastWallPosition.x + dx * wallWidth;
-      const pz = stroke.lastWallPosition.z + dz * wallWidth;
-      const rotation = Math.atan2(px - stroke.lastWallPosition.x, pz - stroke.lastWallPosition.z);
+      const targetAngle = Math.atan2(toMouseX, toMouseZ);
+      let angleDiff = targetAngle - stroke.lastWall.rotY;
 
-      stroke.segments.push({ x: px, z: pz, rotation });
-      stroke.lastWallPosition.set(px, 0, pz);
+      // Normalize to [-PI, PI], then clamp the turn to 15 degrees.
+      angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      const clampedDiff = Math.max(-maxTurnAngle, Math.min(maxTurnAngle, angleDiff));
+      const newRotY = stroke.lastWall.rotY + clampedDiff;
+
+      const dirX = Math.sin(newRotY);
+      const dirZ = Math.cos(newRotY);
+      const centerX = startJoint.x + dirX * (wallWidth / 2);
+      const centerZ = startJoint.z + dirZ * (wallWidth / 2);
+      const newEndJoint = new THREE.Vector3(
+        startJoint.x + dirX * wallWidth,
+        0,
+        startJoint.z + dirZ * wallWidth
+      );
+
+      stroke.segments.push({
+        x: centerX,
+        z: centerZ,
+        rotation: newRotY,
+      });
+
+      stroke.lastWall = {
+        endJoint: newEndJoint,
+        rotY: newRotY,
+      };
     }
 
     this.renderWallStrokeGhosts(stroke.segments);
