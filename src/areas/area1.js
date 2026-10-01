@@ -27,9 +27,9 @@ export function createArea1(game) {
   collision.addRectZone(-22, 22, -20, 13);  // courtyard
   collision.addRectZone(-3, 3, -32, -18);   // corridor
   collision.addCircleZone(ARENA.x, ARENA.z, ARENA.r);
-  // courtyard south wall (with a gap for the path)
-  collision.addBox(-23, -6.2, 12.9, 14.3);
-  collision.addBox(6.2, 23, 12.9, 14.3);
+  // The courtyard perimeter is defined by the wall colliders below.
+  // Do not add a second box here: those old boxes overlapped the visible
+  // north wall and created wider "invisible wall" volumes around its edges.
 
   const terrain = new Terrain(collision);
   const cA = new THREE.Color(0x15241a), cB = new THREE.Color(0x2a4026), dirt = new THREE.Color(0x3b2e22), stone = new THREE.Color(0x26272b);
