@@ -45,6 +45,7 @@ const TERRAIN = [
 const BUILTIN = [
   { id: 'stone', name: 'Pedra', icon: '◆', kind: 'stone', collision: true },
   { id: 'wall', name: 'Parede', icon: '▰', kind: 'wall', collision: true },
+  { id: 'wall-short', name: 'Parede Curta', icon: '▬', kind: 'wall-short', collision: true },
   { id: 'crate', name: 'Caixote', icon: '▦', kind: 'crate', collision: true },
   { id: 'pillar', name: 'Pilar', icon: '▮', kind: 'pillar', collision: true },
   { id: 'ore', name: 'Minério', icon: '✦', kind: 'ore', collision: false },
@@ -488,8 +489,9 @@ export class MapEditor {
       }));
       visual.scale.set(0.95, 0.8, 0.9);
       visual.position.y = 0.55;
-    } else if (tool.kind === 'wall') {
-      visual = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 0.9), new THREE.MeshStandardMaterial({
+    } else if (tool.kind === 'wall' || tool.kind === 'wall-short') {
+      const wallWidth = tool.kind === 'wall-short' ? 0.95 : 3.2;
+      visual = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, 2.6, 0.9), new THREE.MeshStandardMaterial({
         color: 0x8b9098, roughness: 1, flatShading: true, transparent: true, opacity: 0.45
       }));
       visual.position.y = 1.3;
@@ -631,10 +633,10 @@ export class MapEditor {
       rotation: this.placementRotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
-      radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'stone' ? 0.42 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65),
-      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'stone' ? 0.95 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4),
-      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'stone' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4),
-      height: this.selectedTool.kind === 'wall' ? 2.6 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0.02 : 1.2,
+      radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'wall-short' ? 0.48 : (this.selectedTool.kind === 'stone' ? 0.42 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65)),
+      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'wall-short' ? 0.95 : (this.selectedTool.kind === 'stone' ? 0.95 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'wall-short' ? 0.9 : (this.selectedTool.kind === 'stone' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4)),
+      height: this.selectedTool.kind === 'wall' || this.selectedTool.kind === 'wall-short' ? 2.6 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0.02 : 1.2,
     };
     const blockedBy = this.findPlacementBlocker(data);
     if (blockedBy) {
@@ -659,7 +661,7 @@ export class MapEditor {
       // Walls are map geometry: adjacent wall segments are allowed to touch
       // or overlap. The old circular blocker used the wall's gameplay radius
       // and incorrectly rejected valid wall-to-wall placement.
-      if (candidate.kind === 'wall' && existing.kind === 'wall') continue;
+      if ((candidate.kind === 'wall' || candidate.kind === 'wall-short') && (existing.kind === 'wall' || existing.kind === 'wall-short')) continue;
 
       const existingRadius = Math.max(0.15, (existing.radius || 0.65) * (existing.scale || 1));
       const dx = candidate.x - existing.x;
@@ -699,7 +701,7 @@ export class MapEditor {
     } else if (data.kind === 'stone') {
       visual = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ color: 0x5b5e64, roughness: 1, flatShading: true }));
       visual.scale.set(0.95, 0.8, 0.9); visual.position.y = 0.55; visual.rotation.set(0.1, 0.3, -0.08);
-    } else if (data.kind === 'wall') {
+    } else if (data.kind === 'wall' || data.kind === 'wall-short') {
       visual = new THREE.Mesh(new THREE.BoxGeometry(data.width, data.height, data.depth), new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 1, flatShading: true }));
       visual.position.y = data.height / 2;
     } else if (data.kind === 'crate') {
