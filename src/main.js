@@ -29,7 +29,7 @@ class Game {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
@@ -42,7 +42,7 @@ class Game {
 
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.75, 0.5, 0.85);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.48, 0.5, 1.05);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
