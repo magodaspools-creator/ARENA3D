@@ -118,6 +118,15 @@ class Game {
     document.getElementById('shop-close').onclick = () => this.closeShop();
     document.getElementById('pause-resume').onclick = () => this.resumeGame();
     document.getElementById('pause-controls-btn').onclick = () => this.showPauseControls();
+    document.getElementById('map-editor-btn').onclick = () => {
+      const password = prompt('Senha do Editor de mapa:');
+      if (password !== 't88415890') {
+        if (password !== null) this.ui.toast('Senha incorreta.');
+        return;
+      }
+      this.ui.hidePause();
+      this.mapEditor.toggle(true);
+    };
     document.getElementById('pause-menu').onclick = () => this.returnToCharacterSelect();
     document.getElementById('controls-back').onclick = () => this.showPauseMenu();
     document.getElementById('shop-cancel').onclick = () => this.closeShop();
