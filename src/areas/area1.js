@@ -976,7 +976,7 @@ for (const [x,z,s] of [
   [83,114,1.1],[88,132,0.9],[143,111,1.2],[139,123,0.95],
   [112,143,1.0],[132,143,1.2],[126,146,0.8],
 ]) {
-  mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.75 });
+  mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: Math.max(0.55, s * 0.75) });
 }
 
 // ---------- Mine room identity ----------
@@ -1009,7 +1009,7 @@ const shaftVoid = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.75, 0.08, 12
 shaftVoid.position.set(110, 0.09, 109);
 mineGroup.add(shaftVoid);
 for (const [x, z, rot] of [[107.9,109,0],[112.1,109,0],[110,106.9,Math.PI/2],[110,111.1,Math.PI/2]]) {
-  mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat);
+  mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat, { colliderRadius: 0.52 });
 }
 
 // Collapsed gallery in the south-east pocket. The debris is decorative and
