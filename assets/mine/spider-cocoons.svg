@@ -1,9 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512" viewBox="0 0 1024 512">
-<defs><radialGradient id="s" cx="35%" cy="25%"><stop offset="0" stop-color="#8c8178"/><stop offset=".55" stop-color="#514943"/><stop offset="1" stop-color="#211d1a"/></radialGradient><filter id="b"><feGaussianBlur stdDeviation="1"/></filter></defs>
-<g stroke="#b9aaa0" stroke-width="4" fill="none" opacity=".9">
-<g transform="translate(128 256)"><path fill="url(#s)" d="M0-155C72-155 103-75 78 0C103 75 72 155 0 155C-72 155-103 75-78 0C-103-75-72-155 0-155Z"/><path d="M-52-115Q0-75 52-115M-75-60Q0-20 75-60M-78 5Q0 42 78 5M-70 70Q0 100 70 70M-45 120Q0 145 45 120"/><path d="M0-155V155"/></g>
-<g transform="translate(384 256)"><path fill="url(#s)" d="M0-145C60-145 90-70 62 0C90 70 60 145 0 145C-60 145-90 70-62 0C-90-70-60-145 0-145Z"/><path d="M-42-112Q0-78 42-112M-62-55Q0-22 62-55M-65 8Q0 38 65 8M-56 66Q0 94 56 66M-35 112Q0 132 35 112"/></g>
-<g transform="translate(640 256)"><path fill="url(#s)" d="M0-170C78-170 111-82 82 0C111 82 78 170 0 170C-78 170-111 82-82 0C-111-82-78-170 0-170Z"/><path d="M-58-132Q0-88 58-132M-82-68Q0-25 82-68M-85 0Q0 35 85 0M-75 70Q0 108 75 70M-48 132Q0 157 48 132"/><path d="M-18-168Q-5-130-20-95Q-2-62-18-28Q0 8-14 43Q3 78-8 118"/></g>
-<g transform="translate(896 256)"><path fill="url(#s)" d="M0-135C55-135 84-65 58 0C84 65 55 135 0 135C-55 135-84 65-58 0C-84-65-55-135 0-135Z"/><path d="M-40-102Q0-72 40-102M-58-50Q0-18 58-50M-62 8Q0 36 62 8M-50 60Q0 88 50 60M-30 105Q0 122 30 105"/><path d="M0-135V135"/></g></g>
-<g fill="#d8c6b6"><circle cx="384" cy="110" r="4"/><circle cx="640" cy="88" r="4"/></g>
+<defs>
+  <radialGradient id="silkBody" cx="35%" cy="22%">
+    <stop stop-color="#b6aa9f"/><stop offset=".42" stop-color="#776b61"/><stop offset=".82" stop-color="#403831"/><stop offset="1" stop-color="#211d1a"/>
+  </radialGradient>
+  <linearGradient id="thread" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7ddd2" stop-opacity=".82"/><stop offset="1" stop-color="#988d84" stop-opacity=".34"/></linearGradient>
+</defs>
+<g stroke="url(#thread)" stroke-linecap="round">
+  <g transform="translate(128 256)">
+    <path d="M0-188 C-18-170 -8-154 0-142" fill="none" stroke-width="5"/>
+    <path d="M0-144 C-61-126 -78-76 -67-20 C-75 40-48 105 0 132 C48 105 75 40 67-20 C78-76 61-126 0-144Z" fill="url(#silkBody)" stroke-width="4"/>
+    <path d="M-51-105Q0-73 51-105M-65-62Q0-28 65-62M-69-18Q0 16 69-18M-62 29Q0 57 62 29M-49 73Q0 96 49 73M-29 108Q0 123 29 108" fill="none" stroke-width="3"/>
+    <path d="M-28-132Q-6-102-18-72T-14-12T-10 48T-6 94" fill="none" stroke-width="2.5"/>
+  </g>
+  <g transform="translate(384 256)">
+    <path d="M0-178 C-14-162 -7-145 0-133" fill="none" stroke-width="5"/>
+    <path d="M0-136 C-52-116 -67-70-57-17 C-65 37-43 94 0 119 C43 94 65 37 57-17 C67-70 52-116 0-136Z" fill="url(#silkBody)" stroke-width="4"/>
+    <path d="M-43-99Q0-73 43-99M-56-57Q0-31 56-57M-59-14Q0 13 59-14M-53 29Q0 51 53 29M-41 69Q0 88 41 69M-25 99Q0 112 25 99" fill="none" stroke-width="3"/>
+  </g>
+  <g transform="translate(640 256)">
+    <path d="M0-202 C-18-182 -7-160 0-147" fill="none" stroke-width="5"/>
+    <path d="M0-149 C-66-126 -85-73-73-19 C-82 45-54 112 0 142 C54 112 82 45 73-19 C85-73 66-126 0-149Z" fill="url(#silkBody)" stroke-width="4"/>
+    <path d="M-56-112Q0-79 56-112M-72-66Q0-30 72-66M-75-18Q0 19 75-18M-68 30Q0 62 68 30M-53 76Q0 104 53 76M-32 116Q0 132 32 116" fill="none" stroke-width="3"/>
+    <path d="M18-143Q-2-104 15-71T5-3T13 63T4 113" fill="none" stroke-width="2.5"/>
+  </g>
+  <g transform="translate(896 256)">
+    <path d="M0-165 C-13-149 -6-133 0-121" fill="none" stroke-width="5"/>
+    <path d="M0-124 C-49-106-63-65-54-14 C-61 36-40 85 0 108 C40 85 61 36 54-14 C63-65 49-106 0-124Z" fill="url(#silkBody)" stroke-width="4"/>
+    <path d="M-41-89Q0-65 41-89M-53-49Q0-24 53-49M-56-8Q0 17 56-8M-49 31Q0 52 49 31M-37 65Q0 83 37 65M-23 91Q0 103 23 91" fill="none" stroke-width="3"/>
+  </g>
+</g>
+<g fill="#d8c9bc" opacity=".72"><circle cx="128" cy="68" r="4"/><circle cx="384" cy="78" r="4"/><circle cx="640" cy="54" r="4"/><circle cx="896" cy="91" r="4"/></g>
 </svg>
