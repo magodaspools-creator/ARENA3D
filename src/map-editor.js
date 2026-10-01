@@ -481,9 +481,13 @@ export class MapEditor {
   }
 
   beginWallStroke(x, z) {
+    // The arc is calculated entirely in world space. Screen X/Y never
+    // participates in the angular calculation.
     const center = { x: 0, z: 0 };
     const radius = Math.max(0.001, Math.hypot(x - center.x, z - center.z));
-    const angleStart = Math.atan2(z - center.z, x - center.x);
+
+    let angleStart = Math.atan2(z - center.z, x - center.x);
+    if (angleStart < 0) angleStart += Math.PI * 2;
 
     this.wallStroke = {
       active: true,
@@ -493,6 +497,7 @@ export class MapEditor {
       angleCurrent: angleStart,
       angleAccumulated: 0,
       lastAngle: angleStart,
+      direction: 0,
       segments: [],
       ghosts: [],
     };
@@ -504,16 +509,36 @@ export class MapEditor {
     const stroke = this.wallStroke;
     if (!stroke?.active) return;
 
-    const rawAngle = Math.atan2(z - stroke.center.z, x - stroke.center.x);
+    // PointerMove also supplies a world-space ground point. Normalize it to
+    // [0, 2PI) so the drag works consistently in every quadrant.
+    let angleCurrent = Math.atan2(
+      z - stroke.center.z,
+      x - stroke.center.x
+    );
+    if (angleCurrent < 0) angleCurrent += Math.PI * 2;
 
-    // Unwrap the mouse angle so crossing -PI/PI does not make the brush jump
-    // backwards and rebuild the wrong half of the circle.
-    let delta = rawAngle - stroke.lastAngle;
-    while (delta > Math.PI) delta -= Math.PI * 2;
-    while (delta < -Math.PI) delta += Math.PI * 2;
+    let deltaAngle = angleCurrent - stroke.lastAngle;
 
-    stroke.angleAccumulated += delta;
-    stroke.lastAngle = rawAngle;
+    // Detect the local drag direction using only the 3D world angle.
+    // This avoids the old -PI/PI discontinuity at the X/Z axes.
+    if (Math.abs(deltaAngle) > Math.PI) {
+      deltaAngle += deltaAngle < 0 ? Math.PI * 2 : -Math.PI * 2;
+    }
+
+    if (stroke.direction === 0 && Math.abs(deltaAngle) > 0.0001) {
+      stroke.direction = deltaAngle >= 0 ? 1 : -1;
+    }
+
+    // Preserve the selected direction for the entire stroke. This allows
+    // clockwise and counter-clockwise arcs and full 360-degree circles.
+    if (stroke.direction > 0 && deltaAngle < 0) {
+      deltaAngle += Math.PI * 2;
+    } else if (stroke.direction < 0 && deltaAngle > 0) {
+      deltaAngle -= Math.PI * 2;
+    }
+
+    stroke.angleAccumulated += deltaAngle;
+    stroke.lastAngle = angleCurrent;
     stroke.angleCurrent = stroke.angleStart + stroke.angleAccumulated;
 
     this.updateWallStrokeArc(stroke.angleCurrent);
