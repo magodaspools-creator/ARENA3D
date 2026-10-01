@@ -64,7 +64,7 @@ export class Collision {
 
     const desc = RAPIER.ColliderDesc.cylinder(COLLISION_HEIGHT * 0.5, r)
       .setTranslation(x, COLLISION_HEIGHT * 0.5, z)
-      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setCollisionGroups(STATIC_GROUPS)
       .setFriction(0);
     desc.setEnabled(o.enabled);
 
@@ -90,7 +90,7 @@ export class Collision {
     const hz = Math.max(0.001, (maxZ - minZ) * 0.5);
     const desc = RAPIER.ColliderDesc.cuboid(hx, COLLISION_HEIGHT * 0.5, hz)
       .setTranslation((minX + maxX) * 0.5, COLLISION_HEIGHT * 0.5, (minZ + maxZ) * 0.5)
-      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setCollisionGroups(STATIC_GROUPS)
       .setFriction(0);
     desc.setEnabled(o.enabled);
 
@@ -122,7 +122,7 @@ export class Collision {
     const desc = RAPIER.ColliderDesc.cuboid(thickness * 0.5, height * 0.5, len * 0.5)
       .setTranslation((x1 + x2) * 0.5, height * 0.5, (z1 + z2) * 0.5)
       .setRotation({ w: Math.cos(angle * 0.5), x: 0, y: Math.sin(angle * 0.5), z: 0 })
-      .setCollisionGroups((STATIC << 16) | STATIC)
+      .setCollisionGroups(STATIC_GROUPS)
       .setFriction(0);
     desc.setEnabled(o.enabled);
 
