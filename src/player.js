@@ -67,7 +67,10 @@ export class Player {
 
   get invulnerable() { return this.dashT > 0; }
 
-  dispose() { this.game.scene.remove(this.root); }
+  dispose() {
+    this.game.scene.remove(this.root);
+    this.game.scene.remove(this.lightSpell);
+  }
 
   place(x, z, facing) {
     this.pos.set(x, 0, z);
