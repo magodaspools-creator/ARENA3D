@@ -43,7 +43,7 @@ export function createArea2(game) {
     const s = 0.5 + r() * 2.4;
     decor.rock(x, 0, z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
     // Every gameplay-visible rock is also a physical obstacle.
-    collision.addCircle(x, z, Math.max(0.42, s * 0.62), { projectiles: false });
+    collision.addCircle(x, z, Math.max(0.5, s * 1.1), { projectiles: false });
   }
 
   // Sandstone ribs create readable lanes without becoming invisible walls.
@@ -141,10 +141,11 @@ export function createArea2(game) {
     c.position.set(x,h/2,z); c.castShadow=true; temple.add(c);
     collision.addCircle(x,z,0.95);
   }
-  collision.addBox(129,135,27,39);
-  collision.addBox(165,171,27,39);
-  collision.addBox(135,165,46,49);
-  collision.addBox(143,157,31,37); // raised inner dais boundary
+  collision.addBox(130.9,133.1,27,35);   // west entrance wall
+  collision.addBox(166.9,169.1,27,35);   // east entrance wall
+  collision.addBox(136,146,45.9,49);      // north-left ruined wall
+  collision.addBox(154,164,45.9,49);       // north-right ruined wall
+  collision.addBox(142.5,157.5,29.5,40.5); // raised inner dais
 
   // Sun glyph over the buried doorway.
   const sun = new THREE.Group();
@@ -237,11 +238,11 @@ export function createArea2(game) {
   const exitPortal = createPortal(game, ORIGIN.x, 45);
 
   const portalStone = new THREE.Group();
-  portalStone.position.set(ORIGIN.x,-0.0,-45);
+  portalStone.position.set(ORIGIN.x,0,-45);
   scene.add(portalStone);
-  for(const [x,z] of [[-3,-45],[3,-45]]) {
+  for(const x of [-3,3]) {
     const p=new THREE.Mesh(new THREE.BoxGeometry(1.3,3.6,1.3),stoneMat);
-    p.position.set(ORIGIN.x+x,1.8,z);
+    p.position.set(x,1.8,0);
     p.castShadow=true; portalStone.add(p);
     collision.addCircle(ORIGIN.x+x,z,0.9);
   }
@@ -269,6 +270,7 @@ export function createArea2(game) {
   });
 
   let fightStart = 0;
+  let bossCooldown = 0;
   const desertBoss = new Boss(game, bossArena.x, bossArena.z, {
     name: 'Azhur, o Guardião do Sol Sepultado',
     onSummon: () => {
@@ -295,9 +297,10 @@ export function createArea2(game) {
     },
   });
   game.addEnemy(desertBoss);
+  desertBoss.arena = bossArena;
 
   function startDesertBoss() {
-    if (desertBoss.state !== 'dormant' || !exitPortal) return;
+    if (bossCooldown > 0 || desertBoss.state !== 'dormant' || !exitPortal) return;
     fightStart = game.time;
     desertBoss.awaken();
     game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
@@ -378,14 +381,17 @@ export function createArea2(game) {
     },
 
     onRespawn() {
-      // A defeated boss stays defeated. Only an interrupted fight is reset.
+      // A defeated boss stays defeated. An interrupted fight resets with a real cooldown.
       if (desertBoss.state !== 'dormant' && desertBoss.state !== 'dead') {
         desertBoss.reset();
+        bossCooldown = 5;
         game.ui.hideBoss();
+        game.ui.toast('O selo de Azhur está se recompondo...');
       }
     },
 
     update(dt,t) {
+      if (bossCooldown > 0) bossCooldown = Math.max(0, bossCooldown - dt);
       entryPortal.update(dt,t);
       exitPortal.update(dt,t);
       water.material.opacity = 0.78 + Math.sin(t*1.8)*0.06;
@@ -410,7 +416,7 @@ export function createArea2(game) {
       if (game.state !== 'play' || game.player?.dead) return;
 
       const p = game.player;
-      if (desertBoss.state === 'dormant' && p.pos.z > 36 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
+      if (bossCooldown <= 0 && desertBoss.state === 'dormant' && p.pos.z > 36 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
         startDesertBoss();
         return;
       }
