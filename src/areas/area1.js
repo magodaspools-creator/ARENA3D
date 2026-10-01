@@ -702,11 +702,17 @@ const mineWall = (x1, z1, x2, z2, h = 8.0, options = {}) => {
   // already enforced by the walkable-zone union, so it must not receive a
   // second, offset collision layer.
   if (collide) {
-    const sampleStep = 0.8;
-    const samples = Math.max(2, Math.ceil(len / sampleStep) + 1);
+    // Keep the physical wall slightly inside the visible rock ridge. The
+    // player radius is already 0.45m, so a large invisible collider here
+    // makes door corners feel blocked before the player visually reaches rock.
+    const sampleStep = 0.85;
+    const inset = Math.min(0.7, len * 0.18);
+    const start = inset / Math.max(len, 0.001);
+    const end = 1 - start;
+    const samples = Math.max(2, Math.ceil(Math.max(0, len - inset * 2) / sampleStep) + 1);
     for (let i = 0; i < samples; i++) {
-      const t = samples === 1 ? 0 : i / (samples - 1);
-      collision.addCircle(x1 + dx * t, z1 + dz * t, 0.58);
+      const t = samples === 1 ? 0.5 : start + (end - start) * (i / (samples - 1));
+      collision.addCircle(x1 + dx * t, z1 + dz * t, 0.34);
     }
   }
 };
