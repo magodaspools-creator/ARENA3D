@@ -44,7 +44,8 @@ export class MapEditor {
     this.creatorName = localStorage.getItem(CREATOR_NAME_KEY) || '';
 
     this.buildUI();
-    this.load();
+    // Editor data is never injected into the live map at boot. It is loaded
+    // only when the editor session is explicitly opened.
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
   }
@@ -154,6 +155,10 @@ export class MapEditor {
   toggle(force = !this.active) {
     if (force === this.active) return;
     if (force) {
+      // Start a fresh sandbox session from the last editor save. The gameplay
+      // map itself is never modified by opening the editor.
+      this.clearWithoutPrompt();
+      this.loadSavedLayer();
       this.sessionSnapshot = this.serialize();
       this.active = true;
       this.el.classList.remove('hidden');
@@ -582,8 +587,7 @@ export class MapEditor {
       this.deleteSelected();
     }
     this.select(null);
-    this.save();
-    this.setStatus('Objetos do editor removidos.');
+    this.setStatus('Objetos do editor removidos. Clique em Salvar para confirmar.');
   }
 
   serialize() {
@@ -705,13 +709,13 @@ export class MapEditor {
     }
     this.clearWithoutPrompt();
     for (const raw of payload.objects) {
-      const data = { ...raw };
-      data._collider = null;
+      const data = { ...raw, _collider: null };
       this.objects.push(data);
       this.seq = Math.max(this.seq, Number(String(data.id).replace('editor-', '')) || 0);
       this.createObject(data);
     }
-    this.save();
+    // Loading a shared map replaces the current working copy only. It does
+    // not silently save it or affect the normal game map.
     this.sessionSnapshot = this.serialize();
     this.select(null);
     this.setOnlineStatus('Carregado: ' + map.map_name + ' · código ' + map.map_code);
@@ -719,15 +723,30 @@ export class MapEditor {
   }
 
   discardSession() {
+    // Closing the editor means abandoning the working copy. Do NOT rebuild
+    // the saved editor layer here: the live gameplay map must return exactly
+    // to its original state.
     this.clearWithoutPrompt();
-    for (const data of this.sessionSnapshot) {
-      const clone = { ...data, _collider: null };
-      this.objects.push(clone);
-      this.seq = Math.max(this.seq, Number(String(clone.id).replace('editor-', '')) || 0);
-      this.createObject(clone);
-    }
     this.selected = null;
     this.sessionSnapshot = [];
+  }
+
+  loadSavedLayer() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      if (!Array.isArray(payload.objects)) return;
+      for (const rawData of payload.objects) {
+        const data = { ...rawData, _collider: null };
+        this.objects.push(data);
+        this.seq = Math.max(this.seq, Number(String(data.id).replace('editor-', '')) || 0);
+        this.createObject(data);
+      }
+    } catch (error) {
+      console.warn('[MapEditor] Falha ao carregar camada salva:', error);
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 
   commitSession() {
@@ -743,22 +762,6 @@ export class MapEditor {
 
   save() {
     this.commitSession();
-  }
-
-  load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const payload = JSON.parse(raw);
-      for (const data of payload.objects || []) {
-        this.objects.push(data);
-        this.seq = Math.max(this.seq, Number(String(data.id).replace('editor-', '')) || 0);
-        this.createObject(data);
-      }
-    } catch (error) {
-      console.warn('[MapEditor] Falha ao carregar:', error);
-      localStorage.removeItem(STORAGE_KEY);
-    }
   }
 
   exportMap() {
@@ -787,8 +790,8 @@ export class MapEditor {
           this.seq = Math.max(this.seq, Number(String(data.id).replace('editor-', '')) || 0);
           this.createObject(data);
         }
-        this.save();
-        this.setStatus('JSON importado e salvo.');
+        this.sessionSnapshot = this.serialize();
+        this.setStatus('JSON importado na sessão. Clique em Salvar para confirmar.');
       } catch (error) {
         this.setStatus('JSON inválido.');
         console.warn('[MapEditor] Import failed:', error);
