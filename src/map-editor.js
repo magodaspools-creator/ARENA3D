@@ -88,7 +88,7 @@ export class MapEditor {
     // only when the editor session is explicitly opened.
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    window.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.renderer.domElement.addEventListener('pointermove', (e) => this.updateEdgePointer(e));
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
@@ -350,13 +350,21 @@ export class MapEditor {
 
   onWheel(event) {
     if (!this.active) return;
-    if (event.target?.closest?.('#map-editor-panel') && !this.selected) return;
+    // Rotation belongs to the editor canvas. Always consume the wheel while
+    // editing so the browser never steals it for page scrolling/zooming.
     event.preventDefault();
+    event.stopPropagation();
+
     const step = (event.deltaY > 0 ? -1 : 1) * THREE.MathUtils.degToRad(5);
+
+    // A placed object stays selected, so it can be rotated immediately
+    // without requiring a second click on the Select tool.
     if (this.selected) {
       this.rotateSelected(step);
       return;
     }
+
+    // While positioning a new object, rotate its ghost before placement.
     if (this.preview) {
       this.preview.rotation += step;
       this.preview.root.rotation.y = this.preview.rotation;
@@ -674,6 +682,7 @@ export class MapEditor {
     const item = ITEMS[itemId];
     const texture = this.textureLoader.load(item.sprite, (loaded) => this.removeWhiteSpriteBackground(loaded));
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.premultiplyAlpha = false;
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
     this.itemTextures.set(itemId, texture);
@@ -701,7 +710,7 @@ export class MapEditor {
       const visited = new Uint8Array(width * height);
       const queue = [];
       const isWhite = (index) => data[index + 3] > 8
-        && data[index] >= 245 && data[index + 1] >= 245 && data[index + 2] >= 245;
+        && data[index] >= 235 && data[index + 1] >= 235 && data[index + 2] >= 235;
 
       const push = (x, y) => {
         if (x < 0 || y < 0 || x >= width || y >= height) return;
