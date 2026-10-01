@@ -72,6 +72,7 @@ export class MapEditor {
     this.selectionHelper = null;
     this.collisionHelpers = new Map();
     this.preview = null;
+    this.placementRotation = 0;
     this.sessionSnapshot = [];
     this.previousState = 'play';
     this.cameraFocus = new THREE.Vector3();
@@ -314,6 +315,7 @@ export class MapEditor {
         const next = tools.find((tool) => tool.id === id);
         if (!next) return;
         this.selectedTool = next;
+        this.placementRotation = 0;
         this.el.querySelector('#map-editor-select-tool')?.classList.remove('active');
         this.select(null);
         this.renderPalette();
@@ -359,17 +361,20 @@ export class MapEditor {
 
     // A placed object stays selected, so it can be rotated immediately
     // without requiring a second click on the Select tool.
-    if (this.selected) {
-      this.rotateSelected(step);
+    // In placement mode, the wheel rotates the tool currently "in hand".
+    // It must NOT rotate the last object that happened to be placed.
+    if (this.selectedTool?.kind !== 'select') {
+      this.placementRotation += step;
+      if (this.preview) {
+        this.preview.rotation = this.placementRotation;
+        this.preview.root.rotation.y = this.placementRotation;
+      }
+      this.setStatus('Rotação do item em mãos: ' + Math.round(THREE.MathUtils.radToDeg(this.placementRotation)) + '°');
       return;
     }
 
-    // While positioning a new object, rotate its ghost before placement.
-    if (this.preview) {
-      this.preview.rotation += step;
-      this.preview.root.rotation.y = this.preview.rotation;
-      this.setStatus('Rotação: ' + Math.round(THREE.MathUtils.radToDeg(this.preview.rotation)) + '°');
-    }
+    // Only the explicit Select tool rotates an already placed object.
+    if (this.selected) this.rotateSelected(step);
   }
 
   updateEdgePointer(event) {
@@ -441,13 +446,15 @@ export class MapEditor {
       visual.position.y = 0.025;
     } else if (tool.kind === 'item') {
       const texture = this.getItemTexture(tool.itemId);
-      visual = new THREE.Sprite(new THREE.SpriteMaterial({
+      const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
         depthWrite: false,
         alphaTest: 0.04,
         opacity: 0.58,
-      }));
+      });
+      this.applyWhiteCutout(material);
+      visual = new THREE.Sprite(material);
       visual.scale.set(1.4, 1.4, 1);
       visual.position.y = 0.75;
     } else if (tool.kind === 'stone') {
@@ -558,7 +565,7 @@ export class MapEditor {
       x: Number(x.toFixed(3)),
       y: 0,
       z: Number(z.toFixed(3)),
-      rotation: this.preview?.rotation || 0,
+      rotation: this.placementRotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
       radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65,
@@ -575,8 +582,12 @@ export class MapEditor {
     this.hidePreview();
     this.objects.push(data);
     this.createObject(data);
-    this.select(data);
-    this.setStatus('Colocado. Clique em Salvar para confirmar.');
+
+    // Placement mode keeps the palette tool in hand. The newly placed object
+    // is NOT selected automatically; existing objects are edited only through
+    // the explicit Select tool.
+    this.hidePreview();
+    this.setStatus('Colocado. Continue posicionando o item ou use Selecionar para editar um objeto existente.');
   }
 
   findPlacementBlocker(candidate) {
@@ -675,6 +686,18 @@ export class MapEditor {
     texture.magFilter = THREE.NearestFilter;
     this.terrainTextures.set(terrainType, texture);
     return texture;
+  }
+
+  applyWhiteCutout(material) {
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        if (diffuseColor.a > 0.01 && diffuseColor.r > 0.94 && diffuseColor.g > 0.94 && diffuseColor.b > 0.94) discard;`
+      );
+    };
+    material.customProgramCacheKey = () => 'arena-map-editor-white-cutout-v1';
+    material.needsUpdate = true;
   }
 
   getItemTexture(itemId) {
