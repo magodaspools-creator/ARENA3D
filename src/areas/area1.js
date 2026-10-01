@@ -1790,7 +1790,7 @@ const leaveMine = () => {
   const merchant = new NPC(game, {
     name: 'Doran, o Mercador',
     x: 4.8, z: 35.2, facing: -0.6,
-    look: { skin: 0x8f5d43, body: 0x624a35, legs: 0x30231d, robe: 0x795c3f, hood: 0x4a3428, head: 'hood', accent: 0xd5aa58, npcRole: 'merchant', hat: 0x735536 },
+    look: { skin: 0x8f5d43, body: 0x624a35, legs: 0x30231d, robe: 0x795c3f, hood: 0x4a3428, head: null, accent: 0xd5aa58, npcRole: 'merchant', hat: 0x735536 },
     dialogue: () => ({
       lines: [
         'Tenho algumas mercadorias úteis para quem pretende atravessar as ruínas. Também mantenho alguns equipamentos simples para quem ainda está começando.',
