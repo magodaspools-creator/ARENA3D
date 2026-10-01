@@ -709,6 +709,69 @@ const undergroundBoundary = [
 
 // Rectangular metadata is retained for the minimap. It is NOT used for
 // collision, because rectangle edges were the source of the invisible walls.
+// Surface exit landmark: make the way back to the upper world obvious from
+// inside the mine. This is visual-only so it cannot create another invisible wall.
+const exitWoodMat = new THREE.MeshStandardMaterial({
+  color: 0x5a3d27,
+  roughness: 0.95,
+  flatShading: true,
+});
+const exitRopeMat = new THREE.MeshStandardMaterial({
+  color: 0x765237,
+  roughness: 1,
+});
+const exitX = 110;
+const exitZ = 101;
+
+// A small timber frame marks the shaft/entrance instead of relying on the
+// minimap or interaction prompt.
+for (const side of [-1, 1]) {
+  const post = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.20, 3.4, 6),
+    exitWoodMat
+  );
+  post.position.set(exitX + side * 1.65, 1.7, exitZ);
+  post.rotation.z = side * 0.025;
+  post.castShadow = true;
+  mineGroup.add(post);
+}
+const exitBeam = new THREE.Mesh(
+  new THREE.BoxGeometry(3.7, 0.32, 0.38),
+  exitWoodMat
+);
+exitBeam.position.set(exitX, 3.35, exitZ);
+exitBeam.castShadow = true;
+mineGroup.add(exitBeam);
+
+// The rope is deliberately prominent and hangs down toward the player.
+const exitRopeCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(exitX, 3.35, exitZ),
+  new THREE.Vector3(exitX - 0.08, 2.55, exitZ - 0.05),
+  new THREE.Vector3(exitX + 0.10, 1.65, exitZ - 0.18),
+  new THREE.Vector3(exitX - 0.04, 0.65, exitZ - 0.25),
+]);
+const exitRope = new THREE.Mesh(
+  new THREE.TubeGeometry(exitRopeCurve, 14, 0.085, 6, false),
+  exitRopeMat
+);
+exitRope.castShadow = true;
+mineGroup.add(exitRope);
+
+// A warm lantern beside the shaft makes the landmark readable even in the dark.
+const exitLantern = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.18, 0.13, 0.34, 8),
+  mineMetalMat
+);
+exitLantern.position.set(exitX + 1.95, 2.35, exitZ - 0.05);
+mineGroup.add(exitLantern);
+const exitGlow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mineGlowMat);
+exitGlow.position.set(exitX + 1.95, 2.15, exitZ - 0.05);
+mineGroup.add(exitGlow);
+const exitLight = new THREE.PointLight(0xd89b54, 4.5, 9, 1.8);
+exitLight.position.copy(exitGlow.position);
+mineGroup.add(exitLight);
+mineLights.push(exitLight);
+
 const undergroundZones = [
   [106, 114, 82, 94],
   [96, 124, 92, 108],
