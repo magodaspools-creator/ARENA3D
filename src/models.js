@@ -240,6 +240,9 @@ export function createHumanoid(look = {}) {
     }
 
     if (L.npcRole === 'merchant') {
+      // Merchant face sits slightly low in the shared rig; raise the whole head assembly
+      // so Doran's face aligns with the body proportions without changing Maren.
+      head.position.y = 0.98;
       // Doran: long trader coat, vest/apron, pouches and a restrained hat.
       const coat = smooth(new THREE.CapsuleGeometry(0.34, 0.50, 6, 12), cloth2, 0, 0.29, 0);
       coat.scale.set(1.04, 1, 0.84);
