@@ -42,9 +42,11 @@ export class Player {
     this.root.add(this.light);
 
     this.lightSpellT = 0;
-    this.lightSpell = new THREE.PointLight(0x9ec8ff, 11, 12, 1.35);
+    // Keep the light in the scene even while inactive. Toggling a light on/off
+    // changes Three.js' lighting program defines and can force a shader recompile
+    // on the first cast, causing a visible frame hitch.
+    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 12, 1.35);
     this.lightSpell.position.set(0, 2.7, 0.5);
-    this.lightSpell.visible = false;
     this.root.add(this.lightSpell);
 
     game.scene.add(this.root);
@@ -126,7 +128,7 @@ export class Player {
     if (this.lightSpellT > 0) {
       this.lightSpellT = Math.max(0, this.lightSpellT - dt);
       if (this.lightSpellT <= 0) {
-        this.lightSpell.visible = false;
+        this.lightSpell.intensity = 0;
         this.game.ui.toast('A Luz Arcana se apagou.');
       }
     }
@@ -190,7 +192,7 @@ export class Player {
 
   castLightSpell() {
     this.lightSpellT = 10;
-    this.lightSpell.visible = true;
+    this.lightSpell.intensity = 11;
     this.game.ui.toast('Luz Arcana lançada por 10 segundos.');
     this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
   }
@@ -380,7 +382,7 @@ export class Player {
     this.poisonSource = null;
     this.lastHurt = this.game.time;
     this.lightSpellT = 0;
-    this.lightSpell.visible = false;
+    this.lightSpell.intensity = 0;
     this.vel.set(0, 0, 0);
     this.anim.revive();
     this.place(x, z, facing);
