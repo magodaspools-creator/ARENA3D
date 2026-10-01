@@ -301,7 +301,7 @@ export function createArea1(game) {
         game.ui.hideBoss();
       });
       game.schedule(3.6, () => {
-        barrierCol.enabled = false;
+        barrierCol.setEnabled(false);
         runeMat.color.set(0xffc36a);
         portal.rise();
         game.rig.cinematic(portal.pos, 3);
@@ -315,7 +315,7 @@ export function createArea1(game) {
 
   function startBossFight() {
     prog.advance('boss');
-    barrierCol.enabled = true;
+    barrierCol.setEnabled(true);
     boss.awaken();
     fightStart = game.time;
     game.rig.cinematic(new THREE.Vector3(boss.pos.x, 0, boss.pos.z + 3), 2.4);
@@ -381,7 +381,7 @@ export function createArea1(game) {
     onRespawn() {
       if (prog.id === 'boss') {
         boss.reset();
-        barrierCol.enabled = false;
+        barrierCol.setEnabled(false);
         game.ui.hideBoss();
         for (const e of adds) e.dispose();
         adds.length = 0;
