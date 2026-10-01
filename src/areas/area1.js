@@ -1801,6 +1801,12 @@ const leaveMine = () => {
   const braziers = [createBrazier(game, -15, 2), createBrazier(game, 15, 2), createBrazier(game, 0, -12)];
   const gate = createGate(game, 0, -20);
   const portal = createPortal(game, 0, -55.5);
+
+  // The Map 2 portal is an explicit interaction: walk up to it and press E.
+  // This avoids triggering the transition merely by touching the portal.
+  const portalAnchor = new THREE.Object3D();
+  portalAnchor.position.copy(portal.pos);
+  scene.add(portalAnchor);
   const barrierMat = new THREE.MeshBasicMaterial({ color: 0xb42a5a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
   const barrier = new THREE.Mesh(new THREE.PlaneGeometry(7, 6), barrierMat);
   barrier.position.set(0, 3, -30.2);
@@ -1991,6 +1997,19 @@ const leaveMine = () => {
   });
   merchant.setMarker(0xe8b95b);
   game.npcs.push(merchant);
+
+  game.interaction.add({
+    pos: portalAnchor.position,
+    radius: 3.0,
+    height: 3.2,
+    label: 'Entrar no portal para o Deserto',
+    enabled: () => portal.active && prog.id === 'portal',
+    onInteract: () => {
+      if (!portal.active || prog.id !== 'portal') return;
+      prog.advance('complete');
+      game.enterArea2();
+    },
+  });
 
   game.interaction.add({
     pos: mineEntrance.position,
@@ -2374,10 +2393,7 @@ const leaveMine = () => {
 
       if (prog.reached('shrine') && boss.state === 'dormant' && p.pos.z < -31.5) startBossFight();
 
-      if (portal.active && prog.id === 'portal' && Math.hypot(p.pos.x - portal.pos.x, p.pos.z - portal.pos.z) < 2) {
-        prog.advance('complete');
-        game.enterArea2();
-      }
+      // Portal entry is handled by Interaction below (E), not by proximity.
 
       // ambience
       const fx = game.fx.particles;
