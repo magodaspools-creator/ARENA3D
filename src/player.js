@@ -36,28 +36,16 @@ export class Player {
     this.ring = ring;
     this.root.add(ring);
     // Small permanent fill light keeps the player readable without washing out
-    // the dungeon. The stronger magical light is toggled with L.
+    // the dungeon. Arcane Light adds illumination around the player only.
     this.light = new THREE.PointLight(0xffe2b8, 2.5, 7, 1.4);
     this.light.position.set(0, 3, 0.5);
     this.root.add(this.light);
 
-    this.lightSpellOn = false;
+    this.lightSpellT = 0;
     this.lightSpell = new THREE.PointLight(0x9ec8ff, 11, 12, 1.35);
     this.lightSpell.position.set(0, 2.7, 0.5);
     this.lightSpell.visible = false;
     this.root.add(this.lightSpell);
-
-    const lightOrbMat = new THREE.MeshBasicMaterial({
-      color: 0xb8dcff,
-      transparent: true,
-      opacity: 0.8,
-      depthWrite: false,
-      toneMapped: false,
-    });
-    this.lightOrb = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), lightOrbMat);
-    this.lightOrb.position.set(0, 2.72, 0.5);
-    this.lightOrb.visible = false;
-    this.root.add(this.lightOrb);
 
     game.scene.add(this.root);
 
@@ -135,9 +123,17 @@ export class Player {
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
 
+    if (this.lightSpellT > 0) {
+      this.lightSpellT = Math.max(0, this.lightSpellT - dt);
+      if (this.lightSpellT <= 0) {
+        this.lightSpell.visible = false;
+        this.game.ui.toast('A Luz Arcana se apagou.');
+      }
+    }
+
     if (this.dead) { this.anim.update(dt, 0); return; }
     const locked = g.inputLocked || g.state !== 'play';
-    if (!locked && input.wasPressed('KeyL')) this.toggleLightSpell();
+    if (!locked && input.wasPressed('KeyL')) this.castLightSpell();
 
     // --- movement (camera relative) ---
     let mx = 0, mz = 0;
@@ -192,14 +188,11 @@ export class Player {
     g.ui.setCooldown('dash', this.dashCd / 1.1);
   }
 
-  toggleLightSpell() {
-    this.lightSpellOn = !this.lightSpellOn;
-    this.lightSpell.visible = this.lightSpellOn;
-    this.lightOrb.visible = this.lightSpellOn;
-    this.game.ui.toast(this.lightSpellOn ? 'Luz Arcana ativada.' : 'Luz Arcana apagada.');
-    if (this.lightSpellOn) {
-      this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
-    }
+  castLightSpell() {
+    this.lightSpellT = 10;
+    this.lightSpell.visible = true;
+    this.game.ui.toast('Luz Arcana lançada por 10 segundos.');
+    this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
   }
 
   startDash(duration, speed, cooldown) {
@@ -386,6 +379,8 @@ export class Player {
     this.poisonDamage = 0;
     this.poisonSource = null;
     this.lastHurt = this.game.time;
+    this.lightSpellT = 0;
+    this.lightSpell.visible = false;
     this.vel.set(0, 0, 0);
     this.anim.revive();
     this.place(x, z, facing);
