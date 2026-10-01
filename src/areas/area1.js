@@ -2003,9 +2003,9 @@ const leaveMine = () => {
     radius: 3.0,
     height: 3.2,
     label: 'Entrar no portal para o Deserto',
-    enabled: () => portal.active && prog.id === 'portal',
+    enabled: () => portal.active && prog.reached('portal'),
     onInteract: () => {
-      if (!portal.active || prog.id !== 'portal') return;
+      if (!portal.active || !prog.reached('portal')) return;
       prog.advance('complete');
       game.enterArea2();
     },
@@ -2393,7 +2393,14 @@ const leaveMine = () => {
 
       if (prog.reached('shrine') && boss.state === 'dormant' && p.pos.z < -31.5) startBossFight();
 
-      // Portal entry is handled by Interaction below (E), not by proximity.
+      // The portal accepts both explicit interaction (E) and proximity.
+      // The progression check uses reached('portal') so a previous transition
+      // attempt cannot permanently lock the portal at the 'complete' stage.
+      if (portal.active && prog.reached('portal') && Math.hypot(p.pos.x - portal.pos.x, p.pos.z - portal.pos.z) < 2.6) {
+        prog.advance('complete');
+        game.enterArea2();
+        return;
+      }
 
       // ambience
       const fx = game.fx.particles;
