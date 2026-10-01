@@ -71,6 +71,7 @@ class Game {
 
     this.area = createArea1(this);
     this.returnArea = null;
+    this.startArea = this.area;
     this.player = null;
     this.character = null;
 
@@ -80,6 +81,7 @@ class Game {
     this.mapEditor = new MapEditor(this);
 
     addEventListener('resize', () => this.resize());
+    addEventListener('beforeunload', () => this.saveWorldState());
     addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyM') {
         e.preventDefault();
@@ -160,6 +162,40 @@ class Game {
     this.fx.resize(this.renderer.getDrawingBufferSize(new THREE.Vector2()).y);
   }
 
+  // ---------- world persistence ----------
+  worldStorageKey() {
+    const vocation = this.character?.vocation;
+    return vocation ? `arena.world.v1.${vocation}` : null;
+  }
+
+  saveWorldState() {
+    const key = this.worldStorageKey();
+    if (!key || !this.area) return;
+    try {
+      const checkpoint = this.area.checkpoint || this.area.spawn;
+      localStorage.setItem(key, JSON.stringify({
+        area: this.area === this.startArea ? 'area1' : 'area2',
+        checkpoint: {
+          x: Number(checkpoint?.x) || 0,
+          z: Number(checkpoint?.z) || 0,
+          facing: Number(checkpoint?.facing) || 0,
+        },
+      }));
+    } catch {}
+  }
+
+  loadWorldState() {
+    const key = this.worldStorageKey();
+    if (!key) return null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!saved || (saved.area !== 'area1' && saved.area !== 'area2')) return null;
+      return saved;
+    } catch {
+      return null;
+    }
+  }
+
   // ---------- flow ----------
   preview(id) {
     this.player?.dispose();
@@ -174,14 +210,28 @@ class Game {
 
   start(id) {
     if (!this.player || this.player.voc.id !== id) this.preview(id);
-    const s = this.area.spawn;
-    this.player.place(s.x, s.z, s.facing);
+
+    const saved = this.loadWorldState();
+    if (saved?.area === 'area2') {
+      const area2 = createArea2(this);
+      this.area = area2;
+      this.returnArea = this.startArea;
+      const s = saved.checkpoint || area2.checkpoint || area2.spawn;
+      this.player.place(s.x, s.z, s.facing);
+    } else {
+      this.area = this.startArea;
+      this.returnArea = null;
+      const s = saved?.checkpoint || this.area.checkpoint || this.area.spawn;
+      this.player.place(s.x, s.z, s.facing);
+    }
+
     this.rig.mode = 'follow';
     this.state = 'play';
     this.stats.start = this.time;
     this.player.character = this.character;
     this.ui.showHud(this.player.voc, this.character);
     this.area.onStart();
+    this.saveWorldState();
     this.spawnPendingDeathBackpacks();
   }
 
@@ -199,6 +249,7 @@ class Game {
       this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
       this.rig.snap(this.player.pos);
       this.area.onStart();
+      this.saveWorldState();
     });
 
     this.schedule(1.45, () => {
@@ -222,6 +273,7 @@ class Game {
       this.player.place(spawn.x, spawn.z, spawn.facing);
       this.rig.snap(this.player.pos);
       this.area.onStart();
+      this.saveWorldState();
     });
 
     this.schedule(1.45, () => {
