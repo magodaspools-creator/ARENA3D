@@ -5,16 +5,17 @@ import { listSharedMaps, publishSharedMap } from './map-editor-api.js';
 const STORAGE_KEY = 'arena3d.map-editor.v1';
 const CREATOR_ID_KEY = 'arena3d.map-editor.creator-id.v1';
 const CREATOR_NAME_KEY = 'arena3d.map-editor.creator-name.v1';
+const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name + '.svg', import.meta.url).href;
 
 const TERRAIN = [
-  { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329 },
-  { id:'grass', name:'Grama', icon:'♣', kind:'terrain', terrainType:'grass', collision:false, color:0x30452d },
-  { id:'dirt', name:'Terra', icon:'▪', kind:'terrain', terrainType:'dirt', collision:false, color:0x5a4030 },
-  { id:'stone-floor', name:'Pedra', icon:'▦', kind:'terrain', terrainType:'stone-floor', collision:false, color:0x4a4d52 },
-  { id:'stone-path', name:'Caminho pedra', icon:'▥', kind:'terrain', terrainType:'stone-path', collision:false, color:0x66666a },
-  { id:'dirt-path', name:'Caminho terra', icon:'═', kind:'terrain', terrainType:'dirt-path', collision:false, color:0x75513a },
-  { id:'mud', name:'Lama', icon:'≈', kind:'terrain', terrainType:'mud', collision:false, color:0x3e352d },
-  { id:'sand', name:'Areia', icon:'░', kind:'terrain', terrainType:'sand', collision:false, color:0x8a7754 },
+  { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329, sprite:TERRAIN_ASSET('floor') },
+  { id:'grass', name:'Grama', icon:'♣', kind:'terrain', terrainType:'grass', collision:false, color:0x30452d, sprite:TERRAIN_ASSET('grass') },
+  { id:'dirt', name:'Terra', icon:'▪', kind:'terrain', terrainType:'dirt', collision:false, color:0x5a4030, sprite:TERRAIN_ASSET('dirt') },
+  { id:'stone-floor', name:'Pedra', icon:'▦', kind:'terrain', terrainType:'stone-floor', collision:false, color:0x4a4d52, sprite:TERRAIN_ASSET('stone-floor') },
+  { id:'stone-path', name:'Caminho pedra', icon:'▥', kind:'terrain', terrainType:'stone-path', collision:false, color:0x66666a, sprite:TERRAIN_ASSET('stone-path') },
+  { id:'dirt-path', name:'Caminho terra', icon:'═', kind:'terrain', terrainType:'dirt-path', collision:false, color:0x75513a, sprite:TERRAIN_ASSET('dirt-path') },
+  { id:'mud', name:'Lama', icon:'≈', kind:'terrain', terrainType:'mud', collision:false, color:0x3e352d, sprite:TERRAIN_ASSET('mud') },
+  { id:'sand', name:'Areia', icon:'░', kind:'terrain', terrainType:'sand', collision:false, color:0x8a7754, sprite:TERRAIN_ASSET('sand') },
 ];
 
 const BUILTIN = [
@@ -54,6 +55,7 @@ export class MapEditor {
     this.edgePointer = { x: 0, y: 0, active: false };
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
+    this.terrainTextures = new Map();
     this.creatorId = this.getCreatorId();
     this.creatorName = localStorage.getItem(CREATOR_NAME_KEY) || '';
 
@@ -62,7 +64,7 @@ export class MapEditor {
     // only when the editor session is explicitly opened.
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    window.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.renderer.domElement.addEventListener('pointermove', (e) => this.updateEdgePointer(e));
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
@@ -289,6 +291,7 @@ export class MapEditor {
 
   onWheel(event) {
     if (!this.active) return;
+    if (event.target?.closest?.('#map-editor-panel') && !this.selected) return;
     event.preventDefault();
     const step = (event.deltaY > 0 ? -1 : 1) * THREE.MathUtils.degToRad(5);
     if (this.selected) {
@@ -357,8 +360,9 @@ export class MapEditor {
     const tool = this.selectedTool;
     let visual;
     if (tool.kind === 'terrain') {
+      const texture = this.getTerrainTexture(tool.terrainType);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({
-        color: tool.color, roughness: tool.terrainType.includes('path') ? 0.92 : 1,
+        map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1,
         transparent: true, opacity: 0.62, side: THREE.DoubleSide,
       }));
       visual.rotation.x = -Math.PI / 2;
@@ -481,11 +485,29 @@ export class MapEditor {
       depth: this.selectedTool.kind === 'wall' ? 0.9 : this.selectedTool.kind === 'terrain' ? 4 : 1.4,
       height: this.selectedTool.kind === 'wall' ? 2.6 : this.selectedTool.kind === 'terrain' ? 0.02 : 1.2,
     };
+    const blockedBy = this.findPlacementBlocker(data);
+    if (blockedBy) {
+      const blockerName = blockedBy.kind === 'item' ? (ITEMS[blockedBy.itemId]?.name || blockedBy.itemId) : blockedBy.kind;
+      this.setStatus('Espaço ocupado por ' + blockerName + '. Não é possível sobrepor objetos sólidos.');
+      return;
+    }
     this.hidePreview();
     this.objects.push(data);
     this.createObject(data);
     this.select(data);
     this.setStatus('Colocado. Clique em Salvar para confirmar.');
+  }
+
+  findPlacementBlocker(candidate) {
+    const candidateRadius = Math.max(0.15, (candidate.radius || 0.65) * (candidate.scale || 1));
+    for (const existing of this.objects) {
+      const existingRadius = Math.max(0.15, (existing.radius || 0.65) * (existing.scale || 1));
+      const dx = candidate.x - existing.x;
+      const dz = candidate.z - existing.z;
+      const minDistance = candidateRadius + existingRadius;
+      if (dx * dx + dz * dz < minDistance * minDistance && (candidate.collision || existing.collision)) return existing;
+    }
+    return null;
   }
 
   createObject(data) {
@@ -498,8 +520,9 @@ export class MapEditor {
     let visual;
     if (data.kind === 'terrain') {
       const tool = TERRAIN.find((entry) => entry.terrainType === data.terrainType) || TERRAIN[0];
+      const texture = this.getTerrainTexture(tool.terrainType);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({
-        color: tool.color, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide,
+        map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide,
       }));
       visual.rotation.x = -Math.PI / 2;
       visual.position.y = 0.025;
@@ -537,6 +560,19 @@ export class MapEditor {
 
     this.applyCollision(data);
     this.refreshHelper(data);
+  }
+
+  getTerrainTexture(terrainType) {
+    if (this.terrainTextures.has(terrainType)) return this.terrainTextures.get(terrainType);
+    const tool = TERRAIN.find((entry) => entry.terrainType === terrainType) || TERRAIN[0];
+    const texture = this.textureLoader.load(tool.sprite);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+    this.terrainTextures.set(terrainType, texture);
+    return texture;
   }
 
   getItemTexture(itemId) {
