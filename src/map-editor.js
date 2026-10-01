@@ -49,6 +49,9 @@ export class MapEditor {
     this.collisionHelpers = new Map();
     this.preview = null;
     this.sessionSnapshot = [];
+    this.cameraFocus = new THREE.Vector3();
+    this.navKeys = new Set();
+    this.edgePointer = { x: 0, y: 0, active: false };
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
     this.creatorId = this.getCreatorId();
@@ -60,6 +63,17 @@ export class MapEditor {
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    this.renderer.domElement.addEventListener('pointermove', (e) => this.updateEdgePointer(e));
+    window.addEventListener('keydown', (e) => {
+      if (!this.active) return;
+      if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) {
+        this.navKeys.add(e.code);
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      this.navKeys.delete(e.code);
+    });
   }
 
   get itemTools() {
@@ -174,6 +188,7 @@ export class MapEditor {
       this.loadSavedLayer();
       this.sessionSnapshot = this.serialize();
       this.active = true;
+      this.cameraFocus.copy(this.game.player?.pos || this.game.rig.target);
       this.el.classList.remove('hidden');
       if (this.game.state === 'play') this.game.state = 'map-editor';
       this.game.inputLocked = true;
@@ -284,6 +299,42 @@ export class MapEditor {
       this.preview.rotation += step;
       this.preview.root.rotation.y = this.preview.rotation;
       this.setStatus('Rotação: ' + Math.round(THREE.MathUtils.radToDeg(this.preview.rotation)) + '°');
+    }
+  }
+
+  updateEdgePointer(event) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const margin = 55;
+    this.edgePointer.active = true;
+    this.edgePointer.x = event.clientX - rect.left;
+    this.edgePointer.y = event.clientY - rect.top;
+    this.edgePointer.w = rect.width;
+    this.edgePointer.h = rect.height;
+    this.edgePointer.margin = margin;
+  }
+
+  updateNavigation(dt) {
+    if (!this.active) return;
+    const speed = 9.5;
+    const dir = new THREE.Vector3();
+    const forward = this.game.rig.forward(new THREE.Vector3());
+    const right = this.game.rig.right(new THREE.Vector3());
+    if (this.navKeys.has('KeyW')) dir.add(forward);
+    if (this.navKeys.has('KeyS')) dir.sub(forward);
+    if (this.navKeys.has('KeyD')) dir.add(right);
+    if (this.navKeys.has('KeyA')) dir.sub(right);
+
+    if (this.edgePointer.active) {
+      const { x, y, w, h, margin } = this.edgePointer;
+      if (x < margin) dir.sub(right).multiplyScalar(-1);
+      if (x > w - margin) dir.add(right);
+      if (y < margin) dir.add(forward);
+      if (y > h - margin) dir.sub(forward);
+    }
+    dir.y = 0;
+    if (dir.lengthSq() > 0) {
+      dir.normalize();
+      this.cameraFocus.addScaledVector(dir, speed * dt);
     }
   }
 
@@ -862,6 +913,8 @@ export class MapEditor {
   }
 
   dispose() {
+    this.navKeys.clear();
+    this.edgePointer.active = false;
     for (const data of [...this.objects]) {
       this.selected = data;
       this.removeCollision(data);
