@@ -105,7 +105,7 @@ export class Boss {
     this.leapFrom = null;
     const g = this.game;
     this.setEyes(0xff3b2a);
-    g.ui.banner('MORVHAL ENFURECE', 'Cuidado com as ondas de almas', 'boss', 2.2);
+    g.ui.banner(`${this.name.toUpperCase()} ENFURECE`, 'Cuidado com as ondas de almas', 'boss', 2.2);
     g.rig.shake(0.8);
     g.fx.ring(this.pos, 0xff3b2a, 9, 0.8);
     g.fx.emit(V.copy(this.pos).setY(3), { count: 70, color: 0xff3b2a, speed: 9, life: 0.9, size: 0.6 });
@@ -348,7 +348,7 @@ export class Boss {
     this.summoned++;
     this.begin('summon');
     this.anim.attack('roar', 1.4);
-    this.game.ui.toast('Morvhal convoca os Ocos!');
+    this.game.ui.toast(`${this.name} convoca os Ocos!`);
   }
 
   dispose() {}
