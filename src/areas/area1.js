@@ -1646,27 +1646,59 @@ const leaveMine = () => {
   pzGroup.name = 'npc-protection-zone';
   scene.add(pzGroup);
 
-  const pzFloor = new THREE.Mesh(
+  // PZ floor: real stone paving, not a flat translucent blob.
+  // Keep the base dark so the individual slabs read clearly against the grass.
+  const pzBase = new THREE.Mesh(
     new THREE.CircleGeometry(npcPz.radius, 64),
     new THREE.MeshStandardMaterial({
-      color: 0x716b5d, roughness: 0.96, metalness: 0,
-      transparent: true, opacity: 0.82, depthWrite: false,
+      color: 0x403d38, roughness: 1, metalness: 0,
+      side: THREE.DoubleSide,
     })
   );
-  pzFloor.rotation.x = -Math.PI / 2;
-  pzFloor.position.set(npcPz.x, 0.018, npcPz.z);
-  pzFloor.receiveShadow = true;
-  pzGroup.add(pzFloor);
+  pzBase.rotation.x = -Math.PI / 2;
+  pzBase.position.set(npcPz.x, 0.012, npcPz.z);
+  pzBase.receiveShadow = true;
+  pzGroup.add(pzBase);
+
+  const pzStoneMats = [
+    new THREE.MeshStandardMaterial({ color: 0x5a5751, roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x66625a, roughness: 1, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x4e4c47, roughness: 1, flatShading: true }),
+  ];
+  const pzStones = new THREE.Group();
+  pzStones.position.set(npcPz.x, 0.035, npcPz.z);
+  pzGroup.add(pzStones);
+
+  // Staggered irregular paving slabs form the actual readable floor.
+  for (let gx = -7.5; gx <= 7.5; gx += 1.45) {
+    for (let gz = -7.5; gz <= 7.5; gz += 1.35) {
+      const x = gx + Math.sin(gz * 2.7) * 0.22;
+      const z = gz + Math.cos(gx * 2.1) * 0.18;
+      if (Math.hypot(x, z) > npcPz.radius - 0.45) continue;
+      const w = 1.15 + ((Math.abs(Math.sin(gx * 3.1 + gz)) * 0.35));
+      const d = 0.92 + ((Math.abs(Math.cos(gz * 2.4 - gx)) * 0.28));
+      const stone = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.54, 0.12, 6),
+        pzStoneMats[(Math.abs(Math.floor(gx + gz * 3))) % pzStoneMats.length]
+      );
+      stone.scale.set(w, 1, d);
+      stone.position.set(x, 0, z);
+      stone.rotation.y = Math.sin(gx * 4.1 + gz * 1.7) * 0.45;
+      stone.castShadow = true;
+      stone.receiveShadow = true;
+      pzStones.add(stone);
+    }
+  }
 
   const pzInner = new THREE.Mesh(
-    new THREE.CircleGeometry(npcPz.radius * 0.92, 64),
+    new THREE.RingGeometry(npcPz.radius - 0.28, npcPz.radius - 0.16, 64),
     new THREE.MeshBasicMaterial({
-      color: 0xb8ad92, transparent: true, opacity: 0.14,
+      color: 0x8f8778, transparent: true, opacity: 0.55,
       depthWrite: false, side: THREE.DoubleSide,
     })
   );
   pzInner.rotation.x = -Math.PI / 2;
-  pzInner.position.set(npcPz.x, 0.026, npcPz.z);
+  pzInner.position.set(npcPz.x, 0.15, npcPz.z);
   pzGroup.add(pzInner);
 
   const pzRing = new THREE.Mesh(
