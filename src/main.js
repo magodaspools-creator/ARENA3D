@@ -17,6 +17,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
+import { MapEditor } from './map-editor.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
 
@@ -73,9 +74,18 @@ class Game {
 
     this.raycaster = new THREE.Raycaster();
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    // Hidden development tool: opens only with Ctrl+Shift+T.
+    this.mapEditor = new MapEditor(this);
 
     addEventListener('resize', () => this.resize());
     addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyT') {
+        e.preventDefault();
+        this.mapEditor.toggle();
+        return;
+      }
+      if (this.mapEditor.active && this.mapEditor.handleKey(e)) return;
+      if (e.code === 'Escape' && this.state === 'map-editor') { e.preventDefault(); this.mapEditor.toggle(false); return; }
       if (e.code === 'Escape' && this.state === 'play') { e.preventDefault(); this.pauseGame(); return; }
       if (e.code === 'Escape' && this.state === 'pause-controls') { e.preventDefault(); this.showPauseMenu(); return; }
       if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resumeGame(); return; }
@@ -662,7 +672,7 @@ class Game {
     this.fx.update(dt);
 
     if (p) {
-      this.rig.update(dt, p.pos, this.state === 'play' && !this.inputLocked ? this.input : null);
+      this.rig.update(dt, p.pos, (this.state === 'play' || this.state === 'map-editor') && !this.inputLocked ? this.input : null);
       this.moon.target.position.copy(p.pos);
       this.moon.position.copy(p.pos).add(this.moonOffset);
     }
