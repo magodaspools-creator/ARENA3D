@@ -75,28 +75,41 @@ export function createHumanoid(look = {}) {
   root.add(body);
   const mSkin = mat(L.skin), mBody = mat(L.body), mLegs = mat(L.legs), mBoots = mat(L.boots);
   const mAcc = mat(L.accent, { metal: 0.6, rough: 0.45 });
+  // NPCs use softer rounded primitives so they read as characters rather than Lego blocks.
+  // Player/enemy rigs keep the original geometry for compatibility with their animations.
+  const npcSoft = !!L.npcStyle;
+  const legGeo = npcSoft ? new THREE.SphereGeometry(0.15, 10, 8) : G.leg;
+  const bootGeo = npcSoft ? new THREE.CylinderGeometry(0.14, 0.17, 0.18, 8) : G.boot;
+  const pelvisGeo = npcSoft ? new THREE.SphereGeometry(0.28, 10, 8) : G.pelvis;
+  const torsoGeo = npcSoft ? new THREE.CylinderGeometry(0.29, 0.34, 0.64, 10) : G.torso;
+  const beltGeo = npcSoft ? new THREE.CylinderGeometry(0.30, 0.30, 0.08, 10) : G.belt;
+  const headGeo = npcSoft ? new THREE.SphereGeometry(0.215, 12, 8) : G.head;
+  const armGeo = npcSoft ? new THREE.SphereGeometry(0.115, 10, 8) : G.arm;
+  const handGeo = npcSoft ? new THREE.SphereGeometry(0.09, 10, 8) : G.hand;
 
   const leg = (side) => {
     const p = new THREE.Group();
     p.position.set(side * 0.14, 0.88, 0);
-    p.add(mesh(G.leg, mLegs, 0, -0.4, 0));
-    p.add(mesh(G.boot, mBoots, 0, -0.8, 0.04));
+    const legMesh = mesh(legGeo, mLegs, 0, -0.4, 0);
+    if (npcSoft) legMesh.scale.set(0.82, 2.7, 0.9);
+    p.add(legMesh);
+    p.add(mesh(bootGeo, mBoots, 0, -0.8, 0.04));
     body.add(p);
     return p;
   };
   const legL = leg(-1), legR = leg(1);
-  body.add(mesh(G.pelvis, mLegs, 0, 0.92, 0));
+  body.add(mesh(pelvisGeo, mLegs, 0, 0.92, 0));
 
   const torso = new THREE.Group();
   torso.position.y = 0.98;
   body.add(torso);
-  torso.add(mesh(G.torso, mBody, 0, 0.3, 0));
-  torso.add(mesh(G.belt, mat(0x3a2a1a), 0, 0.02, 0));
+  torso.add(mesh(torsoGeo, mBody, 0, 0.3, 0));
+  torso.add(mesh(beltGeo, mat(0x3a2a1a), 0, 0.02, 0));
 
   const head = new THREE.Group();
   head.position.y = 0.78;
   torso.add(head);
-  head.add(mesh(G.head, mSkin));
+  head.add(mesh(headGeo, mSkin));
   const eyes = [];
   const eyeMat = L.eyes ? mat(L.eyes, { emissive: L.eyes, ei: 3 }) : mat(0x111111);
   for (const s of [-1, 1]) { const e = mesh(G.eye, eyeMat, s * 0.075, 0.02, 0.185); head.add(e); eyes.push(e); }
@@ -106,11 +119,13 @@ export function createHumanoid(look = {}) {
     const p = new THREE.Group();
     p.position.set(side * 0.4, 0.56, 0);
     torso.add(p);
-    p.add(mesh(G.arm, L.bareArms ? mSkin : mBody, 0, -0.25, 0));
+    const armMesh = mesh(armGeo, L.bareArms ? mSkin : mBody, 0, -0.25, 0);
+    if (npcSoft) armMesh.scale.set(0.78, 2.35, 0.88);
+    p.add(armMesh);
     const hand = new THREE.Group();
     hand.position.y = -0.55;
     p.add(hand);
-    hand.add(mesh(G.hand, L.fistGlow ? glow(L.fistGlow, 2) : mSkin));
+    hand.add(mesh(handGeo, L.fistGlow ? glow(L.fistGlow, 2) : mSkin));
     if (L.shoulder) p.add(mesh(G.shoulder, mAcc, side * 0.02, 0.02, 0));
     return { p, hand };
   };
