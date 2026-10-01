@@ -1223,6 +1223,26 @@ export class MapEditor {
   handleKey(e) {
     if (!this.active) return false;
     if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) { e.preventDefault(); return true; }
+    if (e.code === 'KeyQ' || e.code === 'KeyE') {
+      e.preventDefault();
+      const step = THREE.MathUtils.degToRad(e.code === 'KeyQ' ? -15 : 15);
+      this.game.rig.yaw += step;
+      this.setStatus('Câmera: ' + Math.round(THREE.MathUtils.radToDeg(this.game.rig.yaw)) + '°');
+      return true;
+    }
+    if (e.code === 'KeyZ' || e.code === 'KeyX') {
+      e.preventDefault();
+      const step = THREE.MathUtils.degToRad(e.code === 'KeyZ' ? -7 : 7);
+      this.game.rig.editorPitchOffset = THREE.MathUtils.clamp((this.game.rig.editorPitchOffset || 0) + step, -0.45, 0.35);
+      this.setStatus('Inclinação da câmera: ' + Math.round(THREE.MathUtils.radToDeg(this.game.rig.editorPitchOffset)) + '°');
+      return true;
+    }
+    if (e.code === 'KeyV') {
+      e.preventDefault();
+      this.game.rig.editorPitchOffset = 0;
+      this.setStatus('Câmera: visão padrão.');
+      return true;
+    }
     if (e.code === 'KeyR') {
       e.preventDefault();
       if (this.selectedTool?.kind !== 'select') {
