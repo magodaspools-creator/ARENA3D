@@ -548,12 +548,13 @@ const mineMetalMat = new THREE.MeshStandardMaterial({ color: 0x3e4144, roughness
 const mineOreMat = new THREE.MeshStandardMaterial({ color: 0x4d6770, emissive: 0x172a30, emissiveIntensity: 0.35, roughness: 0.7, flatShading: true });
 const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 const mineLights = [];
+let mineLightTick = 0;
 
 const mineBox = (w, h, d, x, y, z, mat, rotY = 0, opts = {}) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
   m.rotation.y = rotY;
-  m.castShadow = true;
+  m.castShadow = false;
   m.receiveShadow = true;
   mineGroup.add(m);
   if (opts.colliderRadius) game.collision.addCircle(x, z, opts.colliderRadius, { projectiles: false });
@@ -565,7 +566,7 @@ const mineRock = (x, z, sx, sy, sz, rot = 0, mat = mineRockMat, opts = {}) => {
   m.position.set(x, sy * 0.48, z);
   m.scale.set(sx, sy, sz);
   m.rotation.y = rot;
-  m.castShadow = true;
+  m.castShadow = false;
   m.receiveShadow = true;
   mineGroup.add(m);
   if (opts.colliderRadius) game.collision.addCircle(x, z, opts.colliderRadius, { projectiles: false });
@@ -676,28 +677,13 @@ scene.add(mineEntrance);
 // Underground ambient lighting: keep the mine dark and moody, but readable.
 // A cool base lift prevents the unlit corners from collapsing into black while
 // the warm lamps below remain the main visual accents.
-const mineAmbient = new THREE.HemisphereLight(0x6f8190, 0x17120f, 0.72);
+const mineAmbient = new THREE.HemisphereLight(0x71879a, 0x17120f, 0.86);
 mineAmbient.position.set(110, 8, 118);
 mineGroup.add(mineAmbient);
 
-for (const [x, z, intensity, distance] of [
-  [104, 96, 2.2, 11],
-  [92, 104, 2.0, 10],
-  [136, 104, 2.2, 11],
-  [94, 122, 2.1, 10],
-  [137, 121, 2.2, 11],
-  [108, 139, 2.5, 12],
-  [140, 142, 2.6, 12],
-]) {
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 6), mineGlowMat);
-  glow.position.set(x, 2.25, z);
-  mineGroup.add(glow);
-
-  const light = new THREE.PointLight(0xd89b54, intensity, distance, 1.8);
-  light.position.set(x, 2.25, z);
-  mineGroup.add(light);
-  mineLights.push(light);
-}
+// The ambient hemisphere light supplies the low-level visibility. Local
+// illumination is concentrated into a small number of torches instead of many
+// overlapping point lights, which keeps the mine cheaper to render.
 
 const undergroundBoundary = [
   [104, 80], [116, 80], [124, 84], [138, 82], [151, 91],
@@ -770,6 +756,7 @@ mineGroup.add(exitGlow);
 const exitLight = new THREE.PointLight(0xd89b54, 4.5, 9, 1.8);
 exitLight.position.copy(exitGlow.position);
 mineGroup.add(exitLight);
+exitLight.userData.baseIntensity = 4.5;
 mineLights.push(exitLight);
 
 const undergroundZones = [
@@ -1050,6 +1037,53 @@ const addHangingLamp = (x, z, y = 3.8, intensity = 3.5) => {
   mineLights.push(light);
 };
 
+const addMineTorch = (x, z, rot = 0, intensity = 4.2, range = 8.5) => {
+  const bracketMat = mineWoodMat;
+  const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.72, 0.16), bracketMat);
+  bracket.position.set(x, 2.15, z);
+  bracket.rotation.y = rot;
+  bracket.castShadow = false;
+  mineGroup.add(bracket);
+
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.11, 0.16, 6), mineMetalMat);
+  cup.position.set(x, 2.52, z);
+  cup.castShadow = false;
+  mineGroup.add(cup);
+
+  const flameMat = new THREE.MeshBasicMaterial({
+    color: 0xffa347,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 6), flameMat);
+  flame.position.set(x, 2.74, z);
+  mineGroup.add(flame);
+
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), mineGlowMat);
+  glow.position.set(x, 2.72, z);
+  mineGroup.add(glow);
+
+  const light = new THREE.PointLight(0xd89b54, intensity, range, 1.8);
+  light.position.set(x, 2.62, z);
+  light.userData.baseIntensity = intensity;
+  mineGroup.add(light);
+  mineLights.push(light);
+};
+
+// Four torch stations replace the old seven broad point lights. They illuminate
+// the important junctions while leaving deeper stretches naturally darker.
+for (const [x, z, rot, intensity] of [
+  [104.0, 96.0, 0, 4.8],
+  [94.0, 113.0, Math.PI / 2, 4.4],
+  [127.0, 104.0, Math.PI, 4.8],
+  [136.0, 122.0, -Math.PI / 2, 4.8],
+]) {
+  addMineTorch(x, z, rot, intensity, 8.5);
+}
+
 for (const [x, z, y, intensity] of [
   [110, 104.2, 3.7, 4.0],
   [99.5, 112, 3.4, 3.2],
@@ -1236,7 +1270,7 @@ for (const [x,z,s] of [[113,130,0.7],[119,134,0.85],[128,131,0.9],[124,128,0.55]
   crystal.position.set(x,0.75,z);
   crystal.scale.set(0.65*s,1.7*s,0.65*s);
   crystal.rotation.set(0,r()*Math.PI,0.15);
-  crystal.castShadow=true;
+  crystal.castShadow=false;
   mineGroup.add(crystal);
 }
 
@@ -1953,7 +1987,14 @@ const leaveMine = () => {
     update(dt, t) {
       campfire.update(dt, t);
       if (mine.active) {
-        for (const light of mineLights) light.intensity = 7 + Math.sin(t * 2.5 + light.position.x) * 1.2;
+        mineLightTick -= dt;
+        if (mineLightTick <= 0) {
+          mineLightTick = 0.08;
+          for (const light of mineLights) {
+            const base = light.userData.baseIntensity ?? light.intensity;
+            light.intensity = base * (0.92 + Math.sin(t * 3.2 + light.position.x * 0.7) * 0.08);
+          }
+        }
         stage4Trigger.update();
       }
       braziers.forEach((b) => b.update(dt, t));
