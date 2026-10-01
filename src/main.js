@@ -17,6 +17,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
+import { createArea2 } from './areas/area2.js';
 import { MapEditor } from './map-editor.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
@@ -181,6 +182,27 @@ class Game {
     this.ui.showHud(this.player.voc, this.character);
     this.area.onStart();
     this.spawnPendingDeathBackpacks();
+  }
+
+  enterArea2() {
+    if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
+
+    this.inputLocked = true;
+    this.ui.hidePrompt();
+    this.ui.fade(true);
+
+    this.schedule(0.75, () => {
+      const area2 = createArea2(this);
+      this.area = area2;
+      this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
+      this.rig.snap(this.player.pos);
+      this.area.onStart();
+    });
+
+    this.schedule(1.45, () => {
+      this.ui.fade(false);
+      this.inputLocked = false;
+    });
   }
 
   addEnemy(e) { this.enemies.push(e); return e; }
