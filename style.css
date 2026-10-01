@@ -1361,3 +1361,25 @@ button:hover { filter: brightness(1.1); }
   border-radius: 5px;
   font-size: 9px;
 }
+
+
+.map-editor-select-row {
+  display: flex;
+  margin: 8px 0 10px;
+}
+.map-editor-select-tool {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(158,200,255,.28);
+  border-radius: 6px;
+  background: rgba(158,200,255,.06);
+  color: #c8dfff;
+  font-size: 12px;
+  letter-spacing: .8px;
+  box-shadow: none;
+}
+.map-editor-select-tool:hover,
+.map-editor-select-tool.active {
+  border-color: rgba(158,200,255,.65);
+  background: rgba(158,200,255,.14);
+}
