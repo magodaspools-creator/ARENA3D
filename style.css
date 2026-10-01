@@ -1207,3 +1207,148 @@ button:hover { filter: brightness(1.1); }
   .map-editor-panel { top: 8px; right: 8px; width: min(330px, calc(100vw - 16px)); max-height: calc(100vh - 16px); }
   .map-editor-palette { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+
+/* ---------- shared map editor ---------- */
+.map-editor-online {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.map-editor-online-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.map-editor-online-title {
+  color: #e8c77a;
+  font: 11px Georgia, serif;
+  letter-spacing: 1.5px;
+}
+.map-editor-online-sub {
+  margin-top: 3px;
+  color: #777f8d;
+  font-size: 9px;
+}
+.map-editor-online-refresh {
+  min-height: 28px !important;
+  padding: 5px 8px !important;
+  font-size: 9px !important;
+}
+.map-editor-online-fields,
+.map-editor-online-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 6px;
+}
+.map-editor-online input {
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(0,0,0,.28);
+  color: #e8e2d4;
+  font: 10px "Segoe UI", sans-serif;
+}
+.map-editor-online input:focus {
+  border-color: rgba(232,199,122,.55);
+}
+.map-editor-online input::placeholder {
+  color: #626977;
+}
+.map-editor-online-actions button,
+.map-editor-online-card button {
+  min-height: 31px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 5px;
+  background: rgba(255,255,255,.035);
+  color: #cfc8b8;
+  font: 10px "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+.map-editor-online-actions button:hover,
+.map-editor-online-card button:hover {
+  border-color: rgba(232,199,122,.55);
+  background: rgba(232,199,122,.08);
+  color: #f0d9a8;
+}
+.map-editor-online-actions button:disabled {
+  opacity: .45;
+  cursor: wait;
+}
+.map-editor-online-code {
+  margin-top: 5px;
+}
+.map-editor-online-status {
+  min-height: 18px;
+  margin-top: 5px;
+  color: #8f9aae;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.map-editor-online-status.error {
+  color: #d89a9a;
+}
+.map-editor-online-list {
+  display: grid;
+  gap: 5px;
+  max-height: 210px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding-right: 2px;
+}
+.map-editor-online-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 5px;
+  background: rgba(255,255,255,.02);
+}
+.map-editor-online-card.mine {
+  border-color: rgba(232,199,122,.22);
+  background: rgba(232,199,122,.035);
+}
+.map-editor-online-card-main {
+  min-width: 0;
+}
+.map-editor-online-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e8e2d4;
+  font: 11px Georgia, serif;
+}
+.map-editor-online-card-meta {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #777f8d;
+  font-size: 8px;
+}
+.map-editor-online-card-code {
+  margin-top: 3px;
+  color: #e8c77a;
+  font: 700 8px "Segoe UI", sans-serif;
+  letter-spacing: 1px;
+}
+.map-editor-online-card button {
+  white-space: nowrap;
+}
+.map-editor-online-empty {
+  padding: 10px;
+  text-align: center;
+  color: #777f8d;
+  border: 1px dashed rgba(255,255,255,.08);
+  border-radius: 5px;
+  font-size: 9px;
+}
