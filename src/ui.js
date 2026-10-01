@@ -123,69 +123,135 @@ export class UI {
 
     const w = canvas.width, h = canvas.height;
     const { minX, maxX, minZ, maxZ } = area.minimap.bounds;
-    const sx = w / (maxX - minX), sy = h / (maxZ - minZ);
-    const px = (x) => (x - minX) * sx;
-    const pz = (z) => (z - minZ) * sy;
+    const underground = !!area.minimap.underground;
+    const focusSpan = underground ? 42 : 46;
+    const half = focusSpan * 0.5;
+
+    // The old map showed the entire world at once, which made the player and
+    // nearby routes microscopic. The minimap now behaves like a real navigation
+    // map: it follows the player and keeps a useful local area in view.
+    const centerX = Math.max(minX + half, Math.min(maxX - half, p.pos.x));
+    const centerZ = Math.max(minZ + half, Math.min(maxZ - half, p.pos.z));
+    const viewMinX = centerX - half;
+    const viewMaxX = centerX + half;
+    const viewMinZ = centerZ - half;
+    const viewMaxZ = centerZ + half;
+    const sx = w / (viewMaxX - viewMinX);
+    const sy = h / (viewMaxZ - viewMinZ);
+    const px = (x) => (x - viewMinX) * sx;
+    const pz = (z) => (z - viewMinZ) * sy;
 
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(7, 11, 14, 0.88)';
+    ctx.fillStyle = 'rgba(5, 8, 11, 0.94)';
     ctx.fillRect(0, 0, w, h);
 
-    // Walkable regions.
-    ctx.fillStyle = 'rgba(83, 115, 83, 0.48)';
-    for (const [x1, x2, z1, z2] of area.minimap.zones) {
-      ctx.fillRect(px(x1), pz(z2), (x2 - x1) * sx, (z2 - z1) * sy);
+    // Subtle coordinate grid gives the map a deliberate cartographic feel.
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.strokeStyle = 'rgba(205, 177, 116, 0.45)';
+    ctx.lineWidth = 1;
+    const gridStep = underground ? 5 : 6;
+    for (let x = Math.ceil(viewMinX / gridStep) * gridStep; x <= viewMaxX; x += gridStep) {
+      ctx.beginPath(); ctx.moveTo(px(x), 0); ctx.lineTo(px(x), h); ctx.stroke();
+    }
+    for (let z = Math.ceil(viewMinZ / gridStep) * gridStep; z <= viewMaxZ; z += gridStep) {
+      ctx.beginPath(); ctx.moveTo(0, pz(z)); ctx.lineTo(w, pz(z)); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Walkable regions. The local zoom makes corridors and chambers readable.
+    ctx.fillStyle = underground
+      ? 'rgba(91, 103, 91, 0.62)'
+      : 'rgba(83, 115, 83, 0.54)';
+    for (const [x1, x2, z1, z2] of area.minimap.zones || []) {
+      ctx.fillRect(px(x1), pz(z1), (x2 - x1) * sx, (z2 - z1) * sy);
     }
 
     // Main route / important structures.
-    ctx.strokeStyle = 'rgba(205, 177, 116, 0.62)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = underground
+      ? 'rgba(202, 164, 102, 0.72)'
+      : 'rgba(205, 177, 116, 0.68)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    const path = [[0,46],[0.5,38],[-2.5,30],[1.5,22],[-0.5,14],[0,6],[0,-20],[0,-31],[0,-44]];
+    const path = underground
+      ? [[110,101],[110,112],[101,116],[92,116],[84,123],[91,134],[105,139],[121,143],[132,143]]
+      : [[0,46],[0.5,38],[-2.5,30],[1.5,22],[-0.5,14],[0,6],[0,-20],[0,-31],[0,-44]];
     path.forEach(([x,z], i) => i ? ctx.lineTo(px(x), pz(z)) : ctx.moveTo(px(x), pz(z)));
     ctx.stroke();
 
-    // Boss arena.
-    const a = area.minimap.arena;
-    ctx.beginPath();
-    ctx.arc(px(a.x), pz(a.z), a.r * sx, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(155, 47, 72, 0.35)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(225, 106, 125, 0.75)';
-    ctx.stroke();
+    // Boss arena on the surface.
+    if (!underground && area.minimap.arena) {
+      const a = area.minimap.arena;
+      ctx.beginPath();
+      ctx.arc(px(a.x), pz(a.z), Math.max(4, a.r * sx), 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(155, 47, 72, 0.38)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(225, 106, 125, 0.82)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(245, 210, 170, 0.9)';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.fillText('BOSS', px(a.x) + 7, pz(a.z) - 7);
+    }
 
-    // Secret chamber.
-    ctx.fillStyle = 'rgba(104, 164, 196, 0.42)';
-    ctx.fillRect(px(24), pz(18), 14 * sx, 14 * sy);
+    // Surface secret chamber.
+    if (!underground) {
+      ctx.fillStyle = 'rgba(104, 164, 196, 0.48)';
+      ctx.fillRect(px(24), pz(18), 14 * sx, 14 * sy);
 
-    // Portal.
-    ctx.fillStyle = '#71d9ff';
-    ctx.beginPath();
-    ctx.arc(px(area.minimap.portal.x), pz(area.minimap.portal.z), 3, 0, Math.PI * 2);
-    ctx.fill();
+      if (area.minimap.portal) {
+        const portal = area.minimap.portal;
+        ctx.fillStyle = '#71d9ff';
+        ctx.beginPath();
+        ctx.arc(px(portal.x), pz(portal.z), 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(210, 245, 255, 0.95)';
+        ctx.font = 'bold 10px Segoe UI, sans-serif';
+        ctx.fillText('PORTAL', px(portal.x) + 7, pz(portal.z) + 4);
+      }
+    } else {
+      // Mine exit is deliberately prominent so the player can always orient
+      // himself relative to the way back out.
+      const ex = { x: 110, z: 101 };
+      ctx.fillStyle = 'rgba(113, 217, 255, 0.95)';
+      ctx.beginPath();
+      ctx.arc(px(ex.x), pz(ex.z), 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(210, 245, 255, 0.95)';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.fillText('SAÍDA', px(ex.x) + 8, pz(ex.z) + 4);
+    }
 
-    // Player marker — local zero-facing points to world +Z, which is DOWN on this map.
-    // Keep the same facing convention as Player: facing = atan2(x, z).
-    // A down-pointing canvas triangle rotated by -facing maps +Z/+X/-Z/-X correctly.
+    // Player marker is deliberately large and stays visually dominant.
     ctx.save();
     ctx.translate(px(p.pos.x), pz(p.pos.z));
     ctx.rotate(-p.facing);
-    ctx.fillStyle = '#f7f0d0';
+    ctx.shadowColor = 'rgba(255, 235, 175, 0.75)';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#fff2bd';
     ctx.beginPath();
-    ctx.moveTo(0, 7); ctx.lineTo(5, -6); ctx.lineTo(0, -3); ctx.lineTo(-5, -6); ctx.closePath();
+    ctx.moveTo(0, 12);
+    ctx.lineTo(8, -8);
+    ctx.lineTo(0, -4);
+    ctx.lineTo(-8, -8);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(15, 12, 8, 0.95)';
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
 
-    // Frame and tiny north indicator.
-    ctx.strokeStyle = 'rgba(232,199,122,0.62)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, w - 2, h - 2);
-    ctx.fillStyle = 'rgba(232,199,122,0.78)';
-    ctx.font = 'bold 9px Segoe UI, sans-serif';
-    ctx.fillText('N', w - 13, 12);
+    // Border + compass. The stronger frame makes the minimap read as a
+    // dedicated navigation element instead of a tiny debug widget.
+    ctx.strokeStyle = 'rgba(232,199,122,0.78)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, w - 4, h - 4);
+    ctx.fillStyle = 'rgba(245, 220, 160, 0.95)';
+    ctx.font = 'bold 13px Segoe UI, sans-serif';
+    ctx.fillText('N', w - 18, 17);
   }
 
   // ---------- HUD ----------
