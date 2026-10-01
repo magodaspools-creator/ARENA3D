@@ -45,15 +45,28 @@ export class Collision {
     return false;
   }
 
-  /** Moves pos (Vector3, XZ only) by (dx,dz) with sliding against walls and obstacles. */
+  /** Moves pos (Vector3, XZ only) with wall sliding and obstacle resolution. */
   move(pos, dx, dz, r) {
     const lim = -r;
-    let nx = pos.x + dx, nz = pos.z + dz;
-    if (!this.inside(nx, nz, lim)) {
-      if (this.inside(nx, pos.z, lim)) nz = pos.z;
-      else if (this.inside(pos.x, nz, lim)) nx = pos.x;
-      else { nx = pos.x; nz = pos.z; }
+
+    // Resolve the two axes independently. The old diagonal-first approach could
+    // reject a perfectly valid corner/doorway whenever the combined destination
+    // landed just outside the union of walkable rectangles.
+    let nx = pos.x;
+    let nz = pos.z;
+
+    const tryX = pos.x + dx;
+    if (this.inside(tryX, nz, lim)) nx = tryX;
+
+    const tryZ = pos.z + dz;
+    if (this.inside(nx, tryZ, lim)) nz = tryZ;
+
+    // If X was rejected but Z moved into a valid lane, retry X from that lane.
+    if (nx === pos.x && nz !== pos.z && dx !== 0) {
+      const retryX = pos.x + dx;
+      if (this.inside(retryX, nz, lim)) nx = retryX;
     }
+
     for (let it = 0; it < 2; it++) {
       for (const o of this.obstacles) {
         if (!o.enabled) continue;
@@ -71,15 +84,22 @@ export class Collision {
             const d = Math.sqrt(d2);
             nx = cx + (ox / d) * r; nz = cz + (oz / d) * r;
           } else {
-            const l = nx - o.minX, rr = o.maxX - nx, b = nz - o.minZ, t = o.maxZ - nz;
+            const l = nx - o.minX, rr = o.maxX - nx, b = nz - o.minZ, t = nz - o.maxZ;
             const m = Math.min(l, rr, b, t);
-            if (m === l) nx = o.minX - r; else if (m === rr) nx = o.maxX + r;
-            else if (m === b) nz = o.minZ - r; else nz = o.maxZ + r;
+            if (m === l) nx = o.minX - r;
+            else if (m === rr) nx = o.maxX + r;
+            else if (m === b) nz = o.minZ - r;
+            else nz = o.maxZ + r;
           }
         }
       }
     }
-    if (!this.inside(nx, nz, lim) && this.inside(pos.x, pos.z, lim)) { nx = pos.x; nz = pos.z; }
-    pos.x = nx; pos.z = nz;
+
+    if (!this.inside(nx, nz, lim) && this.inside(pos.x, pos.z, lim)) {
+      nx = pos.x;
+      nz = pos.z;
+    }
+    pos.x = nx;
+    pos.z = nz;
   }
 }
