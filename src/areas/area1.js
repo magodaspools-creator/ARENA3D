@@ -1188,6 +1188,10 @@ const mine = {
   entrance: mineEntrance,
   chest: null,
   enemies: [],
+  // Mine activation is staged across animation frames so the transition does not
+  // wake every light/enemy/system on the same main-thread turn.
+  loading: false,
+  transitionToken: 0,
   minimap: {
     bounds: { minX: 68, maxX: 155, minZ: 78, maxZ: 155 },
     zones: undergroundZones,
@@ -1440,20 +1444,57 @@ const enterMine = () => {
   game.inputLocked = true;
   game.ui.hidePrompt();
   game.ui.fade(true);
+
+  // Do not wake the whole mine in one synchronous turn. The scene geometry is
+  // already built, so the safe optimization here is to stagger visibility and
+  // gameplay systems across animation frames instead of rebuilding anything.
+  const token = ++mine.transitionToken;
+  mine.loading = true;
+
   game.schedule(0.55, () => {
+    if (!mine.loading || mine.transitionToken !== token || game.state !== 'play') return;
+
     mine.active = true;
     mine.group.visible = true;
-    for (const e of game.enemies) {
-      if (e.group === 'mine' && !e.removed) e.root.visible = true;
-    }
-    mineMiniboss.root.visible = mineMiniboss.state !== 'dead';
+
+    // Keep dynamic lights asleep for the first rendered mine frame. Static
+    // geometry can appear immediately without also activating every PointLight.
+    for (const light of mineLights) light.visible = false;
+
     game.player.place(mine.spawn.x, mine.spawn.z, mine.spawn.facing);
     game.rig.snap(game.player.pos);
     area.minimap.bounds = mine.minimap.bounds;
     area.minimap.zones = mine.minimap.zones;
     game.ui.banner('MINA ABANDONADA', 'O antigo poço ainda guarda caminhos sob a floresta.', 'boss', 3.2);
+
+    const nextFrame = (fn) => requestAnimationFrame(() => {
+      if (!mine.loading || mine.transitionToken !== token || !mine.active) return;
+      fn();
+    });
+
+    // Frame 1 after the dungeon is visible: restore the mine lighting.
+    nextFrame(() => {
+      for (const light of mineLights) light.visible = true;
+
+      // Frame 2: wake the regular mine patrols.
+      nextFrame(() => {
+        for (const e of game.enemies) {
+          if (e.group === 'mine' && !e.removed) e.root.visible = true;
+        }
+
+        // Frame 3: wake the optional miniboss only after the regular patrols
+        // are active. This avoids a second enemy/animation spike on the entry
+        // frame while preserving exactly the same gameplay state.
+        nextFrame(() => {
+          mineMiniboss.root.visible = mineMiniboss.state !== 'dead';
+          mine.loading = false;
+        });
+      });
+    });
   });
+
   game.schedule(0.9, () => {
+    if (mine.transitionToken !== token || game.state !== 'play') return;
     game.ui.fade(false);
     game.inputLocked = false;
   });
@@ -1464,9 +1505,12 @@ const leaveMine = () => {
   game.inputLocked = true;
   game.ui.hidePrompt();
   game.ui.fade(true);
+  ++mine.transitionToken;
+  mine.loading = false;
   game.schedule(0.45, () => {
     mine.active = false;
     mine.group.visible = false;
+    for (const light of mineLights) light.visible = true;
     for (const e of game.enemies) {
       if (e.group === 'mine' && !e.removed) e.root.visible = false;
     }
@@ -1986,7 +2030,7 @@ const leaveMine = () => {
 
     update(dt, t) {
       campfire.update(dt, t);
-      if (mine.active) {
+      if (mine.active && !mine.loading) {
         mineLightTick -= dt;
         if (mineLightTick <= 0) {
           mineLightTick = 0.08;
@@ -2021,7 +2065,7 @@ const leaveMine = () => {
 
       // ambience
       const fx = game.fx.particles;
-      if (mine.active) {
+      if (mine.active && !mine.loading) {
         if (Math.random() < 0.22) {
           fx.spawn(p.pos.x + (Math.random() - 0.5) * 10, 2.8 + Math.random() * 2.5, p.pos.z + (Math.random() - 0.5) * 10,
             (Math.random() - 0.5) * 0.18, -0.05, (Math.random() - 0.5) * 0.18, 0x8a8175, 4, 0.12, 0, 0);
@@ -2058,6 +2102,8 @@ const leaveMine = () => {
     /** Called after the player dies: reset the boss fight if it was running. */
     onRespawn() {
       if (mine.active) {
+        ++mine.transitionToken;
+        mine.loading = false;
         mine.active = false;
         mine.group.visible = false;
         for (const e of game.enemies) {
