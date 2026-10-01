@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MapEditorCore } from './map-editor-core.js';
 import { ITEMS } from './items.js';
 import { listSharedMaps, publishSharedMap } from './map-editor-api.js';
 
@@ -59,6 +60,19 @@ export class MapEditor {
     this.renderer = game.renderer;
     this.ground = game.ground;
     this.raycaster = new THREE.Raycaster();
+
+    // Núcleo modular: nesta primeira integração ele assume apenas o
+    // posicionamento/raycast/snap. A UI, Supabase e regras do editor continuam
+    // sob responsabilidade desta classe.
+    this.core = new MapEditorCore({
+      scene: this.scene,
+      camera: this.camera,
+      renderer: this.renderer,
+      gridSize: 2,
+      createMesh: () => new THREE.Group(),
+      resolveY: () => 0,
+    });
+
     this.group = new THREE.Group();
     this.group.name = 'MapEditorObjects';
     this.scene.add(this.group);
@@ -88,6 +102,9 @@ export class MapEditor {
     // Editor data is never injected into the live map at boot. It is loaded
     // only when the editor session is explicitly opened.
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    this.renderer.domElement.addEventListener('contextmenu', (e) => {
+      if (this.active) e.preventDefault();
+    });
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.renderer.domElement.addEventListener('pointermove', (e) => this.updateEdgePointer(e));
@@ -341,13 +358,9 @@ export class MapEditor {
   }
 
   getGroundPointFromEvent(event) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    this.raycaster.setFromCamera(ndc, this.camera);
-    return this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
+    // O Core é a fonte única do raycast de posicionamento e do snap.
+    this.core.updatePointer(event);
+    return this.core.getGroundPoint();
   }
 
   onWheel(event) {
@@ -415,12 +428,15 @@ export class MapEditor {
 
   onPointerMove(event) {
     if (!this.active) return;
+
     const point = this.getGroundPointFromEvent(event);
     if (!point) {
       this.hidePreview();
       return;
     }
-    this.updatePreview(point.x, point.z);
+
+    // Ghost/preview acompanha o grid do Core, não coordenadas brutas do mouse.
+    this.updatePreview(this.core.snap(point.x), this.core.snap(point.z));
   }
 
   updatePreviewFromPointer() {
@@ -523,7 +539,43 @@ export class MapEditor {
   }
 
   onPointerDown(event) {
-    if (!this.active || event.button !== 0) return;
+    if (!this.active) return;
+
+    // Click-through protection: HTML UI nunca deve colocar/remover objetos no canvas.
+    if (event.target !== this.renderer.domElement) return;
+
+    // Sincroniza o ponteiro no instante exato do clique.
+    this.core.updatePointer(event);
+
+    // Shift + clique ou botão direito remove o objeto atingido.
+    if (event.button === 2 || event.shiftKey) {
+      if (event.button === 2) event.preventDefault();
+
+      const hits = this.raycaster.intersectObjects(this.group.children, true);
+      const hitObject = hits.find((hit) => {
+        let o = hit.object;
+        while (o && o !== this.group) {
+          if (o.userData?.editorId) return true;
+          o = o.parent;
+        }
+        return false;
+      });
+
+      if (hitObject) {
+        let o = hitObject.object;
+        while (o && o !== this.group && !o.userData?.editorId) o = o.parent;
+        const data = o?.userData?.editorId
+          ? this.objects.find((entry) => entry.id === o.userData.editorId)
+          : null;
+        if (data) {
+          this.select(data);
+          this.deleteSelected();
+        }
+      }
+      return;
+    }
+
+    if (event.button !== 0) return;
 
     const point = this.getGroundPointFromEvent(event);
     if (!point) return;
@@ -565,9 +617,9 @@ export class MapEditor {
       atlasX: Number.isInteger(this.selectedTool.atlasX) ? this.selectedTool.atlasX : null,
       atlasY: Number.isInteger(this.selectedTool.atlasY) ? this.selectedTool.atlasY : null,
       itemId: this.selectedTool.itemId || null,
-      x: Number(x.toFixed(3)),
+      x: Number(this.core.snap(x).toFixed(3)),
       y: 0,
-      z: Number(z.toFixed(3)),
+      z: Number(this.core.snap(z).toFixed(3)),
       rotation: this.placementRotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
@@ -1182,6 +1234,7 @@ export class MapEditor {
   dispose() {
     this.navKeys.clear();
     this.edgePointer.active = false;
+    this.core?.destroy();
     for (const data of [...this.objects]) {
       this.selected = data;
       this.removeCollision(data);
