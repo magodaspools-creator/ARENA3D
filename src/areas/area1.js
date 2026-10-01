@@ -1618,7 +1618,7 @@ const leaveMine = () => {
   scene.add(northMarker);
 
   // ---------- set pieces ----------
-  const campfire = createCampfire(game, -6.8, 37.4);
+  const campfire = createCampfire(game, 0.1, 35.2);
   createSign(game, 2.8, 43.5, -0.4);
   const runeStone = createRuneStone(game, 10, 24);
   // Hide the lever deeper in the ruined courtyard, beside the broken wall.
@@ -1639,6 +1639,9 @@ const leaveMine = () => {
   // ---------- protection zone: NPC plaza ----------
   // Visual-only PZ marker around the two surface NPCs. No collider is used.
   const npcPz = { x: 0.1, z: 35.2, radius: 8.2 };
+  game.protectionZones ??= [];
+  game.protectionZones = game.protectionZones.filter((zone) => zone.source !== 'area1-npc-plaza');
+  game.protectionZones.push({ ...npcPz, source: 'area1-npc-plaza' });
   const pzGroup = new THREE.Group();
   pzGroup.name = 'npc-protection-zone';
   scene.add(pzGroup);
@@ -1646,7 +1649,7 @@ const leaveMine = () => {
   const pzFloor = new THREE.Mesh(
     new THREE.CircleGeometry(npcPz.radius, 64),
     new THREE.MeshStandardMaterial({
-      color: 0xaaa895, roughness: 0.92, metalness: 0,
+      color: 0x716b5d, roughness: 0.96, metalness: 0,
       transparent: true, opacity: 0.82, depthWrite: false,
     })
   );
@@ -1658,7 +1661,7 @@ const leaveMine = () => {
   const pzInner = new THREE.Mesh(
     new THREE.CircleGeometry(npcPz.radius * 0.92, 64),
     new THREE.MeshBasicMaterial({
-      color: 0xd6d2bd, transparent: true, opacity: 0.18,
+      color: 0xb8ad92, transparent: true, opacity: 0.14,
       depthWrite: false, side: THREE.DoubleSide,
     })
   );
