@@ -104,6 +104,12 @@ export class Collision {
     o.collider.userData = STATIC;
     this.staticColliders.add(o.collider);
     this.obstacles.push(o);
+    o.setEnabled = (enabled) => {
+      o.enabled = !!enabled;
+      this.syncEnabled(o);
+      this.refreshDebug();
+      return o;
+    };
     this.syncEnabled(o);
     this.refreshDebug();
     return o;
@@ -136,6 +142,12 @@ export class Collision {
     o.collider.userData = STATIC;
     this.staticColliders.add(o.collider);
     this.obstacles.push(o);
+    o.setEnabled = (enabled) => {
+      o.enabled = !!enabled;
+      this.syncEnabled(o);
+      this.refreshDebug();
+      return o;
+    };
     this.syncEnabled(o);
     this.refreshDebug();
     return o;
