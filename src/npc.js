@@ -46,7 +46,7 @@ export class NPC {
     this.name = name;
     this.dialogue = dialogue;
     this.service = service;
-    this.rig = createHumanoid(look);
+    this.rig = createHumanoid({ ...look, npcStyle: true });
     this.rig.handR.add(createWeapon('lanternStaff'));
     this.root = this.rig.root;
     this.root.position.set(x, 0, z);
