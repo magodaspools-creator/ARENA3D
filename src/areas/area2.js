@@ -148,21 +148,26 @@ export function createArea2(game) {
 
   // ---------- lore / route ----------
   const lore = createRuneStone(game, 150, -17);
-  const loreAnchor = new THREE.Object3D();
-  loreAnchor.position.set(150,2.1,-17);
-  scene.add(loreAnchor);
 
+  // createRuneStone already exposes the correct 3D dialogue anchor.
+  // Do not create a second Object3D here: Dialogue.update() requires a
+  // concrete anchor with x/z coordinates and would crash every frame if it
+  // receives undefined.
   game.interaction.add({
-    pos: loreAnchor.position,
+    pos: lore.pos,
     radius: 2.6,
     height: 4,
     label: 'Ler a Pedra do Sol Sepultado',
-    onInteract: () => game.dialogue.open('A Pedra do Sol Sepultado', [
-      '“Quando Morvhal caiu, o selo não morreu com ele.”',
-      '“A essência arrancada do Guardião atravessou o portal e encontrou a areia.”',
-      '“Sob o deserto repousa o templo que os antigos construíram para conter aquilo que vinha de além da luz.”',
-      '“Não procure o caminho pela superfície. Procure onde o sol foi enterrado.”',
-    ]),
+    onInteract: () => game.dialogue.open(
+      'A Pedra do Sol Sepultado',
+      [
+        '“Quando Morvhal caiu, o selo não morreu com ele.”',
+        '“A essência arrancada do Guardião atravessou o portal e encontrou a areia.”',
+        '“Sob o deserto repousa o templo que os antigos construíram para conter aquilo que vinha de além da luz.”',
+        '“Não procure o caminho pela superfície. Procure onde o sol foi enterrado.”',
+      ],
+      lore.anchor,
+    ),
   });
 
   const chest = createChest(game, 150, 22, 0);
@@ -250,6 +255,11 @@ export function createArea2(game) {
     // Keeping the hook here prevents the render loop from crashing on the
     // first defeated enemy and leaving the whole screen visually frozen.
     onEnemyKilled() {},
+
+    // The main game calls this hook on death before restoring the area's
+    // checkpoint. Keeping it explicit makes Area 2 safe even though it has
+    // no area-specific respawn sequence yet.
+    onRespawn() {},
 
     update(dt,t) {
       entryPortal.update(dt,t);
