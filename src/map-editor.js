@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { ITEMS } from './items.js';
+import { listSharedMaps, publishSharedMap } from './map-editor-api.js';
 
 const STORAGE_KEY = 'arena3d.map-editor.v1';
+const CREATOR_ID_KEY = 'arena3d.map-editor.creator-id.v1';
+const CREATOR_NAME_KEY = 'arena3d.map-editor.creator-name.v1';
 
 const BUILTIN = [
   { id: 'stone', name: 'Pedra', icon: '◆', kind: 'stone', collision: true },
@@ -35,6 +38,8 @@ export class MapEditor {
     this.collisionHelpers = new Map();
     this.textureLoader = new THREE.TextureLoader();
     this.itemTextures = new Map();
+    this.creatorId = this.getCreatorId();
+    this.creatorName = localStorage.getItem(CREATOR_NAME_KEY) || '';
 
     this.buildUI();
     this.load();
@@ -94,6 +99,29 @@ export class MapEditor {
           <input id="map-editor-file" type="file" accept="application/json,.json" hidden>
         </div>
 
+        <div class="map-editor-online">
+          <div class="map-editor-online-head">
+            <div>
+              <div class="map-editor-online-title">MAPAS COMPARTILHADOS</div>
+              <div class="map-editor-online-sub" id="map-editor-online-count">Carregando…</div>
+            </div>
+            <button type="button" data-editor-action="refreshOnline" class="map-editor-online-refresh">Atualizar</button>
+          </div>
+          <div class="map-editor-online-fields">
+            <input id="map-editor-author" maxlength="32" placeholder="Seu nome">
+            <input id="map-editor-map-name" maxlength="48" placeholder="Nome do mapa">
+          </div>
+          <div class="map-editor-online-actions">
+            <button type="button" data-editor-action="publish">Publicar mapa</button>
+            <button type="button" data-editor-action="loadCode">Carregar código</button>
+          </div>
+          <div class="map-editor-online-code">
+            <input id="map-editor-code" maxlength="16" placeholder="Código do mapa, ex.: MINE-A1B2C3">
+          </div>
+          <div id="map-editor-online-status" class="map-editor-online-status"></div>
+          <div id="map-editor-online-list" class="map-editor-online-list"></div>
+        </div>
+
         <div class="map-editor-help">
           <b>Esquerdo:</b> colocar/selecionar · <b>R:</b> girar · <b>[ / ]:</b> escala ·
           <b>C:</b> colisão · <b>Delete:</b> apagar · <b>Ctrl+Shift+T:</b> sair
@@ -111,7 +139,13 @@ export class MapEditor {
       button.onclick = () => this.action(button.dataset.editorAction);
     });
     root.querySelector('#map-editor-file').addEventListener('change', (e) => this.importFile(e));
+    root.querySelector('#map-editor-author').value = this.creatorName;
+    root.querySelector('#map-editor-author').addEventListener('input', (e) => {
+      this.creatorName = e.target.value.trim().slice(0, 32);
+      localStorage.setItem(CREATOR_NAME_KEY, this.creatorName);
+    });
     this.renderPalette();
+    this.refreshOnlineMaps();
   }
 
   toggle(force = !this.active) {
@@ -131,6 +165,23 @@ export class MapEditor {
       this.setStatus('Ctrl+Shift+T para fechar');
       this.select(null);
     }
+  }
+
+  getCreatorId() {
+    let id = localStorage.getItem(CREATOR_ID_KEY);
+    if (!id) {
+      const random = (globalThis.crypto?.randomUUID?.() || ('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx').replace(/x/g, () => Math.floor(Math.random() * 16).toString(16)));
+      id = 'creator-' + random;
+      localStorage.setItem(CREATOR_ID_KEY, id);
+    }
+    return id;
+  }
+
+  setOnlineStatus(text, error = false) {
+    const el = this.el?.querySelector('#map-editor-online-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('error', !!error);
   }
 
   setStatus(text) {
@@ -179,6 +230,9 @@ export class MapEditor {
     if (action === 'export') return this.exportMap();
     if (action === 'import') return this.el.querySelector('#map-editor-file').click();
     if (action === 'clear') return this.clearCreated();
+    if (action === 'publish') return this.publishOnline();
+    if (action === 'refreshOnline') return this.refreshOnlineMaps();
+    if (action === 'loadCode') return this.loadOnlineCode();
   }
 
   onPointerDown(event) {
@@ -434,6 +488,133 @@ export class MapEditor {
 
   serialize() {
     return this.objects.map(({ _collider, ...data }) => ({ ...data }));
+  }
+
+  async refreshOnlineMaps() {
+    this.setOnlineStatus('Atualizando mapas compartilhados…');
+    try {
+      const all = await listSharedMaps({ limit: 60 });
+      const mine = all.filter((map) => map.creator_id === this.creatorId);
+      const count = this.el.querySelector('#map-editor-online-count');
+      if (count) count.textContent = 'Seus mapas: ' + mine.length + '/3 · Comunidade: ' + all.length;
+      this.renderOnlineMaps(all);
+      this.setOnlineStatus(mine.length >= 3 ? 'Você já usou os 3 slots. Apague um slot localmente ou use outro navegador para uma nova identidade.' : 'Você ainda pode publicar ' + (3 - mine.length) + ' mapa(s).');
+    } catch (error) {
+      console.warn('[MapEditor] Shared maps failed:', error);
+      this.setOnlineStatus('Não foi possível conectar aos mapas compartilhados.', true);
+      const count = this.el.querySelector('#map-editor-online-count');
+      if (count) count.textContent = 'Servidor indisponível';
+    }
+  }
+
+  renderOnlineMaps(maps) {
+    const list = this.el.querySelector('#map-editor-online-list');
+    if (!list) return;
+    if (!maps.length) {
+      list.innerHTML = '<div class="map-editor-online-empty">Nenhum mapa publicado ainda.</div>';
+      return;
+    }
+    list.innerHTML = maps.map((map) => {
+      const mine = map.creator_id === this.creatorId;
+      const objects = Array.isArray(map.map_payload?.objects) ? map.map_payload.objects.length : 0;
+      const date = map.created_at ? new Date(map.created_at).toLocaleDateString('pt-BR') : '';
+      return '<div class="map-editor-online-card' + (mine ? ' mine' : '') + '">' +
+        '<div class="map-editor-online-card-main">' +
+          '<div class="map-editor-online-card-title">' + this.escapeHtml(map.map_name) + '</div>' +
+          '<div class="map-editor-online-card-meta">' + this.escapeHtml(map.creator_name) + ' · ' + objects + ' objetos · ' + date + '</div>' +
+          '<div class="map-editor-online-card-code">' + this.escapeHtml(map.map_code) + (mine ? ' · SEU MAPA' : '') + '</div>' +
+        '</div>' +
+        '<button type="button" data-load-map-id="' + this.escapeHtml(map.id) + '">Carregar</button>' +
+      '</div>';
+    }).join('');
+    list.querySelectorAll('[data-load-map-id]').forEach((button) => {
+      button.onclick = async () => {
+        const map = maps.find((entry) => entry.id === button.dataset.loadMapId);
+        if (!map) return;
+        await this.loadOnlineMap(map);
+      };
+    });
+  }
+
+  escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+  }
+
+  generateMapCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'MINE-';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  async publishOnline() {
+    const author = (this.el.querySelector('#map-editor-author')?.value || '').trim().slice(0, 32);
+    const mapName = (this.el.querySelector('#map-editor-map-name')?.value || '').trim().slice(0, 48);
+    if (!author) return this.setOnlineStatus('Digite seu nome antes de publicar.', true);
+    if (!mapName) return this.setOnlineStatus('Digite um nome para o mapa.', true);
+    this.creatorName = author;
+    localStorage.setItem(CREATOR_NAME_KEY, author);
+
+    const button = this.el.querySelector('[data-editor-action="publish"]');
+    if (button) button.disabled = true;
+    this.setOnlineStatus('Publicando mapa…');
+    try {
+      const mine = await listSharedMaps({ creatorId: this.creatorId, limit: 3 });
+      if (mine.length >= 3) {
+        this.setOnlineStatus('Limite atingido: cada criador pode publicar apenas 3 mapas inicialmente.', true);
+        return;
+      }
+      const mapCode = this.generateMapCode();
+      await publishSharedMap({
+        creatorId: this.creatorId,
+        creatorName: author,
+        mapName,
+        mapCode,
+        objects: this.serialize(),
+      });
+      const codeInput = this.el.querySelector('#map-editor-code');
+      if (codeInput) codeInput.value = mapCode;
+      this.setOnlineStatus('Mapa publicado! Código: ' + mapCode);
+      await this.refreshOnlineMaps();
+    } catch (error) {
+      console.warn('[MapEditor] Publish failed:', error);
+      this.setOnlineStatus('Falha ao publicar: ' + error.message, true);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async loadOnlineCode() {
+    const code = (this.el.querySelector('#map-editor-code')?.value || '').trim().toUpperCase();
+    if (!code) return this.setOnlineStatus('Digite o código do mapa.', true);
+    try {
+      const maps = await listSharedMaps({ limit: 100 });
+      const map = maps.find((entry) => entry.map_code.toUpperCase() === code);
+      if (!map) return this.setOnlineStatus('Mapa não encontrado.', true);
+      await this.loadOnlineMap(map);
+    } catch (error) {
+      this.setOnlineStatus('Falha ao buscar mapa: ' + error.message, true);
+    }
+  }
+
+  async loadOnlineMap(map) {
+    const payload = map?.map_payload;
+    if (!payload || !Array.isArray(payload.objects)) {
+      this.setOnlineStatus('Esse mapa está em um formato inválido.', true);
+      return;
+    }
+    this.clearWithoutPrompt();
+    for (const raw of payload.objects) {
+      const data = { ...raw };
+      data._collider = null;
+      this.objects.push(data);
+      this.seq = Math.max(this.seq, Number(String(data.id).replace('editor-', '')) || 0);
+      this.createObject(data);
+    }
+    this.save();
+    this.select(null);
+    this.setOnlineStatus('Carregado: ' + map.map_name + ' · código ' + map.map_code);
+    this.setStatus('Mapa compartilhado carregado.');
   }
 
   save() {
