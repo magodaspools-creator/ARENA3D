@@ -550,6 +550,34 @@ const mineGlowMat = new THREE.MeshBasicMaterial({ color: 0xd89b54, transparent: 
 const mineLights = [];
 let mineLightTick = 0;
 
+// Sprite-based mine dressing. These are visual-only and intentionally have no
+// collision registration, so decoration can never recreate the invisible-wall bug.
+const mineTextureLoader = new THREE.TextureLoader();
+const mineWebTexture = mineTextureLoader.load(new URL('../../assets/mine/spider-webs.svg', import.meta.url).href);
+const mineCocoonTexture = mineTextureLoader.load(new URL('../../assets/mine/spider-cocoons.svg', import.meta.url).href);
+mineWebTexture.colorSpace = THREE.SRGBColorSpace;
+mineCocoonTexture.colorSpace = THREE.SRGBColorSpace;
+
+const mineSheetSprite = (texture, index, x, y, z, sx, sy, rotation = 0, opacity = 0.92) => {
+  const map = texture.clone();
+  map.needsUpdate = true;
+  map.repeat.set(0.25, 1);
+  map.offset.set(index * 0.25, 0);
+  const material = new THREE.SpriteMaterial({
+    map,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    alphaTest: 0.04,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(x, y, z);
+  sprite.scale.set(sx, sy, 1);
+  sprite.rotation = rotation;
+  mineGroup.add(sprite);
+  return sprite;
+};
+
 const mineBox = (w, h, d, x, y, z, mat, rotY = 0, opts = {}) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -1219,6 +1247,96 @@ for (const [x, z, len, rot] of [
 ]) {
   mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot, { colliderRadius: 0.34 });
 }
+
+// ---------- sprite dressing: spider colony ----------
+// Real transparent sprite sheets replace the old idea of procedural line webs.
+// Webs sit on the visual walls and cocoons hang above the floor; neither affects
+// navigation or projectile collision.
+for (const [variant,x,y,z,sx,sy,rot] of [
+  [0, 91.2, 3.2, 98.7, 5.2, 4.2, -0.10],
+  [1, 100.0, 3.0, 109.8, 4.8, 4.0, 0.12],
+  [2, 137.5, 3.4, 108.8, 5.5, 4.4, -0.08],
+  [3, 143.0, 3.0, 119.0, 4.9, 4.1, 0.16],
+  [1, 130.8, 3.1, 127.0, 4.5, 3.8, -0.12],
+]) {
+  mineSheetSprite(mineWebTexture, variant, x, y, z, sx, sy, rot, 0.84);
+}
+
+for (const [variant,x,y,z,sx,sy,rot] of [
+  [0, 91.8, 2.2, 100.0, 1.8, 3.0, -0.10],
+  [2, 139.0, 2.0, 111.5, 1.7, 2.9, 0.08],
+  [3, 145.0, 2.15, 120.0, 1.9, 3.1, -0.12],
+  [1, 130.5, 2.1, 129.0, 1.6, 2.8, 0.10],
+]) {
+  mineSheetSprite(mineCocoonTexture, variant, x, y, z, sx, sy, rot, 0.96);
+}
+
+// Extra mine dressing: a few readable silhouettes tell the story of an
+// abandoned extraction site without cluttering the walkable lanes.
+const cartWheelMat = new THREE.MeshStandardMaterial({ color: 0x282421, roughness: 0.82, metalness: 0.25 });
+const cartWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.95, flatShading: true });
+const orePileMat = new THREE.MeshStandardMaterial({ color: 0x56656b, roughness: 0.72, metalness: 0.2, flatShading: true });
+
+const addMineCart = (x, z, rotY = 0, scale = 1) => {
+  const g = new THREE.Group();
+  g.position.set(x, 0.16, z);
+  g.rotation.y = rotY;
+  g.scale.setScalar(scale);
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.5, 1.25), cartWoodMat);
+  bed.position.y = 0.48;
+  bed.rotation.x = -0.12;
+  g.add(bed);
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.16, 1.34), cartWoodMat);
+  rim.position.y = 0.82;
+  g.add(rim);
+  for (const side of [-1, 1]) {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.16, 10), cartWheelMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(side * 0.72, 0.23, 0.58);
+    g.add(wheel);
+    const wheel2 = wheel.clone();
+    wheel2.position.z = -0.58;
+    g.add(wheel2);
+  }
+  mineGroup.add(g);
+};
+
+const addOrePile = (x, z, scale = 1) => {
+  const g = new THREE.Group();
+  g.position.set(x, 0.08, z);
+  g.scale.setScalar(scale);
+  for (const [ox,oz,s] of [[0,0,0.55],[-0.55,0.1,0.42],[0.45,0.12,0.46],[0.15,-0.35,0.38]]) {
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), orePileMat);
+    rock.position.set(ox, s * 0.65, oz);
+    rock.rotation.set(0, r() * Math.PI, 0);
+    g.add(rock);
+  }
+  mineGroup.add(g);
+};
+
+const addPickaxe = (x, z, rotY = 0, scale = 1) => {
+  const g = new THREE.Group();
+  g.position.set(x, 0.05, z);
+  g.rotation.y = rotY;
+  g.scale.setScalar(scale);
+  const wood = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 1.55, 6), mineWoodMat);
+  wood.rotation.z = Math.PI / 2;
+  wood.position.y = 0.38;
+  g.add(wood);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.08, 0.95, 6), mineMetalMat);
+  head.rotation.z = Math.PI / 2;
+  head.position.set(0, 0.98, 0);
+  g.add(head);
+  mineGroup.add(g);
+};
+
+addMineCart(100.5, 123.5, 0.05, 0.92);
+addMineCart(121.5, 124.0, 0.02, 0.82);
+addOrePile(94.2, 121.8, 0.9);
+addOrePile(128.8, 105.5, 0.82);
+addOrePile(134.5, 126.2, 0.95);
+addPickaxe(97.0, 126.0, -0.4, 0.95);
+addPickaxe(135.5, 114.5, 0.6, 0.85);
 
 // Fine dust hanging in the air is handled by the existing particle ambience.
 // Stage 3 only adds the static visual layer; no new per-frame systems are
