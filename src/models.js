@@ -74,7 +74,7 @@ export function createHumanoid(look = {}) {
   const body = new THREE.Group();
   root.add(body);
   const mSkin = mat(L.skin), mBody = mat(L.body), mLegs = mat(L.legs), mBoots = mat(L.boots);
-  const mAcc = mat(L.accent, { metal: 0.6, rough: 0.45 });
+  const mAcc = mat(L.accent, { metal: L.metal ?? 0.6, rough: L.metalRough ?? 0.45 });
   // NPCs use softer rounded primitives so they read as characters rather than Lego blocks.
   // Player/enemy rigs keep the original geometry for compatibility with their animations.
   const npcSoft = !!L.npcStyle;
@@ -276,7 +276,7 @@ export function createHumanoid(look = {}) {
 function addHeadgear(head, L) {
   switch (L.head) {
     case 'helm': {
-      const m = mat(L.accent, { metal: 0.7, rough: 0.4 });
+      const m = mat(L.accent, { metal: L.metal ?? 0.7, rough: L.metalRough ?? 0.4 });
       head.add(mesh(new THREE.CylinderGeometry(0.24, 0.235, 0.3, 8), m, 0, 0.05, 0));
       head.add(mesh(new THREE.ConeGeometry(0.245, 0.16, 8), m, 0, 0.28, 0));
       head.add(mesh(new THREE.BoxGeometry(0.34, 0.04, 0.05), mat(0x111111), 0, 0.03, 0.22));
