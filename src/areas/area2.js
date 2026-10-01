@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { rng, fbm, smooth, Terrain, createGround, Decor, createPortal, createRuneStone, createChest } from '../world.js';
 import { Enemy } from '../enemy.js';
+import { Boss } from '../boss.js';
 
 // Prototype Area 2 — Desert of the Buried Sun.
 // This is intentionally a standalone prototype: it lives far from Area 1 so
@@ -41,6 +42,8 @@ export function createArea2(game) {
     if (Math.abs(x - ORIGIN.x) < 14 && Math.abs(z) < 9) continue;
     const s = 0.5 + r() * 2.4;
     decor.rock(x, 0, z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
+    // Every gameplay-visible rock is also a physical obstacle.
+    collision.addCircle(x, z, Math.max(0.42, s * 0.62), { projectiles: false });
   }
 
   // Sandstone ribs create readable lanes without becoming invisible walls.
@@ -50,6 +53,17 @@ export function createArea2(game) {
   ];
   for (const [x1,z1,x2,z2] of ribs) {
     decor.wall(x1,z1,x2,z2,2.4,r,{ thick:1.5,minH:0.35 });
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const count = Math.max(2, Math.ceil(len / 2.2));
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.5) / count;
+      collision.addCircle(
+        x1 + (x2 - x1) * t,
+        z1 + (z2 - z1) * t,
+        0.82,
+        { projectiles: false }
+      );
+    }
   }
 
   // ---------- oasis hub ----------
@@ -93,6 +107,7 @@ export function createArea2(game) {
     }
     palm.scale.setScalar(s);
     oasis.add(palm);
+    collision.addCircle(ORIGIN.x + x, z, Math.max(0.5, 0.55 * s), { projectiles: false });
   }
 
   collision.addCircle(ORIGIN.x, ORIGIN.z, 6.5, { projectiles:false });
@@ -217,8 +232,9 @@ export function createArea2(game) {
 
   const entryPortal = createPortal(game, ORIGIN.x, -45);
   entryPortal.rise();
+  // The north portal is the reward for defeating the desert boss.
+  // It stays hidden until the fight is complete.
   const exitPortal = createPortal(game, ORIGIN.x, 45);
-  exitPortal.rise();
 
   const portalStone = new THREE.Group();
   portalStone.position.set(ORIGIN.x,-0.0,-45);
@@ -230,24 +246,115 @@ export function createArea2(game) {
     collision.addCircle(ORIGIN.x+x,z,0.9);
   }
 
+
+  // ---------- buried-sun guardian ----------
+  const bossArena = { x: ORIGIN.x, z: 40, r: 9 };
+  const templeLore = createRuneStone(game, 150, 25.5);
+
+  game.interaction.add({
+    pos: templeLore.pos,
+    radius: 2.7,
+    height: 3.6,
+    label: 'Ler a inscrição do templo',
+    onInteract: () => game.dialogue.open(
+      'Inscrição do Templo Soterrado',
+      [
+        '“O Guardião não foi enterrado aqui. Ele foi selado aqui.”',
+        '“Quando o Sol Sepultado despertasse, a areia deveria engolir seu nome.”',
+        '“A essência de Morvhal atravessou o portal e se fundiu ao que dormia sob estas pedras.”',
+        '“Se o selo se romper, não siga a voz que vier do templo. Derrote aquilo que restou do Guardião.”',
+      ],
+      templeLore.anchor,
+    ),
+  });
+
+  let fightStart = 0;
+  const desertBoss = new Boss(game, bossArena.x, bossArena.z, {
+    name: 'Azhur, o Guardião do Sol Sepultado',
+    onSummon: () => {
+      for (const [x, z] of [[142, 38], [158, 38]]) {
+        const e = spawn('hollow', x, z, 'area2-boss-add');
+        e.aggro();
+      }
+    },
+    onDefeated: () => {
+      game.onBossDefeated({
+        xp: 700,
+        gold: 400,
+        loot: [
+          { itemId: 'hollow_core', amount: 1 },
+          { itemId: 'moon_ring', amount: 1 },
+        ],
+      }, desertBoss.pos);
+      game.stats.bossTime = game.time - fightStart;
+      exitPortal.rise();
+      game.rig.cinematic(exitPortal.pos, 3);
+      game.schedule(1.0, () => game.ui.banner('O SOL FOI SEPULTADO', 'Azhur caiu. O portal de retorno foi despertado.', 'victory', 4));
+      game.schedule(3.2, () => game.ui.hideBoss());
+      game.ui.toast('O Guardião tombou. Um portal se abriu no extremo norte do deserto.');
+    },
+  });
+  game.addEnemy(desertBoss);
+
+  function startDesertBoss() {
+    if (desertBoss.state !== 'dormant' || !exitPortal) return;
+    fightStart = game.time;
+    desertBoss.awaken();
+    game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
+    game.schedule(0.8, () => game.ui.banner('AZHUR', 'O Guardião do Sol Sepultado desperta', 'boss', 3));
+    game.schedule(1.2, () => game.ui.showBoss(desertBoss.name));
+    game.ui.toast('As pedras tremem. Algo antigo acordou sob o templo.');
+  }
+
+
+  // Map-to-map travel is explicit only: no proximity fallback.
+  const returnFromStart = new THREE.Object3D();
+  returnFromStart.position.copy(entryPortal.pos);
+  scene.add(returnFromStart);
+
+  game.interaction.add({
+    pos: returnFromStart.position,
+    radius: 2.8,
+    height: 3.2,
+    label: 'Retornar à Floresta de Vhal',
+    enabled: () => entryPortal.active,
+    onInteract: () => {
+      if (!entryPortal.active) return;
+      game.enterPreviousArea();
+    },
+  });
+
+  game.interaction.add({
+    pos: exitPortal.pos,
+    radius: 2.8,
+    height: 3.2,
+    label: 'Retornar à Floresta de Vhal',
+    enabled: () => exitPortal.active,
+    onInteract: () => {
+      if (!exitPortal.active) return;
+      game.enterPreviousArea();
+    },
+  });
+
   const area = {
     name: 'Deserto do Sol Sepultado',
     spawn: { x: ORIGIN.x, z: -41, facing: 0 },
     checkpoint: { x: ORIGIN.x, z: -41, facing: 0 },
     portal: entryPortal,
     exitPortal,
+    boss: desertBoss,
     minimap: {
       bounds,
       zones: [
         { minX: bounds.minX, maxX: bounds.maxX, minZ: bounds.minZ, maxZ: bounds.maxZ, label:'Deserto' },
       ],
-      arena: null,
+      arena: { x: bossArena.x, z: bossArena.z, r: bossArena.r },
       portal: { x: ORIGIN.x, z: -45 },
     },
 
     onStart() {
-      game.ui.banner('DESERTO DO SOL SEPULTADO', 'Mapa 2 — protótipo', 'boss', 3.5);
-      game.schedule(3.8, () => game.ui.toast('O portal trouxe você para um deserto que parece esconder algo sob a areia.'));
+      game.ui.banner('DESERTO DO SOL SEPULTADO', 'Mapa 2', 'boss', 3.5);
+      game.schedule(3.8, () => game.ui.toast('O portal trouxe você a um templo que deveria continuar enterrado.'));
     },
 
     // Area 1 owns progression on enemy kills. Area 2 is still a prototype,
@@ -259,7 +366,11 @@ export function createArea2(game) {
     // The main game calls this hook on death before restoring the area's
     // checkpoint. Keeping it explicit makes Area 2 safe even though it has
     // no area-specific respawn sequence yet.
-    onRespawn() {},
+    onRespawn() {
+      if (desertBoss.state === 'active' || desertBoss.state === 'enraged') {
+        desertBoss.reset();
+      }
+    },
 
     update(dt,t) {
       entryPortal.update(dt,t);
@@ -285,8 +396,10 @@ export function createArea2(game) {
 
       if (game.state !== 'play' || game.player?.dead) return;
 
-      if (Math.hypot(game.player.pos.x-entryPortal.pos.x,game.player.pos.z-entryPortal.pos.z)<2.2) {
-        game.ui.toast('Você está diante do portal de retorno.');
+      const p = game.player;
+      if (desertBoss.state === 'dormant' && p.pos.z > 36 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
+        startDesertBoss();
+        return;
       }
     },
   };
