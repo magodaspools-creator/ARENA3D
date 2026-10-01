@@ -765,19 +765,26 @@ exitLight.userData.baseIntensity = 4.0;
 mineLights.push(exitLight);
 
 const undergroundZones = [
-  [106, 114, 82, 94],
-  [96, 124, 92, 108],
-  [88, 101, 100, 108],
-  [72, 96, 104, 122],
-  [78, 98, 118, 134],
-  [119, 136, 99, 108],
-  [134, 151, 102, 123],
-  [126, 145, 116, 130],
-  [101, 126, 106, 121],
-  [94, 128, 116, 136],
-  [104, 130, 130, 139],
-  [109, 143, 136, 150],
-  [82, 103, 128, 142],
+  // Entrance / north shaft
+  [[103, 98], [103, 84], [107, 81], [116, 82], [118, 98], [114, 102], [106, 102]],
+  // Central working hub around the old shaft
+  [[100, 103], [105, 98], [116, 98], [121, 103], [121, 113], [116, 119], [105, 119], [99, 114]],
+  // West extraction gallery
+  [[89, 98], [103, 98], [105, 103], [103, 110], [93, 110], [88, 106]],
+  // West lower chamber
+  [[72, 106], [88, 104], [96, 110], [96, 120], [91, 126], [80, 124], [73, 119]],
+  // West/south return gallery
+  [[82, 120], [95, 118], [105, 123], [105, 131], [99, 135], [88, 132], [80, 127]],
+  // East extraction gallery
+  [[116, 99], [136, 98], [140, 104], [137, 110], [121, 111], [117, 106]],
+  // East chamber
+  [[133, 103], [144, 96], [151, 92], [154, 105], [151, 119], [144, 125], [135, 120], [130, 111]],
+  // East/south gallery
+  [[125, 115], [144, 115], [147, 123], [143, 130], [130, 132], [124, 126]],
+  // South spine into the natural cave
+  [[102, 115], [124, 115], [130, 121], [129, 131], [124, 136], [110, 133], [103, 128]],
+  // Natural boss cave
+  [[109, 128], [115, 126], [126, 127], [131, 132], [130, 138], [144, 139], [149, 146], [143, 153], [124, 154], [110, 151], [104, 144], [106, 136]],
 ];
 
 collision.addPolygonZone(undergroundBoundary);
@@ -847,20 +854,31 @@ const perimeter = [
 ];
 for (const segment of perimeter) mineWall(...segment, 8.0, { collide: false });
 
-// Worked-mine corridors. Their bends create sightline breaks between chambers.
+// Worked-mine walls now follow the actual playable branches. They are
+// visual geometry only: the polygon zones above are the single source of truth
+// for navigation, which avoids recreating the invisible-wall bug.
 for (const segment of [
-  [106, 94, 106, 87], [114, 94, 114, 87],
-  [96, 100, 88, 100], [96, 107, 88, 107],
-  [124, 100, 136, 100], [124, 107, 136, 107],
-  [95, 118, 88, 118], [95, 126, 88, 126],
-  [126, 118, 136, 118], [126, 126, 136, 126],
-  [105, 130, 105, 137], [124, 130, 124, 137],
-  [109, 139, 104, 143],
-  [143, 139, 138, 136],
-]) mineWall(...segment, 7.0);
+  // north shaft
+  [103, 84, 103, 98], [117, 83, 117, 98],
+  // west gallery
+  [89, 98, 103, 98], [90, 110, 103, 110],
+  // west lower chamber
+  [73, 106, 88, 104], [73, 119, 91, 126],
+  [80, 124, 96, 120],
+  // west/south return
+  [82, 120, 103, 123], [88, 132, 105, 131],
+  // east gallery
+  [118, 98, 136, 98], [120, 110, 137, 110],
+  // east chamber
+  [136, 98, 151, 92], [151, 92, 154, 105], [154, 105, 151, 119],
+  [144, 125, 135, 120],
+  // east/south gallery
+  [126, 115, 144, 115], [147, 123, 143, 130],
+  // south spine
+  [103, 115, 103, 128], [124, 115, 130, 121],
+]) mineWall(...segment, 7.0, { collide: false });
 
-// Doorways stay visually open. The wall masses themselves define each side of
-// the passage; no extra rock blocks are placed in the openings.
+// Doorways are intentionally wider than the player's radius and remain open.
 
 // No duplicate physical wall layer here. The walkable zones define the
 // outer boundary, while mineWall() supplies collision only for interior rock walls.
@@ -929,6 +947,122 @@ for (const [x,z,s] of [
   [112,143,1.0],[132,143,1.2],[126,146,0.8],
 ]) {
   mineRock(x,z,s,1.0,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.75 });
+}
+
+// ---------- Mine infestation: webs, nests and cocoons ----------
+const webMat = new THREE.MeshBasicMaterial({
+  color: 0xb9b2a6,
+  transparent: true,
+  opacity: 0.34,
+  depthWrite: false,
+});
+const cocoonMat = new THREE.MeshStandardMaterial({
+  color: 0x8c857b,
+  roughness: 1,
+  flatShading: true,
+});
+const nestMat = new THREE.MeshStandardMaterial({
+  color: 0x5d514a,
+  roughness: 1,
+  flatShading: true,
+});
+
+const addWeb = (x, y, z, sx, sy, rot = 0) => {
+  const web = new THREE.Group();
+  web.position.set(x, y, z);
+  web.rotation.y = rot;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(Math.cos(a) * sx, Math.sin(a) * sy, 0),
+    ]);
+    web.add(new THREE.Line(geo, webMat));
+  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(Math.min(sx, sy) * 0.18, Math.min(sx, sy) * 0.22, 8), webMat);
+  ring.position.z = 0.01;
+  web.add(ring);
+  mineGroup.add(web);
+};
+
+const addCocoon = (x, y, z, s = 1, rot = 0) => {
+  const cocoon = new THREE.Mesh(new THREE.CapsuleGeometry(0.22 * s, 0.58 * s, 4, 7), cocoonMat);
+  cocoon.position.set(x, y, z);
+  cocoon.rotation.z = rot;
+  cocoon.rotation.x = 0.08;
+  cocoon.castShadow = false;
+  mineGroup.add(cocoon);
+  // Loose web bands make the object read as a wrapped body rather than a plain prop.
+  for (let i = -1; i <= 1; i++) {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.23 * s, 0.018 * s, 4, 10), webMat);
+    band.position.set(x, y + i * 0.16 * s, z);
+    band.rotation.y = Math.PI / 2;
+    band.rotation.z = rot;
+    mineGroup.add(band);
+  }
+};
+
+const addNest = (x, z, s = 1) => {
+  const nest = new THREE.Group();
+  nest.position.set(x, 0, z);
+  const base = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 * s, 0), nestMat);
+  base.scale.set(1.25, 0.55, 1.0);
+  base.position.y = 0.35 * s;
+  nest.add(base);
+  for (let i = 0; i < 7; i++) {
+    const strand = new THREE.Mesh(new THREE.TorusGeometry((0.32 + (i % 3) * 0.08) * s, 0.025 * s, 4, 10), webMat);
+    strand.rotation.x = Math.PI / 2;
+    strand.rotation.z = i * 0.35;
+    strand.position.y = 0.45 * s + (i % 2) * 0.03;
+    nest.add(strand);
+  }
+  mineGroup.add(nest);
+  addWeb(x, 1.0 + 0.5 * s, z, 1.4 * s, 0.9 * s, 0.3);
+};
+
+// Large web sheets occupy corners and ceiling edges, never the central walking lanes.
+for (const [x, y, z, sx, sy, rot] of [
+  [92, 3.0, 101, 2.0, 1.5, 0.1],
+  [136, 3.1, 101, 2.2, 1.4, -0.3],
+  [145, 3.0, 116, 2.0, 1.5, 0.5],
+  [84, 2.7, 118, 2.1, 1.4, -0.2],
+  [124, 4.6, 132, 2.4, 1.6, 0.2],
+]) addWeb(x, y, z, sx, sy, rot);
+
+for (const [x, z, s] of [
+  [91.5, 103.0, 1.0],
+  [94.0, 120.0, 1.15],
+  [136.0, 105.0, 1.0],
+  [142.0, 120.0, 1.1],
+  [116.0, 130.5, 1.0],
+]) addNest(x, z, s);
+
+for (const [x, y, z, s, rot] of [
+  [103.2, 86.5, 0.95, 1.0, 0.18],
+  [116.4, 90.0, 0.80, 1.0, -0.2],
+  [147.0, 96.0, 0.85, 1.0, 0.1],
+  [143.5, 123.0, 0.90, 1.0, -0.3],
+  [87.5, 122.0, 0.75, 1.0, 0.2],
+  [121.0, 133.0, 0.82, 1.0, -0.15],
+]) addCocoon(x, y, z, s, rot);
+
+// ---------- Mine room identity ----------
+const mineLandmarkMat = new THREE.MeshStandardMaterial({ color: 0x3b3733, roughness: 1, flatShading: true });
+// Broken stone ribs visually separate the worked galleries from the natural rock.
+for (const [x, z, sx, sy, sz, rot] of [
+  [101.5, 97.5, 1.1, 4.8, 0.85, 0.12],
+  [118.5, 97.5, 1.0, 4.5, 0.8, -0.14],
+  [101.0, 111.5, 1.0, 3.6, 0.8, 0.1],
+  [120.5, 112.0, 1.0, 3.8, 0.8, -0.08],
+  [97.5, 118.0, 0.9, 3.0, 0.75, 0.18],
+  [126.0, 117.0, 0.9, 3.5, 0.75, -0.12],
+]) {
+  const rib = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), mineLandmarkMat);
+  rib.position.set(x, sy * 0.5, z);
+  rib.scale.set(sx, sy, sz);
+  rib.rotation.y = rot;
+  rib.castShadow = false;
+  mineGroup.add(rib);
 }
 
 // Central shaft landmark: a shallow dark ring and four stone uprights give
@@ -1373,6 +1507,8 @@ game.interaction.add({
 mine.enemies.push(
   spawn('wisp', 139, 111, 'mine', true),
   spawn('zombie', 107.5, 126.5, 'mine', true),
+  spawn('spider', 121, 136, 'mine', true),
+  spawn('spiderling', 126, 128, 'mine', true),
 );
 
 
@@ -2024,6 +2160,15 @@ const leaveMine = () => {
     spawn('hollow', 102, 110, 'mine', true),
     spawn('zombie', 118, 112, 'mine', true),
     spawn('hollow', 110, 121, 'mine', true),
+    // Mine colony: spiders occupy the side galleries instead of the central hub.
+    spawn('spider', 92, 104, 'mine', true),
+    spawn('spider', 94, 116, 'mine', true),
+    spawn('spider', 138, 106, 'mine', true),
+    spawn('spider', 143, 117, 'mine', true),
+    spawn('spider', 86, 119, 'mine', true),
+    spawn('spiderling', 97, 123, 'mine', true),
+    spawn('spiderling', 136, 122, 'mine', true),
+    spawn('spiderling', 118, 129, 'mine', true),
   );
 
   const mineChest = createChest(game, 118, 120, 0.15);
