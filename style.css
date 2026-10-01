@@ -1106,7 +1106,7 @@ button:hover { filter: brightness(1.1); }
 }
 .map-editor-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 5px;
   margin: 12px 0 8px;
 }
@@ -1164,6 +1164,15 @@ button:hover { filter: brightness(1.1); }
   place-items: center;
   font-size: 24px;
   color: #d1c4a5;
+}
+ .map-tool-atlas {
+  width: 46px;
+  height: 46px;
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.65));
 }
 .map-tool-icon img {
   width: 46px;
