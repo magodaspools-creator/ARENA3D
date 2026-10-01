@@ -44,6 +44,8 @@ export class Boss {
   }
 
   reset() {
+    // A reset ends the current boss encounter, so the boss HP bar must never linger.
+    this.game.ui.hideBoss();
     this.pos.copy(this.home);
     this.hp = this.maxHp;
     this.alive = true;
@@ -53,6 +55,7 @@ export class Boss {
     this.pendingEnrage = false;
     this.leapFrom = null;
     this.summoned = 0;
+    this.roared = false;
     this.facing = 0;
     this.root.rotation.y = 0;
     this.root.visible = true;
