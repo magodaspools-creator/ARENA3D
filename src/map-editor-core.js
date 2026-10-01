@@ -353,17 +353,18 @@ export class MapEditorCore {
     if (!data) return;
 
     this.removeObject(object);
-    return;
+  }
 
+  removeObject(object) {
+    if (!object || !this.objects.has(object)) return false;
+    const data = this.objects.get(object);
+    if (this.collisionAdapter?.remove) this.collisionAdapter.remove(object, data);
+    this.objectContainer.remove(object);
+    this.objects.delete(object);
     const index = this.mapData.indexOf(data);
-    if (index !== -1) {
-      this.mapData.splice(index, 1);
-    }
-
-    // O AssetManager decide se geometry/material são compartilhados.
-    if (this.customDispose) {
-      this.customDispose(object);
-    }
+    if (index !== -1) this.mapData.splice(index, 1);
+    if (this.customDispose) this.customDispose(object);
+    return true;
   }
 
   exportJSON() {
