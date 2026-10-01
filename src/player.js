@@ -37,7 +37,7 @@ export class Player {
     this.root.add(ring);
     // Small permanent fill light keeps the player readable without washing out
     // the dungeon. Arcane Light adds illumination around the player only.
-    this.light = new THREE.PointLight(0xffe2b8, 2.5, 7, 1.4);
+    this.light = new THREE.PointLight(0xffe2b8, 0.8, 5, 1.4);
     this.light.position.set(0, 3, 0.5);
     this.root.add(this.light);
 
@@ -45,9 +45,9 @@ export class Player {
     // Keep the light in the scene even while inactive. Toggling a light on/off
     // changes Three.js' lighting program defines and can force a shader recompile
     // on the first cast, causing a visible frame hitch.
-    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 16, 1.35);
-    this.lightSpell.position.set(0, 2.7, 0.5);
-    this.root.add(this.lightSpell);
+    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 22, 1.35);
+    // Keep the spell light slightly above/forward so the character itself does not become the brightest object.\n    this.lightSpell.position.set(0, 0.35, 2.8);
+    this.game.scene.add(this.lightSpell);
 
     game.scene.add(this.root);
 
@@ -125,7 +125,7 @@ export class Player {
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
 
-    if (this.lightSpellT > 0) {
+    if (this.lightSpellT > 0) {\n      // The spell light is intentionally detached from the player rig so it illuminates\n      // the dungeon around the character instead of making the character glow.\n      this.lightSpell.position.set(this.pos.x, 0.35, this.pos.z + 2.8);
       this.lightSpellT = Math.max(0, this.lightSpellT - dt);
       if (this.lightSpellT <= 0) {
         this.lightSpell.intensity = 0;
@@ -192,7 +192,7 @@ export class Player {
 
   castLightSpell() {
     this.lightSpellT = 10;
-    this.lightSpell.intensity = 16;
+    this.lightSpell.intensity = 18;
     this.game.ui.toast('Luz Arcana lançada por 10 segundos.');
     this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
   }
