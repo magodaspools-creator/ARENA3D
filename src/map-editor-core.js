@@ -399,6 +399,36 @@ export class MapEditorCore {
     }
   }
 
+  addObject(data) {
+    if (!data || typeof data.kind !== 'string') return null;
+
+    const normalized = data;
+    normalized.x = Number.isFinite(Number(normalized.x)) ? Number(normalized.x) : 0;
+    normalized.y = Number.isFinite(Number(normalized.y)) ? Number(normalized.y) : 0;
+    normalized.z = Number.isFinite(Number(normalized.z)) ? Number(normalized.z) : 0;
+    normalized.rotation = Number.isFinite(Number(normalized.rotation)) ? Number(normalized.rotation) : 0;
+    normalized.scale = Number.isFinite(Number(normalized.scale)) ? Number(normalized.scale) : 1;
+
+    const object = this.createMesh(normalized);
+    if (!object) return null;
+
+    object.position.set(normalized.x, normalized.y, normalized.z);
+    object.rotation.y = normalized.rotation;
+    object.scale.setScalar(normalized.scale);
+    object.userData.editorObject = true;
+    object.userData.mapData = normalized;
+
+    this.objectContainer.add(object);
+    this.objects.set(object, normalized);
+    this.mapData.push(normalized);
+
+    if (this.collisionAdapter?.add) {
+      this.collisionAdapter.add(object, normalized);
+    }
+
+    return object;
+  }
+
   addFromData(data) {
     if (!data || typeof data.type !== 'string') return null;
 
