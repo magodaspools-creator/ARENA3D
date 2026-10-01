@@ -402,7 +402,7 @@ export class MapEditorCore {
   addFromData(data) {
     if (!data || typeof data.type !== 'string') return null;
 
-    const normalized = { ...data };
+    const normalized = data;
     normalized.x = Number.isFinite(Number(normalized.x)) ? Number(normalized.x) : 0;
     normalized.y = Number.isFinite(Number(normalized.y)) ? Number(normalized.y) : 0;
     normalized.z = Number.isFinite(Number(normalized.z)) ? Number(normalized.z) : 0;
