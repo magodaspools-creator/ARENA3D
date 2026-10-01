@@ -5,7 +5,7 @@ import { listSharedMaps, publishSharedMap } from './map-editor-api.js';
 const STORAGE_KEY = 'arena3d.map-editor.v1';
 const CREATOR_ID_KEY = 'arena3d.map-editor.creator-id.v1';
 const CREATOR_NAME_KEY = 'arena3d.map-editor.creator-name.v1';
-const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name + '.svg', import.meta.url).href;
+const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name + '.svg', import.meta.url).href;\nconst KENNEY_DUNGEON_ASSET = new URL('../assets/map-editor/packs/kenney-roguelike-caves-dungeons/roguelikeDungeon_transparent.png', import.meta.url).href;\nconst KENNEY_DUNGEON = { width: 492, height: 305, tile: 16, spacing: 1, columns: 29, rows: 18 };
 
 const TERRAIN = [
   { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329, sprite:TERRAIN_ASSET('floor') },
@@ -100,7 +100,7 @@ export class MapEditor {
     });
   }
 
-  get itemTools() {
+  get kenneyTools() {\n    const tools = [];\n    for (let row = 0; row < KENNEY_DUNGEON.rows; row++) {\n      for (let col = 0; col < KENNEY_DUNGEON.columns; col++) {\n        const index = row * KENNEY_DUNGEON.columns + col + 1;\n        tools.push({ id: 'kenney-dungeon:' + col + ':' + row, name: 'Tile ' + index, kind: 'terrain-atlas', atlas: 'kenney-dungeon', atlasX: col, atlasY: row, collision: false });\n      }\n    }\n    return tools;\n  }\n\n  get itemTools() {
     return Object.values(ITEMS)
       .filter((item) => item?.sprite)
       .map((item) => ({
@@ -131,7 +131,7 @@ export class MapEditor {
         <div class="map-editor-tabs">
           <button type="button" data-editor-tab="terrain" class="active">Terreno</button>
           <button type="button" data-editor-tab="world">Objetos</button>
-          <button type="button" data-editor-tab="items">Itens</button>
+          <button type="button" data-editor-tab="items">Itens</button>\n          <button type="button" data-editor-tab="kenney">Kenney</button>
         </div>
 
         <div id="map-editor-palette" class="map-editor-palette"></div>
@@ -179,7 +179,7 @@ export class MapEditor {
 
         <div class="map-editor-help">
           <b>Esquerdo:</b> colocar/selecionar · <b>R:</b> girar · <b>[ / ]:</b> escala ·
-          <b>C:</b> colisão · <b>Delete:</b> apagar · <b>Ctrl+Shift+T:</b> sair
+          <b>C:</b> colisão · <b>Delete:</b> apagar · <b>Ctrl+Shift+T:</b> sair · <b>Kenney:</b> 522 tiles reais
         </div>
       </div>
     `;
@@ -258,18 +258,20 @@ export class MapEditor {
   }
 
   setPalette(tab) {
-    this.palette = tab === 'items' ? 'items' : tab === 'world' ? 'world' : 'terrain';
+    this.palette = tab === 'items' ? 'items' : tab === 'world' ? 'world' : tab === 'kenney' ? 'kenney' : 'terrain';
     this.el.querySelectorAll('[data-editor-tab]').forEach((b) => b.classList.toggle('active', b.dataset.editorTab === this.palette));
     this.renderPalette();
   }
 
   renderPalette() {
     const palette = this.el.querySelector('#map-editor-palette');
-    const tools = this.palette === 'items' ? this.itemTools : this.palette === 'world' ? BUILTIN : TERRAIN;
+    const tools = this.palette === 'items' ? this.itemTools : this.palette === 'world' ? BUILTIN : this.palette === 'kenney' ? this.kenneyTools : TERRAIN;
     palette.innerHTML = tools.map((tool) => {
-      const visual = tool.sprite
-        ? `<img src="${tool.sprite}" alt="" loading="lazy">`
-        : `<span>${tool.icon || '◆'}</span>`;
+      const visual = tool.atlas === 'kenney-dungeon'
+        ? `<span class="map-tool-atlas" style="background-image:url('${KENNEY_DUNGEON_ASSET}');background-size:984px 610px;background-position:-${tool.atlasX * 34}px -${tool.atlasY * 34}px"></span>`
+        : tool.sprite
+          ? `<img src="${tool.sprite}" alt="" loading="lazy">`
+          : `<span>${tool.icon || '◆'}</span>`;
       return `<button type="button" class="map-tool ${this.selectedTool.id === tool.id ? 'active' : ''}" data-tool="${tool.id}">
         <span class="map-tool-icon">${visual}</span><span>${tool.name}</span>
       </button>`;
@@ -384,7 +386,7 @@ export class MapEditor {
   createPreviewVisual() {
     const tool = this.selectedTool;
     let visual;
-    if (tool.kind === 'terrain') {
+    if (tool.kind === 'terrain-atlas') {\n      const texture = this.getKenneyDungeonTexture(tool.atlasX, tool.atlasY);\n      visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, transparent: true, opacity: 0.62, side: THREE.DoubleSide }));\n      visual.rotation.x = -Math.PI / 2;\n      visual.position.y = 0.025;\n    } else if (tool.kind === 'terrain') {
       const texture = this.getTerrainTexture(tool.terrainType);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({
         map: texture, color: 0xffffff, roughness: tool.terrainType.includes('path') ? 0.92 : 1,
@@ -498,6 +500,9 @@ export class MapEditor {
       id: 'editor-' + (++this.seq),
       kind: this.selectedTool.kind,
       terrainType: this.selectedTool.terrainType || null,
+      atlas: this.selectedTool.atlas || null,
+      atlasX: Number.isInteger(this.selectedTool.atlasX) ? this.selectedTool.atlasX : null,
+      atlasY: Number.isInteger(this.selectedTool.atlasY) ? this.selectedTool.atlasY : null,
       itemId: this.selectedTool.itemId || null,
       x: Number(x.toFixed(3)),
       y: 0,
@@ -505,10 +510,10 @@ export class MapEditor {
       rotation: this.preview?.rotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
-      radius: this.selectedTool.kind === 'wall' ? 1.35 : this.selectedTool.kind === 'terrain' ? 0 : 0.65,
-      width: this.selectedTool.kind === 'wall' ? 3.2 : this.selectedTool.kind === 'terrain' ? 4 : 1.4,
-      depth: this.selectedTool.kind === 'wall' ? 0.9 : this.selectedTool.kind === 'terrain' ? 4 : 1.4,
-      height: this.selectedTool.kind === 'wall' ? 2.6 : this.selectedTool.kind === 'terrain' ? 0.02 : 1.2,
+      radius: this.selectedTool.kind === 'wall' ? 1.35 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0 : 0.65,
+      width: this.selectedTool.kind === 'wall' ? 3.2 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4,
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 4 : 1.4,
+      height: this.selectedTool.kind === 'wall' ? 2.6 : (this.selectedTool.kind === 'terrain' || this.selectedTool.kind === 'terrain-atlas') ? 0.02 : 1.2,
     };
     const blockedBy = this.findPlacementBlocker(data);
     if (blockedBy) {
@@ -543,7 +548,12 @@ export class MapEditor {
     root.userData.editorId = data.id;
 
     let visual;
-    if (data.kind === 'terrain') {
+    if (data.kind === 'terrain-atlas') {
+      const texture = this.getKenneyDungeonTexture(data.atlasX, data.atlasY);
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({ map: texture, color: 0xffffff, roughness: 1, side: THREE.DoubleSide }));
+      visual.rotation.x = -Math.PI / 2;
+      visual.position.y = 0.025;
+    } else if (data.kind === 'terrain') {
       const tool = TERRAIN.find((entry) => entry.terrainType === data.terrainType) || TERRAIN[0];
       const texture = this.getTerrainTexture(tool.terrainType);
       visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({
@@ -587,7 +597,7 @@ export class MapEditor {
     this.refreshHelper(data);
   }
 
-  getTerrainTexture(terrainType) {
+  getKenneyDungeonTexture(col, row) {\n    const key = String(col) + ':' + String(row);\n    if (this.terrainTextures.has('kenney:' + key)) return this.terrainTextures.get('kenney:' + key);\n    const texture = this.textureLoader.load(KENNEY_DUNGEON_ASSET);\n    texture.colorSpace = THREE.SRGBColorSpace;\n    texture.wrapS = THREE.ClampToEdgeWrapping;\n    texture.wrapT = THREE.ClampToEdgeWrapping;\n    texture.minFilter = THREE.NearestFilter;\n    texture.magFilter = THREE.NearestFilter;\n    texture.flipY = false;\n    texture.repeat.set(KENNEY_DUNGEON.tile / KENNEY_DUNGEON.width, KENNEY_DUNGEON.tile / KENNEY_DUNGEON.height);\n    texture.offset.set((col * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.width, (row * (KENNEY_DUNGEON.tile + KENNEY_DUNGEON.spacing)) / KENNEY_DUNGEON.height);\n    this.terrainTextures.set('kenney:' + key, texture);\n    return texture;\n  }\n\n  getTerrainTexture(terrainType) {
     if (this.terrainTextures.has(terrainType)) return this.terrainTextures.get(terrainType);
     const tool = TERRAIN.find((entry) => entry.terrainType === terrainType) || TERRAIN[0];
     const texture = this.textureLoader.load(tool.sprite);
