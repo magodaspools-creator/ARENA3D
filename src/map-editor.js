@@ -326,7 +326,7 @@ export class MapEditor {
 
     if (this.edgePointer.active) {
       const { x, y, w, h, margin } = this.edgePointer;
-      if (x < margin) dir.sub(right).multiplyScalar(-1);
+      if (x < margin) dir.sub(right);
       if (x > w - margin) dir.add(right);
       if (y < margin) dir.add(forward);
       if (y > h - margin) dir.sub(forward);
