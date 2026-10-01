@@ -224,58 +224,47 @@ export class UI {
     if (!underground) {
       const protectionZone = { x: 0.1, z: 35.2, radius: 8.2 };
 
-      // Protection Zone: soft boundary + shield icon.
+      // Keep landmarks subtle: the map should read as terrain first, not as a
+      // collection of oversized UI labels and colored shapes.
       ctx.save();
-      ctx.strokeStyle = 'rgba(92, 174, 153, 0.9)';
-      ctx.fillStyle = 'rgba(66, 132, 116, 0.16)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(112, 178, 157, 0.48)';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.arc(px(protectionZone.x), pz(protectionZone.z), protectionZone.radius * sx, 0, Math.PI * 2);
-      ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = 'rgba(170, 225, 205, 0.95)';
-      ctx.font = 'bold 9px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('PZ', px(protectionZone.x), pz(protectionZone.z) - protectionZone.radius * sy - 4);
-      ctx.textAlign = 'left';
       ctx.restore();
 
-      const drawNpc = (x, z, label) => {
+      const drawNpc = (x, z) => {
         const x0 = px(x), z0 = pz(z);
         ctx.save();
-        ctx.fillStyle = 'rgba(245, 218, 142, 0.98)';
-        ctx.strokeStyle = 'rgba(30, 24, 16, 0.95)';
-        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(238, 201, 112, 0.9)';
+        ctx.strokeStyle = 'rgba(28, 24, 17, 0.85)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(x0, z0, 5, 0, Math.PI * 2);
+        ctx.arc(x0, z0, 3.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = 'rgba(250, 230, 175, 0.95)';
-        ctx.font = 'bold 9px Segoe UI, sans-serif';
-        ctx.fillText(label, x0 + 8, z0 + 3);
         ctx.restore();
       };
 
-      drawNpc(-4.6, 35.2, 'MAREN');
-      drawNpc(4.8, 35.2, 'DORAN');
+      drawNpc(-4.6, 35.2);
+      drawNpc(4.8, 35.2);
 
-      // Mine entrance: a distinct downward-arrow marker at the actual mouth.
+      // Mine entrance: compact diamond, without a large text label.
       const mx = px(12.4), mz = pz(35.0);
       ctx.save();
-      ctx.fillStyle = 'rgba(216, 155, 84, 0.98)';
-      ctx.strokeStyle = 'rgba(38, 25, 15, 0.95)';
-      ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(216, 155, 84, 0.92)';
+      ctx.strokeStyle = 'rgba(38, 25, 15, 0.85)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(mx, mz - 8);
-      ctx.lineTo(mx + 8, mz);
-      ctx.lineTo(mx, mz + 8);
-      ctx.lineTo(mx - 8, mz);
+      ctx.moveTo(mx, mz - 5);
+      ctx.lineTo(mx + 5, mz);
+      ctx.lineTo(mx, mz + 5);
+      ctx.lineTo(mx - 5, mz);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255, 221, 164, 0.96)';
-      ctx.font = 'bold 9px Segoe UI, sans-serif';
-      ctx.fillText('MINA', mx + 10, mz + 3);
       ctx.restore();
     }
 
