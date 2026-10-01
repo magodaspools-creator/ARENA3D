@@ -218,6 +218,67 @@ export class UI {
     ctx.strokeRect(0, 0, w, h);
     ctx.restore();
 
+    // Navigation landmarks on the surface. These are deliberately drawn as
+    // symbols instead of collision blobs, so the minimap communicates gameplay
+    // landmarks rather than just physical obstacles.
+    if (!underground) {
+      const pz = { x: 0.1, z: 35.2, radius: 8.2 };
+
+      // Protection Zone: soft boundary + shield icon.
+      ctx.save();
+      ctx.strokeStyle = 'rgba(92, 174, 153, 0.9)';
+      ctx.fillStyle = 'rgba(66, 132, 116, 0.16)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px(pz.x), pz(pz.z), pz.radius * sx, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(170, 225, 205, 0.95)';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PZ', px(pz.x), pz(pz.z) - pz.radius * sy - 4);
+      ctx.textAlign = 'left';
+      ctx.restore();
+
+      const drawNpc = (x, z, label) => {
+        const x0 = px(x), z0 = pz(z);
+        ctx.save();
+        ctx.fillStyle = 'rgba(245, 218, 142, 0.98)';
+        ctx.strokeStyle = 'rgba(30, 24, 16, 0.95)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x0, z0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(250, 230, 175, 0.95)';
+        ctx.font = 'bold 9px Segoe UI, sans-serif';
+        ctx.fillText(label, x0 + 8, z0 + 3);
+        ctx.restore();
+      };
+
+      drawNpc(-4.6, 35.2, 'MAREN');
+      drawNpc(4.8, 35.2, 'DORAN');
+
+      // Mine entrance: a distinct downward-arrow marker at the actual mouth.
+      const mx = px(12.4), mz = pz(35.0);
+      ctx.save();
+      ctx.fillStyle = 'rgba(216, 155, 84, 0.98)';
+      ctx.strokeStyle = 'rgba(38, 25, 15, 0.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(mx, mz - 8);
+      ctx.lineTo(mx + 8, mz);
+      ctx.lineTo(mx, mz + 8);
+      ctx.lineTo(mx - 8, mz);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 221, 164, 0.96)';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.fillText('MINA', mx + 10, mz + 3);
+      ctx.restore();
+    }
+
     // Main route / important structures.
     ctx.strokeStyle = underground
       ? 'rgba(202, 164, 102, 0.72)'
