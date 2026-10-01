@@ -35,9 +35,29 @@ export class Player {
     ring.position.y = 0.04;
     this.ring = ring;
     this.root.add(ring);
-    this.light = new THREE.PointLight(0xffe2b8, 9, 9, 1.4);
+    // Small permanent fill light keeps the player readable without washing out
+    // the dungeon. The stronger magical light is toggled with L.
+    this.light = new THREE.PointLight(0xffe2b8, 2.5, 7, 1.4);
     this.light.position.set(0, 3, 0.5);
     this.root.add(this.light);
+
+    this.lightSpellOn = false;
+    this.lightSpell = new THREE.PointLight(0x9ec8ff, 11, 12, 1.35);
+    this.lightSpell.position.set(0, 2.7, 0.5);
+    this.lightSpell.visible = false;
+    this.root.add(this.lightSpell);
+
+    const lightOrbMat = new THREE.MeshBasicMaterial({
+      color: 0xb8dcff,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    this.lightOrb = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), lightOrbMat);
+    this.lightOrb.position.set(0, 2.72, 0.5);
+    this.lightOrb.visible = false;
+    this.root.add(this.lightOrb);
 
     game.scene.add(this.root);
 
@@ -117,6 +137,7 @@ export class Player {
 
     if (this.dead) { this.anim.update(dt, 0); return; }
     const locked = g.inputLocked || g.state !== 'play';
+    if (!locked && input.wasPressed('KeyL')) this.toggleLightSpell();
 
     // --- movement (camera relative) ---
     let mx = 0, mz = 0;
@@ -169,6 +190,16 @@ export class Player {
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
     g.ui.setCooldown('ability', this.abilityCd / (characterStats?.abilityCooldown ?? this.voc.ability.cooldown));
     g.ui.setCooldown('dash', this.dashCd / 1.1);
+  }
+
+  toggleLightSpell() {
+    this.lightSpellOn = !this.lightSpellOn;
+    this.lightSpell.visible = this.lightSpellOn;
+    this.lightOrb.visible = this.lightSpellOn;
+    this.game.ui.toast(this.lightSpellOn ? 'Luz Arcana ativada.' : 'Luz Arcana apagada.');
+    if (this.lightSpellOn) {
+      this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
+    }
   }
 
   startDash(duration, speed, cooldown) {
