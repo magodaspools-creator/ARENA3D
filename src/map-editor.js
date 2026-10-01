@@ -625,7 +625,13 @@ export class MapEditor {
       visual.position.y = 0.025;
     } else if (data.kind === 'item') {
       const texture = this.getItemTexture(data.itemId);
-      const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04 });
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false,
+        alphaTest: 0.04,
+      });
+      this.applyWhiteCutout(material);
       visual = new THREE.Sprite(material);
       visual.scale.set(1.4, 1.4, 1);
       visual.position.y = 0.75;
