@@ -243,6 +243,9 @@ export function createHumanoid(look = {}) {
       head.add(band);
     }
 
+    }
+  }
+
   return { root, body, torso, head, legL, legR, armL: aL.p, armR: aR.p, handL: aL.hand, handR: aR.hand, eyes, cape };
 }
 
