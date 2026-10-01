@@ -447,9 +447,8 @@ export class MapEditor {
     const x = this.snapPlacement(point.x);
     const z = this.snapPlacement(point.z);
 
-    // Wall tools behave like a continuous construction brush while the
-    // mouse button is held. Each segment follows the tangent of the drag,
-    // so straight, diagonal and circular strokes are built automatically.
+    // Wall drawing is radial now: the first click fixes the radius and the
+    // arena center fixes the circle. The mouse only changes the swept angle.
     if (this.wallStroke?.active) {
       this.continueWallStroke(x, z);
       return;
@@ -461,58 +460,130 @@ export class MapEditor {
   onPointerUp(event) {
     if (!this.wallStroke?.active) return;
     if (event?.button !== undefined && event.button !== 0) return;
-    this.wallStroke.active = false;
-    this.wallStroke.lastX = null;
-    this.wallStroke.lastZ = null;
+
+    const stroke = this.wallStroke;
+    stroke.active = false;
+
+    // Ghosts are only visual while dragging. Real editor objects are created
+    // once, here, so a long drag never pollutes the map with intermediate
+    // mouse-trail pieces.
+    this.clearWallStrokeGhosts();
+
+    for (const segment of stroke.segments || []) {
+      const data = this.makeWallStrokeData(segment.x, segment.z, segment.rotation);
+      if (this.findPlacementBlocker(data)) continue;
+      this.objects.push(data);
+      this.createObject(data);
+    }
+
+    this.wallStroke = null;
     this.setStatus('Sequência de parede concluída.');
   }
 
   beginWallStroke(x, z) {
+    const center = { x: 0, z: 0 };
+    const radius = Math.max(0.001, Math.hypot(x - center.x, z - center.z));
+    const angleStart = Math.atan2(z - center.z, x - center.x);
+
     this.wallStroke = {
       active: true,
-      lastX: x,
-      lastZ: z,
-      spacing: this.selectedTool.kind === 'wall-short' ? 0.52 : 1.9,
+      center,
+      radius,
+      angleStart,
+      angleCurrent: angleStart,
+      angleAccumulated: 0,
+      lastAngle: angleStart,
+      segments: [],
+      ghosts: [],
     };
-    this.placeWallStrokeSegment(x, z, x + Math.cos(this.placementRotation), z + Math.sin(this.placementRotation));
+
+    this.updateWallStrokeArc(angleStart);
   }
 
   continueWallStroke(x, z) {
     const stroke = this.wallStroke;
     if (!stroke?.active) return;
 
-    let dx = x - stroke.lastX;
-    let dz = z - stroke.lastZ;
-    let distance = Math.hypot(dx, dz);
-    if (distance < stroke.spacing) return;
+    const rawAngle = Math.atan2(z - stroke.center.z, x - stroke.center.x);
 
-    const angle = Math.atan2(dz, dx);
-    const ux = dx / distance;
-    const uz = dz / distance;
+    // Unwrap the mouse angle so crossing -PI/PI does not make the brush jump
+    // backwards and rebuild the wrong half of the circle.
+    let delta = rawAngle - stroke.lastAngle;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
 
-    while (distance >= stroke.spacing) {
-      const nx = stroke.lastX + ux * stroke.spacing;
-      const nz = stroke.lastZ + uz * stroke.spacing;
-      this.placeWallStrokeSegment(nx, nz, nx + ux, nz + uz);
-      stroke.lastX = nx;
-      stroke.lastZ = nz;
-      dx = x - stroke.lastX;
-      dz = z - stroke.lastZ;
-      distance = Math.hypot(dx, dz);
-    }
+    stroke.angleAccumulated += delta;
+    stroke.lastAngle = rawAngle;
+    stroke.angleCurrent = stroke.angleStart + stroke.angleAccumulated;
 
-    this.updatePreview(x, z);
+    this.updateWallStrokeArc(stroke.angleCurrent);
   }
 
-  placeWallStrokeSegment(x, z, tx, tz) {
-    const angle = Math.atan2(tz - z, tx - x);
-    const data = {
+  updateWallStrokeArc(angleCurrent) {
+    const stroke = this.wallStroke;
+    if (!stroke?.active) return;
+
+    const wallWidth = stroke.wallWidth || (this.selectedTool.kind === 'wall-short' ? 0.75 : 3.2);
+    const stepAngle = wallWidth / Math.max(stroke.radius, 0.001);
+    const deltaAngle = angleCurrent - stroke.angleStart;
+    const direction = deltaAngle < 0 ? -1 : 1;
+    const totalAngle = Math.abs(deltaAngle);
+
+    // Always keep the first wall at the exact clicked point.
+    const count = Math.max(1, Math.floor(totalAngle / stepAngle) + 1);
+    const segments = [];
+
+    for (let i = 0; i < count; i++) {
+      const angle = stroke.angleStart + direction * Math.min(i * stepAngle, totalAngle);
+      const x = stroke.center.x + stroke.radius * Math.cos(angle);
+      const z = stroke.center.z + stroke.radius * Math.sin(angle);
+      const rotation = -angle + (Math.PI / 2);
+
+      segments.push({ x, z, rotation });
+    }
+
+    stroke.segments = segments;
+    this.renderWallStrokeGhosts(segments);
+  }
+
+  renderWallStrokeGhosts(segments) {
+    this.clearWallStrokeGhosts();
+
+    for (const segment of segments) {
+      const visual = this.createPreviewVisual();
+      if (!visual) continue;
+
+      const root = new THREE.Group();
+      root.userData.editorPreview = true;
+      root.position.set(segment.x, 0, segment.z);
+      root.rotation.y = segment.rotation;
+      root.add(visual);
+      this.scene.add(root);
+      this.wallStroke.ghosts.push(root);
+    }
+  }
+
+  clearWallStrokeGhosts() {
+    const ghosts = this.wallStroke?.ghosts || [];
+    for (const root of ghosts) {
+      this.scene.remove(root);
+      root.traverse((object) => {
+        if (object === root) return;
+        object.geometry?.dispose?.();
+        object.material?.dispose?.();
+      });
+    }
+    if (this.wallStroke) this.wallStroke.ghosts = [];
+  }
+
+  makeWallStrokeData(x, z, rotation) {
+    return {
       id: 'editor-' + (++this.seq),
       kind: this.selectedTool.kind,
       x: Number(x.toFixed(3)),
       y: 0,
       z: Number(z.toFixed(3)),
-      rotation: angle,
+      rotation,
       scale: 1,
       collision: !!this.selectedTool.collision,
       radius: this.selectedTool.kind === 'wall' ? 1.35 : 0.48,
@@ -520,11 +591,6 @@ export class MapEditor {
       depth: this.selectedTool.kind === 'wall' ? 0.9 : 0.8,
       height: 2.6,
     };
-
-    // Wall-to-wall overlap is intentional for clean joins and corners.
-    if (this.findPlacementBlocker(data)) return;
-    this.objects.push(data);
-    this.createObject(data);
   }
 
   updatePreviewFromPointer() {
@@ -571,8 +637,9 @@ export class MapEditor {
       visual.scale.set(0.95, 0.8, 0.9);
       visual.position.y = 0.55;
     } else if (tool.kind === 'wall' || tool.kind === 'wall-short') {
-      const wallWidth = tool.kind === 'wall-short' ? 0.95 : 3.2;
-      visual = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, 2.6, 0.9), new THREE.MeshStandardMaterial({
+      const wallWidth = tool.kind === 'wall-short' ? 0.75 : 3.2;
+      const wallDepth = tool.kind === 'wall-short' ? 0.8 : 0.9;
+      visual = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, 2.6, wallDepth), new THREE.MeshStandardMaterial({
         color: 0x8b9098, roughness: 1, flatShading: true, transparent: true, opacity: 0.45
       }));
       visual.position.y = 1.3;
