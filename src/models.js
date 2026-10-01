@@ -141,6 +141,79 @@ export function createHumanoid(look = {}) {
     torso.add(cape);
   }
 
+  // NPC role silhouettes: these are intentionally more distinct than the
+  // generic humanoid rig. They only run for npcStyle entities.
+  if (npcSoft && L.npcRole === 'watcher') {
+    const cloakMat = mat(L.robe ?? L.body, { side: THREE.DoubleSide, rough: 0.95, flat: false });
+    const mantleMat = mat(L.hood ?? L.body, { side: THREE.DoubleSide, rough: 0.9, flat: false });
+    const leatherMat = mat(L.accent ?? 0x9a8a6a, { rough: 0.8, flat: false });
+
+    const mantle = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.56, 0.22, 16), mantleMat);
+    mantle.position.set(0, 1.34, 0);
+    mantle.scale.z = 0.82;
+    mantle.castShadow = true;
+    body.add(mantle);
+
+    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.82, 14), cloakMat);
+    cloak.position.set(0, 0.62, -0.04);
+    cloak.scale.set(1, 1, 0.82);
+    cloak.castShadow = true;
+    body.add(cloak);
+
+    const beltPouch = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.12), leatherMat);
+    beltPouch.position.set(0.34, 0.97, 0.18);
+    beltPouch.rotation.y = -0.15;
+    beltPouch.castShadow = true;
+    body.add(beltPouch);
+
+    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.025, 10), mat(0xc7aa5a, { metal: 0.45, rough: 0.45, flat: false }));
+    badge.rotation.x = Math.PI / 2;
+    badge.position.set(0, 1.12, 0.31);
+    badge.castShadow = true;
+    body.add(badge);
+  }
+
+  if (npcSoft && L.npcRole === 'merchant') {
+    const vestMat = mat(L.body, { rough: 0.9, flat: false });
+    const trimMat = mat(L.accent ?? 0xd0a45f, { metal: 0.25, rough: 0.65, flat: false });
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.43, 0.58, 12, 1, true), vestMat);
+    vest.position.set(0, 1.18, 0);
+    vest.scale.z = 0.82;
+    vest.castShadow = true;
+    body.add(vest);
+
+    const apron = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.58, 0.055), mat(L.robe ?? L.body, { rough: 0.95, flat: false }), 0);
+    apron.position.set(0, 0.92, 0.30);
+    apron.castShadow = true;
+    body.add(apron);
+
+    const pouchL = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.22, 0.13), trimMat);
+    pouchL.position.set(-0.32, 0.98, 0.18);
+    pouchL.castShadow = true;
+    body.add(pouchL);
+    const pouchR = pouchL.clone();
+    pouchR.position.x = 0.32;
+    body.add(pouchR);
+
+    const satchel = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), mat(0x68492f, { rough: 0.95, flat: false }));
+    satchel.scale.set(0.85, 1.15, 0.5);
+    satchel.position.set(-0.48, 0.88, -0.02);
+    satchel.castShadow = true;
+    body.add(satchel);
+
+    // Merchant hat: broad brim + soft crown, deliberately unlike the watcher's hood.
+    const hatMat = mat(L.hat ?? L.robe ?? L.body, { rough: 0.9, flat: false });
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.055, 16), hatMat);
+    brim.position.set(0, 1.84, 0);
+    brim.castShadow = true;
+    head.add(brim);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.32, 0.30, 12), hatMat);
+    crown.position.set(0, 2.00, 0);
+    crown.castShadow = true;
+    head.add(crown);
+  }
+
   return { root, body, torso, head, legL, legR, armL: aL.p, armR: aR.p, handL: aL.hand, handR: aR.hand, eyes, cape };
 }
 
