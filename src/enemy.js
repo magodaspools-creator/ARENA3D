@@ -105,7 +105,19 @@ export class Enemy {
 
   get targetable() { return this.alive; }
 
+  isInProtectionZone(pos = this.pos) {
+    const zones = this.game.protectionZones;
+    if (!zones?.length) return false;
+    return zones.some((zone) => Math.hypot(pos.x - zone.x, pos.z - zone.z) <= zone.radius);
+  }
+
   aggro() {
+    // Protection zones are safe from enemy aggression. This is gameplay logic,
+    // not a collision layer, so the player can still walk freely through them.
+    if (this.isInProtectionZone(this.game.player?.pos)) {
+      this.state = 'return';
+      return;
+    }
     if (!this.alive || this.state === 'chase' || this.state === 'windup' || this.state === 'recover') return;
     this.state = 'chase';
     this.game.ui.floatText(V.copy(this.pos).setY(this.height + 0.4), '!', 'alert', 0.8);
@@ -141,6 +153,12 @@ export class Enemy {
 
   strike() {
     const g = this.game, p = g.player;
+    // Fail-safe: an attack can never land while the player is inside a PZ.
+    if (this.isInProtectionZone(p?.pos)) {
+      this.state = 'return';
+      this.stateT = 0;
+      return;
+    }
     if (this.def.ranged) {
       const dir = V.set(p.pos.x - this.pos.x, 0, p.pos.z - this.pos.z).normalize().clone();
       g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 0.6), dir, speed: 9, range: 14, damage: this.def.damage, damageType: 'magic', visual: 'orb', color: 0xc07aff, radius: 0.35 });
@@ -180,12 +198,16 @@ export class Enemy {
       this.knock.multiplyScalar(Math.exp(-10 * dt));
     }
 
-    const playerOK = p && !p.dead && g.state === 'play';
+    const playerOK = p && !p.dead && g.state === 'play' && !this.isInProtectionZone(p.pos);
     const dx = p ? p.pos.x - this.pos.x : 0, dz = p ? p.pos.z - this.pos.z : 0;
     const dist = Math.hypot(dx, dz);
     const toPlayer = Math.atan2(dx, dz);
     let mvx = 0, mvz = 0, spd = 0, face = null;
     const def = this.def;
+
+    // If an enemy somehow crosses the visual boundary, immediately send it back.
+    // This prevents mobs from standing inside the safe plaza and attacking from it.
+    if (this.isInProtectionZone(this.pos)) this.state = 'return';
 
     switch (this.state) {
       case 'idle': {
