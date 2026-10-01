@@ -180,6 +180,7 @@ class Game {
           z: Number(checkpoint?.z) || 0,
           facing: Number(checkpoint?.facing) || 0,
         },
+        bossDefeated: this.area === this.startArea ? false : this.area.boss?.state === 'dead',
       }));
     } catch {}
   }
@@ -218,6 +219,7 @@ class Game {
       this.returnArea = this.startArea;
       const s = saved.checkpoint || area2.checkpoint || area2.spawn;
       this.player.place(s.x, s.z, s.facing);
+      area2.restoreState?.(saved);
     } else {
       this.area = this.startArea;
       this.returnArea = null;
