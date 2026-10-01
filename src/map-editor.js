@@ -50,6 +50,7 @@ export class MapEditor {
     this.collisionHelpers = new Map();
     this.preview = null;
     this.sessionSnapshot = [];
+    this.previousState = 'play';
     this.cameraFocus = new THREE.Vector3();
     this.navKeys = new Set();
     this.edgePointer = { x: 0, y: 0, active: false };
@@ -189,10 +190,11 @@ export class MapEditor {
       this.clearWithoutPrompt();
       this.loadSavedLayer();
       this.sessionSnapshot = this.serialize();
+      this.previousState = this.game.state === 'map-editor' ? 'play' : this.game.state;
       this.active = true;
       this.cameraFocus.copy(this.game.player?.pos || this.game.rig.target);
       this.el.classList.remove('hidden');
-      if (this.game.state === 'play') this.game.state = 'map-editor';
+      this.game.state = 'map-editor';
       this.game.inputLocked = true;
       this.game.ui.toast('Editor de mapa aberto.');
       this.setStatus('EDITOR ATIVO — alterações só ficam permanentes ao salvar.');
@@ -202,8 +204,10 @@ export class MapEditor {
       this.discardSession();
       this.active = false;
       this.el.classList.add('hidden');
-      if (this.game.state === 'map-editor') this.game.state = 'play';
+      if (this.game.state === 'map-editor') this.game.state = this.previousState === 'pause-controls' || this.previousState === 'pause' ? 'play' : this.previousState;
       this.game.inputLocked = false;
+      this.navKeys.clear();
+      this.edgePointer.active = false;
       this.setStatus('Fechado sem salvar.');
       this.select(null);
       this.hidePreview();
@@ -940,6 +944,7 @@ export class MapEditor {
 
   handleKey(e) {
     if (!this.active) return false;
+    if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) { e.preventDefault(); return true; }
     if (e.code === 'KeyR') { e.preventDefault(); this.rotateSelected(); return true; }
     if (e.code === 'BracketLeft') { e.preventDefault(); this.scaleSelected(0.9); return true; }
     if (e.code === 'BracketRight') { e.preventDefault(); this.scaleSelected(1.1); return true; }
