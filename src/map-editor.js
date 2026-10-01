@@ -6,6 +6,17 @@ const STORAGE_KEY = 'arena3d.map-editor.v1';
 const CREATOR_ID_KEY = 'arena3d.map-editor.creator-id.v1';
 const CREATOR_NAME_KEY = 'arena3d.map-editor.creator-name.v1';
 
+const TERRAIN = [
+  { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329 },
+  { id:'grass', name:'Grama', icon:'♣', kind:'terrain', terrainType:'grass', collision:false, color:0x30452d },
+  { id:'dirt', name:'Terra', icon:'▪', kind:'terrain', terrainType:'dirt', collision:false, color:0x5a4030 },
+  { id:'stone-floor', name:'Pedra', icon:'▦', kind:'terrain', terrainType:'stone-floor', collision:false, color:0x4a4d52 },
+  { id:'stone-path', name:'Caminho pedra', icon:'▥', kind:'terrain', terrainType:'stone-path', collision:false, color:0x66666a },
+  { id:'dirt-path', name:'Caminho terra', icon:'═', kind:'terrain', terrainType:'dirt-path', collision:false, color:0x75513a },
+  { id:'mud', name:'Lama', icon:'≈', kind:'terrain', terrainType:'mud', collision:false, color:0x3e352d },
+  { id:'sand', name:'Areia', icon:'░', kind:'terrain', terrainType:'sand', collision:false, color:0x8a7754 },
+];
+
 const BUILTIN = [
   { id: 'stone', name: 'Pedra', icon: '◆', kind: 'stone', collision: true },
   { id: 'wall', name: 'Parede', icon: '▰', kind: 'wall', collision: true },
@@ -31,7 +42,7 @@ export class MapEditor {
     this.objects = [];
     this.selected = null;
     this.active = false;
-    this.palette = 'world';
+    this.palette = 'terrain';
     this.selectedTool = BUILTIN[0];
     this.seq = 0;
     this.selectionHelper = null;
@@ -48,6 +59,7 @@ export class MapEditor {
     // only when the editor session is explicitly opened.
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
   }
 
   get itemTools() {
@@ -79,7 +91,8 @@ export class MapEditor {
         </div>
 
         <div class="map-editor-tabs">
-          <button type="button" data-editor-tab="world" class="active">Mundo</button>
+          <button type="button" data-editor-tab="terrain" class="active">Terreno</button>
+          <button type="button" data-editor-tab="world">Objetos</button>
           <button type="button" data-editor-tab="items">Itens</button>
         </div>
 
@@ -203,14 +216,14 @@ export class MapEditor {
   }
 
   setPalette(tab) {
-    this.palette = tab === 'items' ? 'items' : 'world';
+    this.palette = tab === 'items' ? 'items' : tab === 'world' ? 'world' : 'terrain';
     this.el.querySelectorAll('[data-editor-tab]').forEach((b) => b.classList.toggle('active', b.dataset.editorTab === this.palette));
     this.renderPalette();
   }
 
   renderPalette() {
     const palette = this.el.querySelector('#map-editor-palette');
-    const tools = this.palette === 'items' ? this.itemTools : BUILTIN;
+    const tools = this.palette === 'items' ? this.itemTools : this.palette === 'world' ? BUILTIN : TERRAIN;
     palette.innerHTML = tools.map((tool) => {
       const visual = tool.sprite
         ? `<img src="${tool.sprite}" alt="" loading="lazy">`
@@ -259,6 +272,21 @@ export class MapEditor {
     return this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
   }
 
+  onWheel(event) {
+    if (!this.active) return;
+    event.preventDefault();
+    const step = (event.deltaY > 0 ? -1 : 1) * THREE.MathUtils.degToRad(5);
+    if (this.selected) {
+      this.rotateSelected(step);
+      return;
+    }
+    if (this.preview) {
+      this.preview.rotation += step;
+      this.preview.root.rotation.y = this.preview.rotation;
+      this.setStatus('Rotação: ' + Math.round(THREE.MathUtils.radToDeg(this.preview.rotation)) + '°');
+    }
+  }
+
   onPointerMove(event) {
     if (!this.active) return;
     const point = this.getGroundPointFromEvent(event);
@@ -277,7 +305,14 @@ export class MapEditor {
   createPreviewVisual() {
     const tool = this.selectedTool;
     let visual;
-    if (tool.kind === 'item') {
+    if (tool.kind === 'terrain') {
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({
+        color: tool.color, roughness: tool.terrainType.includes('path') ? 0.92 : 1,
+        transparent: true, opacity: 0.62, side: THREE.DoubleSide,
+      }));
+      visual.rotation.x = -Math.PI / 2;
+      visual.position.y = 0.025;
+    } else if (tool.kind === 'item') {
       const texture = this.getItemTexture(tool.itemId);
       visual = new THREE.Sprite(new THREE.SpriteMaterial({
         map: texture,
@@ -331,10 +366,10 @@ export class MapEditor {
       root.userData.editorPreview = true;
       root.add(visual);
       this.scene.add(root);
-      this.preview = { root, visual, toolId: this.selectedTool.id };
+      this.preview = { root, visual, toolId: this.selectedTool.id, rotation: 0 };
     }
     this.preview.root.position.set(x, 0, z);
-    this.preview.root.rotation.y = 0;
+    this.preview.root.rotation.y = this.preview.rotation || 0;
     this.preview.root.scale.setScalar(1);
     this.preview.root.visible = true;
   }
@@ -382,17 +417,18 @@ export class MapEditor {
     const data = {
       id: 'editor-' + (++this.seq),
       kind: this.selectedTool.kind,
+      terrainType: this.selectedTool.terrainType || null,
       itemId: this.selectedTool.itemId || null,
       x: Number(x.toFixed(3)),
       y: 0,
       z: Number(z.toFixed(3)),
-      rotation: 0,
+      rotation: this.preview?.rotation || 0,
       scale: 1,
       collision: !!this.selectedTool.collision,
-      radius: this.selectedTool.kind === 'wall' ? 1.35 : 0.65,
-      width: this.selectedTool.kind === 'wall' ? 3.2 : 1.4,
-      depth: this.selectedTool.kind === 'wall' ? 0.9 : 1.4,
-      height: this.selectedTool.kind === 'wall' ? 2.6 : 1.2,
+      radius: this.selectedTool.kind === 'wall' ? 1.35 : this.selectedTool.kind === 'terrain' ? 0 : 0.65,
+      width: this.selectedTool.kind === 'wall' ? 3.2 : this.selectedTool.kind === 'terrain' ? 4 : 1.4,
+      depth: this.selectedTool.kind === 'wall' ? 0.9 : this.selectedTool.kind === 'terrain' ? 4 : 1.4,
+      height: this.selectedTool.kind === 'wall' ? 2.6 : this.selectedTool.kind === 'terrain' ? 0.02 : 1.2,
     };
     this.hidePreview();
     this.objects.push(data);
@@ -409,7 +445,14 @@ export class MapEditor {
     root.userData.editorId = data.id;
 
     let visual;
-    if (data.kind === 'item') {
+    if (data.kind === 'terrain') {
+      const tool = TERRAIN.find((entry) => entry.terrainType === data.terrainType) || TERRAIN[0];
+      visual = new THREE.Mesh(new THREE.PlaneGeometry(data.width || 4, data.depth || 4), new THREE.MeshStandardMaterial({
+        color: tool.color, roughness: tool.terrainType.includes('path') ? 0.92 : 1, side: THREE.DoubleSide,
+      }));
+      visual.rotation.x = -Math.PI / 2;
+      visual.position.y = 0.025;
+    } else if (data.kind === 'item') {
       const texture = this.getItemTexture(data.itemId);
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04 });
       visual = new THREE.Sprite(material);
@@ -535,9 +578,9 @@ export class MapEditor {
     this.select(this.selected);
   }
 
-  rotateSelected() {
+  rotateSelected(step = Math.PI / 12) {
     if (!this.selected) return this.setStatus('Selecione um objeto primeiro.');
-    this.selected.rotation += Math.PI / 12;
+    this.selected.rotation += step;
     const root = this.group.children.find((o) => o.userData?.editorId === this.selected.id);
     if (root) root.rotation.y = this.selected.rotation;
     this.setStatus('Objeto girado. Clique em Salvar para confirmar.');
