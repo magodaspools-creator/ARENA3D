@@ -9,13 +9,26 @@ const TERRAIN_ASSET = (name) => new URL('../assets/map-editor/terrain/' + name +
 
 const TERRAIN = [
   { id:'floor', name:'Chão', icon:'·', kind:'terrain', terrainType:'floor', collision:false, color:0x273329, sprite:TERRAIN_ASSET('floor') },
-  { id:'grass', name:'Grama', icon:'♣', kind:'terrain', terrainType:'grass', collision:false, color:0x30452d, sprite:TERRAIN_ASSET('grass') },
-  { id:'dirt', name:'Terra', icon:'▪', kind:'terrain', terrainType:'dirt', collision:false, color:0x5a4030, sprite:TERRAIN_ASSET('dirt') },
-  { id:'stone-floor', name:'Pedra', icon:'▦', kind:'terrain', terrainType:'stone-floor', collision:false, color:0x4a4d52, sprite:TERRAIN_ASSET('stone-floor') },
-  { id:'stone-path', name:'Caminho pedra', icon:'▥', kind:'terrain', terrainType:'stone-path', collision:false, color:0x66666a, sprite:TERRAIN_ASSET('stone-path') },
-  { id:'dirt-path', name:'Caminho terra', icon:'═', kind:'terrain', terrainType:'dirt-path', collision:false, color:0x75513a, sprite:TERRAIN_ASSET('dirt-path') },
-  { id:'mud', name:'Lama', icon:'≈', kind:'terrain', terrainType:'mud', collision:false, color:0x3e352d, sprite:TERRAIN_ASSET('mud') },
-  { id:'sand', name:'Areia', icon:'░', kind:'terrain', terrainType:'sand', collision:false, color:0x8a7754, sprite:TERRAIN_ASSET('sand') },
+  { id:'grass', name:'Grama suave', icon:'♣', kind:'terrain', terrainType:'grass-soft', collision:false, color:0x3f6237, sprite:TERRAIN_ASSET('grass-soft') },
+  { id:'grass-wild', name:'Grama alta', icon:'♣', kind:'terrain', terrainType:'grass-wild', collision:false, color:0x35582f, sprite:TERRAIN_ASSET('grass-wild') },
+  { id:'grass-flower', name:'Grama florida', icon:'✿', kind:'terrain', terrainType:'grass-flower', collision:false, color:0x42683a, sprite:TERRAIN_ASSET('grass-flower') },
+  { id:'grass-dark', name:'Grama escura', icon:'♣', kind:'terrain', terrainType:'grass-dark', collision:false, color:0x29472c, sprite:TERRAIN_ASSET('grass-dark') },
+  { id:'dirt', name:'Terra seca', icon:'▪', kind:'terrain', terrainType:'dirt-dry', collision:false, color:0x765033, sprite:TERRAIN_ASSET('dirt-dry') },
+  { id:'dirt-rocky', name:'Terra pedregosa', icon:'▪', kind:'terrain', terrainType:'dirt-rocky', collision:false, color:0x67442f, sprite:TERRAIN_ASSET('dirt-rocky') },
+  { id:'dirt-red', name:'Terra vermelha', icon:'▪', kind:'terrain', terrainType:'dirt-red', collision:false, color:0x70402f, sprite:TERRAIN_ASSET('dirt-red') },
+  { id:'dirt-dark', name:'Terra escura', icon:'▪', kind:'terrain', terrainType:'dirt-dark', collision:false, color:0x523729, sprite:TERRAIN_ASSET('dirt-dark') },
+  { id:'stone', name:'Pedra laje', icon:'▦', kind:'terrain', terrainType:'stone-slate', collision:false, color:0x4e5358, sprite:TERRAIN_ASSET('stone-slate') },
+  { id:'stone-cracked', name:'Pedra rachada', icon:'▦', kind:'terrain', terrainType:'stone-cracked', collision:false, color:0x55595d, sprite:TERRAIN_ASSET('stone-cracked') },
+  { id:'stone-moss', name:'Pedra com musgo', icon:'▦', kind:'terrain', terrainType:'stone-moss', collision:false, color:0x4b5350, sprite:TERRAIN_ASSET('stone-moss') },
+  { id:'stone-brick', name:'Piso de blocos', icon:'▦', kind:'terrain', terrainType:'stone-brick', collision:false, color:0x55565a, sprite:TERRAIN_ASSET('stone-brick') },
+  { id:'stone-path', name:'Caminho de paralelepípedo', icon:'▥', kind:'terrain', terrainType:'path-cobble', collision:false, color:0x6a6a69, sprite:TERRAIN_ASSET('path-cobble') },
+  { id:'stone-path-dark', name:'Caminho de pedra escuro', icon:'▥', kind:'terrain', terrainType:'path-cobble-dark', collision:false, color:0x555655, sprite:TERRAIN_ASSET('path-cobble-dark') },
+  { id:'dirt-path', name:'Caminho de terra', icon:'═', kind:'terrain', terrainType:'path-dirt', collision:false, color:0x765239, sprite:TERRAIN_ASSET('path-dirt') },
+  { id:'dirt-path-rock', name:'Caminho de terra pedregoso', icon:'═', kind:'terrain', terrainType:'path-dirt-rock', collision:false, color:0x6b4933, sprite:TERRAIN_ASSET('path-dirt-rock') },
+  { id:'sand', name:'Areia clara', icon:'░', kind:'terrain', terrainType:'sand-light', collision:false, color:0xa38e65, sprite:TERRAIN_ASSET('sand-light') },
+  { id:'sand-rocky', name:'Areia pedregosa', icon:'░', kind:'terrain', terrainType:'sand-rocky', collision:false, color:0x907a55, sprite:TERRAIN_ASSET('sand-rocky') },
+  { id:'mud', name:'Lama molhada', icon:'≈', kind:'terrain', terrainType:'mud-wet', collision:false, color:0x403832, sprite:TERRAIN_ASSET('mud-wet') },
+  { id:'mud-stones', name:'Lama com pedras', icon:'≈', kind:'terrain', terrainType:'mud-stones', collision:false, color:0x463b32, sprite:TERRAIN_ASSET('mud-stones') },
 ];
 
 const BUILTIN = [
