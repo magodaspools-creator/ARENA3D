@@ -341,8 +341,12 @@ export function createArea2(game) {
     fightStart = game.time;
     desertBoss.awaken();
     game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
-    game.schedule(0.8, () => game.ui.banner('AZHUR', 'O Deus Sol desperta sob o templo', 'boss', 3));
-    game.schedule(1.2, () => game.ui.showBoss(desertBoss.name));
+    game.schedule(0.8, () => {
+      if (game.area === area) game.ui.banner('AZHUR', 'O Deus Sol desperta sob o templo', 'boss', 3);
+    });
+    game.schedule(1.2, () => {
+      if (game.area === area) game.ui.showBoss(desertBoss.name);
+    });
     game.ui.toast('O selo treme. Azhur, Deus Sol, despertou.');
   }
 
