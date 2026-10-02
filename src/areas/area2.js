@@ -245,7 +245,7 @@ export function createArea2(game) {
     const p=new THREE.Mesh(new THREE.BoxGeometry(1.3,3.6,1.3),stoneMat);
     p.position.set(x,1.8,0);
     p.castShadow=true; portalStone.add(p);
-    collision.addCircle(ORIGIN.x+x,z,0.9);
+    collision.addCircle(ORIGIN.x + x, -45, 0.9);
   }
 
 
