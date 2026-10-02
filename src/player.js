@@ -306,7 +306,7 @@ export class Player {
             life: 0.55, size: 0.38, gravity: 5, drag: 3
           });
           g.combat.aoe(
-            t, radius, s ? [s.abilityMin * 1.35, s.abilityMax * 1.35] : u.damage,
+            t, radius, s ? [s.abilityMin * 1.1, s.abilityMax * 1.1] : u.damage,
             u.color, undefined, this.damageContext('magic', s)
           );
           g.rig.shake(0.28 + i * 0.1);
@@ -343,7 +343,7 @@ export class Player {
         dir,
         u.radius,
         u.arc,
-        s ? [s.abilityMin * 2.0, s.abilityMax * 2.0] : u.damage,
+        s ? [s.abilityMin * 2.25, s.abilityMax * 2.25] : u.damage,
         u.color,
         this.damageContext('physical', s)
       );
