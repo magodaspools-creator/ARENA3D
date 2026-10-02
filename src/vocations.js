@@ -6,6 +6,7 @@ export const VOCATIONS = {
     look: { skin: 0xe0b08c, body: 0x3d5078, legs: 0x2a3244, accent: 0xbfc7d5, head: 'helm', shoulder: true, metal: 0.18, metalRough: 0.78, cape: 0x1f3a78, weapon: 'sword', offhand: 'shield', glow: 0x8fb4ff },
     attack: { kind: 'melee', name: 'Golpe', range: 2.9, arc: 2.2, damage: [26, 34], cooldown: 0.6, style: 'slash', color: 0xcfe0ff },
     ability: { kind: 'whirl', name: 'Redemoinho', radius: 4.2, damage: [48, 62], cooldown: 6, color: 0x8fb4ff },
+    ultimate: { kind: 'colossalStrike', name: 'Golpe Colossal', radius: 4.6, arc: 2.6, damage: [150, 190], color: 0x9fc4ff },
   },
   paladin: {
     id: 'paladin', name: 'Paladin', title: 'Arqueiro Sagrado', color: '#ffd76a', hp: 190, speed: 6.2, armor: 0.9,
