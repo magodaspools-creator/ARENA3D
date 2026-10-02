@@ -78,6 +78,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 #gold { font-size: 11px; color: #e8c77a; white-space: nowrap; text-shadow: 0 1px 3px #000; }
 .bar { position: relative; height: 16px; width: 240px; background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.2); border-radius: 3px; overflow: hidden; margin-top: 5px; }
 .bar.hp > div { height: 100%; background: linear-gradient(#e0484a, #8e1b22); transition: width .15s; }
+.bar.mana { height: 10px; margin-top: 3px; }
+.bar.mana > div { height: 100%; background: linear-gradient(#58b7ff, #2467b7); transition: width .15s; }
+.bar.mana span { font-size: 9px; line-height: 9px; }
 .bar span { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 15px; text-shadow: 0 1px 2px #000; }
 #skills { display: flex; gap: 6px; margin-top: 8px; }
 .skill { position: relative; width: 76px; height: 38px; background: rgba(8,10,16,.75); border: 1px solid rgba(232,199,122,.35); border-radius: 5px; overflow: hidden; padding: 3px 5px; }
