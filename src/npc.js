@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createHumanoid, createWeapon, glow, mesh, HumanoidAnimator } from './models.js';
+import { createHumanoid, createWeapon, glow, mesh, HumanoidAnimator } from './models.js?v=20261002-3';
 
 const tmp = new THREE.Vector3();
 
