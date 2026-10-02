@@ -312,6 +312,7 @@ class Game {
   onEnemyKilled(e, loot = []) {
     if (!e.isBoss) {
       this.stats.kills++;
+      this.player?.gainUltimate?.(8);
       const reward = e.rewards || { xp: 0, gold: 0 };
       this.rewardCharacter(reward.xp, reward.gold);
       this.spawnGroundLoot(loot, e.pos);
