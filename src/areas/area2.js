@@ -134,8 +134,11 @@ export function createArea2(game) {
   addBox(136,0.8,47,10,1.6,2.2,darkStone);
   addBox(164,0.8,47,10,1.6,2.2,darkStone);
   addBox(150,3.8,43,30,1.4,2.2,stoneMat);
-  // Altar: raised visual platform with a clear central staircase.
-  // The top remains walkable; only its perimeter blocks the player/boss.
+  // Altar: solid gameplay footprint. The collision system is XZ-only, so
+  // the raised visual height cannot be used as a physical walkable level.
+  // We therefore make the altar itself solid instead of letting the player
+  // walk through its mesh. The stairs remain visible as the intended access
+  // point, but they are not a true vertical step-up in this collision model.
   addBox(150,0.45,35,15,0.9,11,darkStone);
 
   const altarStepMat = new THREE.MeshStandardMaterial({ color:0x5b4735, roughness:1, flatShading:true });
@@ -145,15 +148,13 @@ export function createArea2(game) {
     step.castShadow = true;
     step.receiveShadow = true;
     temple.add(step);
+    collision.addBox(147.35,152.65,z - 0.575,z + 0.575);
   }
 
-  // Keep the altar's footprint solid without creating an invisible wall
-  // across the staircase or trapping Azhur on the platform.
-  collision.addBox(142.0,142.9,29.0,41.0);
-  collision.addBox(157.1,158.0,29.0,41.0);
-  collision.addBox(142.0,158.0,40.4,41.4);
-  collision.addBox(142.0,147.4,29.0,30.0);
-  collision.addBox(152.6,158.0,29.0,30.0);
+  // The previous perimeter-only setup left the middle of the altar with no
+  // obstacle, so the player could enter the slab and visibly pass through it.
+  // Use the exact slab footprint as the physical obstacle.
+  collision.addBox(142.5,157.5,29.5,40.5);
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
