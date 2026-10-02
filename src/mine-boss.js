@@ -128,6 +128,8 @@ export class MineBoss {
     this.ambushTarget = null;
     this.pounceTarget = null;
     this.pounceStart = null;
+    this.webShot = false;
+    this.webTarget = null;
     this.pounceDistance = 0;
     this.pounceHit = false;
     this.orbitDir = 1;
@@ -287,7 +289,7 @@ export class MineBoss {
     // Diagnostic isolation: hazards are unrelated to the leap itself. Skip
     // their per-frame processing during pounce to rule out a hazard/update
     // loop being triggered at the same time as the freeze.
-    if (this.state !== 'pounce') this.updateHazards(dt);
+    this.updateHazards(dt);
 
     if (!this.alive) {
       if (this.state === 'dead') {
@@ -427,16 +429,14 @@ export class MineBoss {
     const choices = [];
 
     if (this.webCooldown <= 0) choices.push('web');
-    if (this.pounceCooldown <= 0) choices.push('pounce');
-    if (phase >= 2 && this.ambushCooldown <= 0) choices.push('ambush');
+        if (phase >= 2 && this.ambushCooldown <= 0) choices.push('ambush');
     if (phase >= 2 && this.eggCooldown <= 0) choices.push('egg');
     if (phase >= 2) choices.push('poison');
 
     // Phase 1 is intentionally active: the spider can already pressure the
     // player with poison and a pounce instead of waiting for later phases.
     if (dist < 4.2) choices.push('poison');
-    if (dist < 5.5 && this.pounceCooldown <= 0) choices.push('pounce');
-
+    
     const state = choices[Math.floor(Math.random() * choices.length)] || 'web';
     this.begin(state);
 
@@ -448,97 +448,80 @@ export class MineBoss {
 
   attackWeb(dt) {
     const g = this.game;
-    if (this.stateT < 0.55) {
-      if (!this.tele.length) {
-        const dx = g.player.pos.x - this.pos.x;
-        const dz = g.player.pos.z - this.pos.z;
-        const dist = Math.max(2.4, Math.hypot(dx, dz));
-        const angle = Math.atan2(dx, dz);
-        const dirX = Math.sin(angle);
-        const dirZ = Math.cos(angle);
-        const count = this.phase === 3 ? 4 : 3;
+    const p = g.player;
 
-        // Instead of dropping random circular patches around the player, the
-        // spider now throws a readable web line from itself toward the player.
-        // Standing still is dangerous because one of the strands deliberately
-        // crosses the player's current position.
-        this._pendingWebPositions = [];
-        for (let i = 0; i < count; i++) {
-          const t = (i + 1) / count;
-          const side = i === count - 1 ? 0 : (i % 2 ? -0.72 : 0.72);
-          const px = this.pos.x + dirX * dist * t + Math.cos(angle) * side;
-          const pz = this.pos.z + dirZ * dist * t - Math.sin(angle) * side;
-          const pos = new THREE.Vector3(px, 0, pz);
-          this.tele.push(g.fx.telegraphCircle(pos, i === count - 1 ? 1.15 : 0.9, 0.55, 0xd7a6ff));
-          this._pendingWebPositions.push({ pos, angle, length: i === count - 1 ? 2.4 : 2.7, width: 1.0 });
-        }
+    // The old attack created several floor web patches. Replace it with a
+    // direct web shot that targets the player and briefly roots them.
+    if (this.stateT < 0.32) {
+      if (!this.webShot) {
+        this.webShot = true;
+        const dx = p.pos.x - this.pos.x;
+        const dz = p.pos.z - this.pos.z;
+        const dist = Math.hypot(dx, dz) || 1;
+        const angle = Math.atan2(dx, dz);
+
+        this.tele.push(g.fx.telegraphCircle(p.pos, 1.0, 0.32, 0xd7a6ff));
+        g.fx.emit(V.copy(this.pos).setY(0.75), {
+          count: 16, color: 0xd7a6ff, speed: 3.5, up: 1.2, life: 0.45, size: 0.28,
+        });
+
+        this.webTarget = { x: p.pos.x, z: p.pos.z };
+        this.webAngle = angle;
+        this.webDistance = dist;
       }
-    } else if (!this.struck) {
-      this.struck = true;
-      const pending = this._pendingWebPositions || [];
-      for (const web of pending) this.createWeb(web.pos, web.angle, web.length, web.width);
-      this._pendingWebPositions = [];
-      g.fx.emit(V.copy(this.pos).setY(0.7), {
-        count: 30, color: 0xd7a6ff, speed: 4, up: 1.5, life: 0.7, size: 0.35,
-      });
+      return;
     }
 
-    if (this.stateT > 1.0) {
+    if (!this.struck) {
+      this.struck = true;
+
+      const dx = this.webTarget.x - this.pos.x;
+      const dz = this.webTarget.z - this.pos.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      const angle = Math.atan2(dx, dz);
+
+      // Visual projectile: one stretched web strand from the spider to the
+      // player's position. The actual root is applied on impact.
+      const mid = new THREE.Vector3(
+        this.pos.x + dx * 0.5,
+        0.9,
+        this.pos.z + dz * 0.5
+      );
+      const strand = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.8, dist).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({
+          color: 0xd7a6ff,
+          transparent: true,
+          opacity: 0.58,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      strand.position.copy(mid);
+      strand.rotation.y = angle;
+      this.game.scene.add(strand);
+      this.game.schedule(0.28, () => {
+        this.game.scene.remove(strand);
+        strand.geometry.dispose();
+        strand.material.dispose();
+      });
+
+      const hitDist = Math.hypot(p.pos.x - this.webTarget.x, p.pos.z - this.webTarget.z);
+      if (hitDist < 1.35 + p.radius) {
+        const rootDuration = this.phase === 3 ? 1.6 : this.phase === 2 ? 1.35 : 1.1;
+        p.webbedUntil = Math.max(p.webbedUntil || 0, this.game.time + rootDuration);
+        g.ui.toast('Você ficou preso na teia!', 1.5);
+      }
+    }
+
+    if (this.stateT > 0.9) {
       this.state = 'recover';
       this.stateT = 0;
+      this.webShot = false;
+      this.webTarget = null;
     }
   }
 
-  createWeb(pos, angle, length = 2.6, width = 1.0) {
-    const group = new THREE.Group();
-    group.position.set(pos.x, 0.075, pos.z);
-    group.rotation.y = angle;
-
-    const m = new THREE.MeshBasicMaterial({
-      color: 0xd7a6ff,
-      transparent: true,
-      opacity: 0.44,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-
-    // A flattened, elongated web: two crossing strands and a few horizontal
-    // threads. It reads as a patch of real webbing rather than a magic circle.
-    const sheet = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, length).rotateX(-Math.PI / 2),
-      m
-    );
-    group.add(sheet);
-
-    for (const offset of [-0.42, 0, 0.42]) {
-      const thread = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.028, length * 0.92).rotateX(-Math.PI / 2),
-        m
-      );
-      thread.position.x = offset;
-      group.add(thread);
-    }
-
-    for (const offset of [-0.35, 0.35]) {
-      const thread = new THREE.Mesh(
-        new THREE.PlaneGeometry(width * 0.92, 0.025).rotateX(-Math.PI / 2),
-        m
-      );
-      thread.position.z = offset * (length / 2.2);
-      group.add(thread);
-    }
-
-    this.game.scene.add(group);
-    this.webs.push({
-      group,
-      pos: pos.clone(),
-      angle,
-      length,
-      width,
-      life: this.phase === 3 ? 9 : 7,
-      damageT: 0
-    });
-  }
 
   attackAmbush(dt) {
     const g = this.game;
@@ -577,89 +560,14 @@ export class MineBoss {
   }
 
   attackPounce(dt) {
-    const g = this.game;
-
-    if (this.stateT < 0.42) {
-      if (!this.pounceTarget) {
-        this.pounceTarget = g.player.pos.clone();
-        this.pounceStart = this.pos.clone();
-        this.pounceDistance = Math.min(
-          this.pounceStart.distanceTo(this.pounceTarget),
-          5.8
-        );
-        this.tele.push(g.fx.telegraphCircle(this.pounceTarget, 2.15, 0.42, 0xffa43b));
-        this.facing = Math.atan2(
-          this.pounceTarget.x - this.pos.x,
-          this.pounceTarget.z - this.pos.z
-        );
-      }
-
-      // Crouch before jumping. The actual leap is animated over several
-      // frames so it never snaps several meters in one update.
-      this.body.position.y = 0.18 + Math.sin(this.stateT * 7) * 0.04;
-      return;
-    }
-
-    if (!this.struck) {
-      this.struck = true;
-      this.pounceStart = this.pounceStart || this.pos.clone();
-      this.pounceTarget = this.pounceTarget || g.player.pos.clone();
-    }
-
-    // Smoothly interpolate the leap instead of teleporting with one large
-    // collision.move(). Collision is checked along the path in small steps.
-    const leapT = Math.min(1, (this.stateT - 0.42) / 0.32);
-    const eased = leapT < 0.5
-      ? 2 * leapT * leapT
-      : 1 - Math.pow(-2 * leapT + 2, 2) / 2;
-    const rawTargetX = THREE.MathUtils.lerp(this.pounceStart.x, this.pounceTarget.x, eased);
-    const rawTargetZ = THREE.MathUtils.lerp(this.pounceStart.z, this.pounceTarget.z, eased);
-
-    // Never finish the leap inside the player's body. The attack still lands
-    // through the impact radius, but the boss itself stays just outside the
-    // player collider so the body resolver does not have to separate two
-    // overlapping actors on the same frame.
-    const pdx = this.pos.x - g.player.pos.x;
-    const pdz = this.pos.z - g.player.pos.z;
-    const pd = Math.hypot(pdx, pdz);
-    const safeGap = this.radius + g.player.radius + 0.08;
-    const finalTarget = leapT >= 1 && pd < safeGap
-      ? {
-          x: g.player.pos.x + (pdx / (pd || 1)) * safeGap,
-          z: g.player.pos.z + (pdz / (pd || 1)) * safeGap,
-        }
-      : { x: rawTargetX, z: rawTargetZ };
-
-    const moveX = finalTarget.x - this.pos.x;
-    const moveZ = finalTarget.z - this.pos.z;
-
-    if (Math.abs(moveX) + Math.abs(moveZ) > 0.001) {
-      const maxStep = 0.42;
-      const stepLen = Math.hypot(moveX, moveZ);
-      const scale = Math.min(1, maxStep / stepLen);
-
-      // The spider is airborne during the leap. Do not run the full dungeon
-      // collider for every airborne step: that collider is designed for
-      // grounded movement and can become extremely expensive around dense
-      // mine geometry. The landing is resolved separately below.
-      this.pos.x += moveX * scale;
-      this.pos.z += moveZ * scale;
-    }
-
-    // Lift the spider during the leap and settle it back down.
-    this.body.position.y = Math.sin(Math.min(1, leapT) * Math.PI) * 0.85;
-
-    if (leapT >= 1 && !this.pounceHit) {
-      // Diagnostic isolation: the browser still freezes during the leap, so
-      // temporarily remove every landing-side effect (damage, camera shake,
-      // ring and particles). If the freeze disappears, we can reintroduce
-      // these one by one and identify the exact subsystem.
-      this.pounceHit = true;
-      this.pounceTarget = null;
-    }
-
-    if (this.stateT > 0.92) this.toChase();
+    // Pounce removed: keep this state harmless while old saves/scripts settle.
+    // New encounters no longer select this attack.
+    this.state = 'recover';
+    this.stateT = 0;
+    this.pounceTarget = null;
+    this.pounceHit = false;
   }
+
 
   attackEggs(dt) {
     const g = this.game;
