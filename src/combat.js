@@ -101,6 +101,9 @@ export class Combat {
       critChance: p.critChance ?? 0.12,
       critMultiplier: p.critMultiplier ?? 1.6,
       radius: p.radius ?? 0.35, visual: p.visual,
+      homing: !!p.homing, homingStrength: p.homingStrength ?? 2.5,
+      homingLife: p.homingLife ?? Infinity, homingT: 0,
+      onExplode: p.onExplode,
       pos: new THREE.Vector3(p.pos.x, PROJ_Y, p.pos.z),
       vel: new THREE.Vector3(p.dir.x, 0, p.dir.z).normalize().multiplyScalar(p.speed),
       life: p.range / p.speed,
@@ -114,6 +117,7 @@ export class Combat {
   }
 
   explode(p) {
+    if (p.dead) return;
     const fx = this.game.fx;
     const big = p.splash > 0;
     fx.emit(p.pos, { count: big ? 34 : 12, color: p.color, speed: big ? 7 : 4, life: big ? 0.6 : 0.35, size: big ? 0.5 : 0.3, drag: 3 });
@@ -123,11 +127,25 @@ export class Combat {
     }
     this.game.scene.remove(p.mesh);
     p.dead = true;
+    p.onExplode?.(p);
   }
 
   update(dt) {
     const { collision, player, fx } = this.game;
     for (const p of this.projectiles) {
+      if (p.homing && p.homingT < p.homingLife && p.team === 'enemy' && player && !player.dead) {
+        p.homingT += dt;
+        const tx = player.pos.x - p.pos.x;
+        const tz = player.pos.z - p.pos.z;
+        const d = Math.hypot(tx, tz);
+        if (d > 0.001) {
+          const targetVX = tx / d * p.vel.length();
+          const targetVZ = tz / d * p.vel.length();
+          const k = Math.min(1, p.homingStrength * dt);
+          p.vel.x += (targetVX - p.vel.x) * k;
+          p.vel.z += (targetVZ - p.vel.z) * k;
+        }
+      }
       p.pos.addScaledVector(p.vel, dt);
       p.mesh.position.copy(p.pos);
       if (p.visual === 'fire' || p.visual === 'orb' || p.visual === 'bigOrb') p.mesh.rotation.z += dt * 8;
