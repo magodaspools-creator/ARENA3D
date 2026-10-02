@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mat, glow, mesh } from './models.js';
+import { mat, glow, mesh } from './models.js?v=20261002-3';
 
 // Reusable world-building blocks. Area files (src/areas/*) compose these
 // into a level; nothing here knows about a specific map.
