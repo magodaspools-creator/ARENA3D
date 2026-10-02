@@ -13,7 +13,7 @@ export class UI {
     this.floaters = [];
     this.anchors = new Set();
     this.el = {
-      hud: $('hud'), level: $('level'), xpFill: $('xp-fill'), xpText: $('xp-text'), gold: $('gold'), hpFill: $('hp-fill'), hpText: $('hp-text'), pname: $('pname'), portrait: $('portrait'),
+      hud: $('hud'), level: $('level'), xpFill: $('xp-fill'), xpText: $('xp-text'), gold: $('gold'), hpFill: $('hp-fill'), hpText: $('hp-text'), manaFill: $('mana-fill'), manaText: $('mana-text'), pname: $('pname'), portrait: $('portrait'),
       objective: $('objective'), objText: $('obj-text'), objHint: $('obj-hint'), questTimeline: $('quest-timeline'),
       bossBar: $('boss-bar'), bossName: $('boss-name'), bossFill: $('boss-fill'),
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
@@ -779,6 +779,14 @@ export class UI {
     this.el.hpFill.style.width = `${(hp / max) * 100}%`;
     this.el.hpText.textContent = `${Math.ceil(hp)} / ${max}`;
     this.el.vignette.classList.toggle('low', hp > 0 && hp / max < 0.3);
+  }
+
+  setMana(mana, max) {
+    if (!this.el.manaFill || !this.el.manaText) return;
+    const safeMax = Math.max(1, Number(max) || 1);
+    const safeMana = Math.max(0, Math.min(safeMax, Number(mana) || 0));
+    this.el.manaFill.style.width = `${(safeMana / safeMax) * 100}%`;
+    this.el.manaText.textContent = `${Math.ceil(safeMana)} / ${safeMax}`;
   }
   setCooldown(which, frac) {
     const el = { attack: this.el.skAttack, ability: this.el.skAbility, dash: this.el.skDash }[which];
