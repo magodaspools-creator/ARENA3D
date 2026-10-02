@@ -2,47 +2,47 @@
 
 export const ITEMS = {
   iron_sword: {
-    id: 'iron_sword', sprite: null, name: 'Espada de Ferro',
+    id: 'iron_sword', sprite: 'uploads/01_espada_de_ferro.png', name: 'Espada de Ferro',
     description: 'Uma lâmina simples, mas confiável.', category: 'equipamento', maxStack: 1, value: 80,
     equipment: { slot: 'weapon', vocations: ['knight'] }, stats: { attackMin: 4, attackMax: 7 }, icon: '⚔',
   },
   hunter_bow: {
-    id: 'hunter_bow', sprite: null, name: 'Arco de Caça',
+    id: 'hunter_bow', sprite: 'uploads/02_arco_de_caca.png', name: 'Arco de Caça',
     description: 'Arco leve usado por caçadores da fronteira.', category: 'equipamento', maxStack: 1, value: 80,
     equipment: { slot: 'weapon', vocations: ['paladin'] }, stats: { attackMin: 4, attackMax: 7, attackSpeed: 0.02 }, icon: '➶',
   },
   ember_staff: {
-    id: 'ember_staff', sprite: null, name: 'Cajado da Brasa',
+    id: 'ember_staff', sprite: 'uploads/03_cajado_da_brasa.png', name: 'Cajado da Brasa',
     description: 'Um foco simples para canalizar magia.', category: 'equipamento', maxStack: 1, value: 80,
     equipment: { slot: 'weapon', vocations: ['sorcerer'] }, stats: { attackMin: 5, attackMax: 8, abilityMin: 6, abilityMax: 10 }, icon: '✦',
   },
   verdant_staff: {
-    id: 'verdant_staff', sprite: null, name: 'Cajado Verdejante',
+    id: 'verdant_staff', sprite: 'uploads/04_cajado_verdejante.png', name: 'Cajado Verdejante',
     description: 'Madeira viva que ainda guarda energia da floresta.', category: 'equipamento', maxStack: 1, value: 80,
     equipment: { slot: 'weapon', vocations: ['druid'] }, stats: { attackMin: 4, attackMax: 7, abilityMin: 5, abilityMax: 9 }, icon: '✧',
   },
   iron_wraps: {
-    id: 'iron_wraps', sprite: null, name: 'Bandagens Reforçadas',
+    id: 'iron_wraps', sprite: 'uploads/07_bandagens_reforcadas.png', name: 'Bandagens Reforçadas',
     description: 'Faixas pesadas para proteger os punhos.', category: 'equipamento', maxStack: 1, value: 70,
     equipment: { slot: 'weapon', vocations: ['monk'] }, stats: { attackMin: 3, attackMax: 5, attackSpeed: 0.015 }, icon: '✊',
   },
   iron_armor: {
-    id: 'iron_armor', sprite: null, name: 'Armadura de Ferro',
+    id: 'iron_armor', sprite: 'uploads/06_armadura_de_ferro.png', name: 'Armadura de Ferro',
     description: 'Proteção básica de placas.', category: 'equipamento', maxStack: 1, value: 90,
     equipment: { slot: 'armor', vocations: ['knight'] }, stats: { maxHp: 18, armorPercent: 0.02 }, icon: '▣',
   },
   leather_armor: {
-    id: 'leather_armor', sprite: null, name: 'Armadura de Couro',
+    id: 'leather_armor', sprite: 'uploads/08_armadura_de_couro.png', name: 'Armadura de Couro',
     description: 'Leve e flexível, ideal para combate à distância.', category: 'equipamento', maxStack: 1, value: 75,
     equipment: { slot: 'armor', vocations: ['paladin'] }, stats: { maxHp: 12, armorPercent: 0.015 }, icon: '◇',
   },
   mystic_robe: {
-    id: 'mystic_robe', sprite: null, name: 'Manto Místico',
+    id: 'mystic_robe', sprite: 'uploads/09_manto_mistico.png', name: 'Manto Místico',
     description: 'Tecido encantado que protege sem limitar os movimentos.', category: 'equipamento', maxStack: 1, value: 75,
     equipment: { slot: 'armor', vocations: ['sorcerer', 'druid'] }, stats: { maxHp: 10, abilityMin: 3, abilityMax: 5 }, icon: '◈',
   },
   traveler_garb: {
-    id: 'traveler_garb', sprite: null, name: 'Traje do Viajante',
+    id: 'traveler_garb', sprite: 'uploads/10_traje_do_viajante.png', name: 'Traje do Viajante',
     description: 'Roupa leve para quem depende da mobilidade.', category: 'equipamento', maxStack: 1, value: 70,
     equipment: { slot: 'armor', vocations: ['monk'] }, stats: { maxHp: 14, speed: 0.15 }, icon: '◆',
   },
