@@ -214,6 +214,8 @@ class Game {
 
     const saved = this.loadWorldState();
     if (saved?.area === 'area2') {
+      this.returnEnemies = this.enemies;
+      this.enemies = [];
       const area2 = createArea2(this);
       this.area = area2;
       this.returnArea = this.startArea;
@@ -241,6 +243,8 @@ class Game {
     if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
 
     this.returnArea = this.area;
+    this.returnEnemies = this.enemies;
+    this.enemies = [];
     this.inputLocked = true;
     this.ui.hidePrompt();
     this.ui.fade(true);
@@ -264,13 +268,17 @@ class Game {
     if (this.state !== 'play' || this.inputLocked || !this.returnArea) return;
 
     const target = this.returnArea;
+    const currentArea = this.area;
     this.inputLocked = true;
     this.ui.hidePrompt();
     this.dialogue.close(false);
     this.ui.fade(true);
 
     this.schedule(0.75, () => {
+      currentArea?.dispose?.();
       this.area = target;
+      this.enemies = this.returnEnemies || this.enemies;
+      this.returnEnemies = null;
       const spawn = target.checkpoint || target.spawn;
       this.player.place(spawn.x, spawn.z, spawn.facing);
       this.rig.snap(this.player.pos);
@@ -418,6 +426,12 @@ class Game {
 
   returnToCharacterSelect() {
     this.saveWorldState();
+    if (this.area !== this.startArea) {
+      this.area?.dispose?.();
+      this.enemies = this.returnEnemies || [];
+      this.returnEnemies = null;
+      this.area = this.startArea;
+    }
     this.ui.hidePauseControls();
     this.ui.hidePause();
     this.ui.hideInventory();
