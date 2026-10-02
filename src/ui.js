@@ -18,7 +18,7 @@ export class UI {
       bossBar: $('boss-bar'), bossName: $('boss-name'), bossFill: $('boss-fill'),
       toasts: $('toasts'), banner: $('banner'), bannerTitle: $('banner-title'), bannerSub: $('banner-sub'),
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
-      skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'),
+      skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'), skUltimate: $('sk-ultimate'),
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
