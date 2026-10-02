@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { VOCATIONS } from './vocations.js';
-import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { VOCATIONS } from './vocations.js?v=20261002-3';
+import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js?v=20261002-3';
 
 const V = new THREE.Vector3();
 const F = new THREE.Vector3();
