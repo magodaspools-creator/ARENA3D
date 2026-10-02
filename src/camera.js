@@ -16,6 +16,31 @@ export class CameraRig {
     this.focusT = 0;
     this._v = new THREE.Vector3();
     this._r = new THREE.Vector3();
+    this.touchId = null;
+    this.touchX = 0;
+    this.touchY = 0;
+    const canvas = document.querySelector('#game canvas');
+    canvas?.addEventListener('touchstart', (e) => {
+      if (this.mode !== 'follow' || this.touchId !== null) return;
+      const t = [...e.changedTouches][0];
+      if (!t) return;
+      this.touchId = t.identifier;
+      this.touchX = t.clientX;
+      this.touchY = t.clientY;
+    }, { passive: true });
+    canvas?.addEventListener('touchmove', (e) => {
+      if (this.touchId === null) return;
+      const t = [...e.changedTouches].find(x => x.identifier === this.touchId);
+      if (!t) return;
+      this.dragDX += t.clientX - this.touchX;
+      this.touchX = t.clientX;
+      this.touchY = t.clientY;
+    }, { passive: true });
+    const endTouch = (e) => {
+      if ([...e.changedTouches].some(t => t.identifier === this.touchId)) this.touchId = null;
+    };
+    canvas?.addEventListener('touchend', endTouch, { passive: true });
+    canvas?.addEventListener('touchcancel', endTouch, { passive: true });
   }
   forward(out = new THREE.Vector3()) { return out.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
   right(out = new THREE.Vector3()) { return out.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw)); }
