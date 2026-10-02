@@ -47,6 +47,10 @@ export class MineBoss {
     const eyeMat = glow(0xff3448, 1.0);
 
     this.body = new THREE.Group();
+    // Lift the spider's visual body slightly above the mine floor. The gameplay
+    // collider stays on XZ, so this only corrects the visual grounding.
+    this.bodyBaseY = 0.24;
+    this.body.position.y = this.bodyBaseY;
     this.root.add(this.body);
 
     const abdomen = mesh(new THREE.SphereGeometry(1.0, 12, 8), abdomenMat, 0, 1.05, -0.72);
@@ -229,6 +233,8 @@ export class MineBoss {
     this.root.visible = false;
     this.root.rotation.set(0, Math.PI, 0);
     this.root.scale.setScalar(1.65);
+    this.body.position.y = this.bodyBaseY;
+    this.body.rotation.set(0, 0, 0);
   }
 
   awaken() {
@@ -359,7 +365,7 @@ export class MineBoss {
     if (!this.alive) {
       if (this.state === 'dead') {
         this.stateT += dt;
-        this.body.position.y = Math.min(0.35, this.stateT * 0.08);
+        this.body.position.y = this.bodyBaseY + Math.min(0.35, this.stateT * 0.08);
         this.body.rotation.z += dt * 0.45;
         this.root.scale.multiplyScalar(Math.max(0, 1 - dt * 0.035));
         if (this.stateT > 3.0) this.root.visible = false;
@@ -377,7 +383,7 @@ export class MineBoss {
         return;
 
       case 'waking':
-        this.body.position.y = Math.sin(this.stateT * 5) * 0.06;
+        this.body.position.y = this.bodyBaseY + Math.sin(this.stateT * 5) * 0.06;
         if (this.stateT > 1.0 && !this.wakeFxEmitted) {
           this.wakeFxEmitted = true;
           g.rig.shake(0.6);
@@ -838,11 +844,11 @@ export class MineBoss {
     }
 
     if (this.state === 'chase') {
-      this.body.position.y = Math.sin(time * 8) * 0.035;
+      this.body.position.y = this.bodyBaseY + Math.sin(time * 8) * 0.035;
     } else if (this.state === 'web' || this.state === 'poison') {
-      this.body.position.y = Math.sin(time * 12) * 0.055;
+      this.body.position.y = this.bodyBaseY + Math.sin(time * 12) * 0.055;
     } else {
-      this.body.position.y *= Math.max(0, 1 - dt * 5);
+      this.body.position.y = this.bodyBaseY + (this.body.position.y - this.bodyBaseY) * Math.max(0, 1 - dt * 5);
     }
 
     this.root.rotation.y = this.facing;
