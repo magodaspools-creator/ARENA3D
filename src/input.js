@@ -43,6 +43,17 @@ export class Input {
     const dash = document.getElementById('mobile-dash');
     const light = document.getElementById('mobile-light');
 
+    const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) {
+      document.body.classList.add('touch-device');
+      const updateOrientation = () => {
+        document.body.classList.toggle('portrait-mobile', innerHeight > innerWidth);
+      };
+      updateOrientation();
+      addEventListener('resize', updateOrientation, { passive: true });
+      addEventListener('orientationchange', updateOrientation, { passive: true });
+    }
+
     if (controls && joystick && stick) {
       let joyId = null;
       const max = 42;
@@ -56,7 +67,6 @@ export class Input {
         e.preventDefault();
         const t = e.changedTouches[0];
         joyId = t.identifier;
-        joystick.setPointerCapture?.(t.identifier);
       }, { passive: false });
       joystick.addEventListener('touchmove', (e) => {
         if (joyId === null) return;
@@ -97,6 +107,32 @@ export class Input {
       press(dash, 'dashPressed');
       press(light, 'lightPressed');
     }
+
+
+    // Camera swipe: only starts outside the mobile control overlay.
+    const isControlTouch = (target) => target instanceof Element && !!target.closest('#mobile-controls');
+    document.addEventListener('touchstart', (e) => {
+      const t = [...e.changedTouches].find(x => !isControlTouch(e.target));
+      if (!t || this.cameraTouch.id !== null) return;
+      this.cameraTouch.id = t.identifier;
+      this.cameraTouch.x = t.clientX;
+      this.cameraTouch.y = t.clientY;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (this.cameraTouch.id === null) return;
+      const t = [...e.changedTouches].find(x => x.identifier === this.cameraTouch.id);
+      if (!t) return;
+      this.dragDX += t.clientX - this.cameraTouch.x;
+      this.cameraTouch.x = t.clientX;
+      this.cameraTouch.y = t.clientY;
+    }, { passive: true });
+    const endCameraTouch = (e) => {
+      if ([...e.changedTouches].some(t => t.identifier === this.cameraTouch.id)) {
+        this.cameraTouch.id = null;
+      }
+    };
+    document.addEventListener('touchend', endCameraTouch, { passive: true });
+    document.addEventListener('touchcancel', endCameraTouch, { passive: true });
     canvas.addEventListener('wheel', (e) => { this.wheel += e.deltaY; e.preventDefault(); }, { passive: false });
   }
   down(code) { return this.keys.has(code); }
