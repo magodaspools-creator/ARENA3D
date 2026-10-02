@@ -153,16 +153,10 @@ export function createArea2(game) {
     collision.addBox(147.35,152.65,z - 0.9,z + 0.9,{ walkableTop:true, topY:h });
   }
 
-  // Keep the raised platform physically split at the stair mouth.
-  // The old single collider overlapped the last 0.7 step (z 28.6..30.4)
-  // with the 0.9 platform (starting at z 29.5). That made the collision
-  // solver see two different walkable heights at the same position and
-  // prevented a stable transition when descending.
-  //
-  // Side strips remain solid so the player cannot climb the altar from the
-  // sides. The walkable 0.9 surface begins exactly after the final step.
-  collision.addBox(142.5,147.35,29.5,40.5);
-  collision.addBox(152.65,157.5,29.5,40.5);
+  // Raised platform: only the visible altar slab is collidable. The
+  // staircase occupies the center of the slab mouth, so do not add separate
+  // invisible side strips here; those strips were creating two large hidden
+  // rectangular walls beside the altar.
   collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9 });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
