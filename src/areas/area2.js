@@ -63,7 +63,7 @@ export function createArea2(game) {
       collision.addCircle(
         x1 + (x2 - x1) * t,
         z1 + (z2 - z1) * t,
-        0.82,
+        1.05,
         { projectiles: false }
       );
     }
@@ -168,8 +168,10 @@ export function createArea2(game) {
   }
   collision.addBox(130.9,133.1,27,35);   // west entrance wall
   collision.addBox(166.9,169.1,27,35);   // east entrance wall
-  collision.addBox(136,146,45.9,49);      // north-left ruined wall
-  collision.addBox(154,164,45.9,49);       // north-right ruined wall
+  // Match the visible north ruin blocks exactly; the previous colliders were
+  // shifted 5 units inward and created invisible walls / gaps.
+  collision.addBox(131,141,45.9,48.1);
+  collision.addBox(159,169,45.9,48.1);
   // The altar slab is a walkable raised platform; its collider is deliberately
   // marked with topY so the player can stand on it instead of being blocked by it.
 
@@ -275,7 +277,10 @@ export function createArea2(game) {
 
 
   // ---------- buried-sun guardian ----------
-  const bossArena = { x: ORIGIN.x, z: 40, r: 9 };
+  // The combat circle is kept in front of the temple's north wall so the
+  // guardian never overlaps the ruin geometry or gets visually trapped.
+  const bossArena = { x: ORIGIN.x, z: 37, r: 7.5 };
+  let bossCooldown = 0;
   const templeLore = createRuneStone(game, 150, 25.5);
 
   game.interaction.add({
@@ -320,7 +325,7 @@ export function createArea2(game) {
   desertBoss.arena = bossArena;
 
   function startDesertBoss() {
-    if (desertBoss.state !== 'idle' || !exitPortal) return;
+    if (bossCooldown > 0 || desertBoss.state !== 'dormant' || !exitPortal) return;
     fightStart = game.time;
     desertBoss.awaken();
     game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
@@ -435,7 +440,7 @@ export function createArea2(game) {
       if (game.state !== 'play' || game.player?.dead) return;
 
       const p = game.player;
-      if (bossCooldown <= 0 && desertBoss.state === 'dormant' && p.pos.z > 36 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
+      if (bossCooldown <= 0 && desertBoss.state === 'dormant' && p.pos.z > 32 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
         startDesertBoss();
         return;
       }
