@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js?v=20261002-3';
 
 // Regular enemies. Two archetypes share one state machine:
 //   hollow — undead melee brute, telegraphs an overhead chop
