@@ -18,7 +18,8 @@ import { createArea1 } from './areas/area1.js?v=20261002-3';
 const FOG = 0x0b1220;
 
 class Game {
-  constructor() {
+  constructor(rapier) {
+    this.rapier = rapier;
     const container = document.getElementById('game');
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -54,7 +55,7 @@ class Game {
     this.input = new Input(renderer.domElement);
     this.ui = new UI(this);
     this.rig = new CameraRig(this.camera);
-    this.collision = new Collision();
+    this.collision = new Collision(this.rapier);
     this.fx = new Effects(this);
     this.combat = new Combat(this);
     this.interaction = new Interaction(this);
@@ -254,9 +255,9 @@ async function boot() {
 
   try {
     setBootStage('Carregando motor físico…');
-    await initCollision();
+    const rapier = await initCollision();
     setBootStage('Montando a Arena…');
-    window.game = new Game();
+    window.game = new Game(rapier);
   } catch (error) {
     console.error('Arena startup failed:', error);
     const message = error?.stack || error?.message || String(error);
