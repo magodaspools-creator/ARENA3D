@@ -37,7 +37,7 @@ export const VOCATIONS = {
     desc: 'Rápido e ágil. Socos em sequência e uma investida que atravessa os inimigos.',
     look: { skin: 0xd39c70, body: 0xd9822b, legs: 0x5a3a22, accent: 0xffd08a, head: 'band', weapon: 'fists', bareArms: true, glow: 0xffb45a },
     attack: { kind: 'melee', name: 'Soco', range: 2.3, arc: 1.9, damage: [14, 19], cooldown: 0.3, style: 'punch', color: 0xffc27a },
-    ability: { kind: 'dash', name: 'Investida', distance: 8, damage: [42, 55], cooldown: 5, color: 0xffb45a },
+    ability: { kind: 'palmStrike', name: 'Palma de Impacto', radius: 3.4, arc: 2.2, damage: [42, 55], cooldown: 5, color: 0xffb45a },
     ultimate: { kind: 'thousandHands', name: 'Mil Mãos', radius: 4.8, damage: [150, 190], color: 0xffc878 },
   },
 };
