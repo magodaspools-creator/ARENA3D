@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Input } from './input.js?v=20261002-3';
 import { CameraRig } from './camera.js?v=20261002-3';
-import { Collision, initCollision } from './collision.js?v=20261002-5';
+import { Collision, initCollision } from './collision.js?v=20261002-7';
 import { Effects } from './effects.js?v=20261002-3';
 import { Combat } from './combat.js?v=20261002-3';
 import { UI } from './ui.js?v=20261002-3';
