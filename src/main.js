@@ -246,17 +246,12 @@ class Game {
   }
 }
 
-async function boot() {
-  const loading = document.getElementById('loading');
-  const setBootStage = (message) => {
-    if (loading) loading.textContent = message;
-  };
-
+function boot() {
   try {
-    setBootStage('Montando a Arena…');
     window.game = new Game();
   } catch (error) {
     console.error('Arena startup failed:', error);
+    const loading = document.getElementById('loading');
     const message = error?.stack || error?.message || String(error);
     if (loading) {
       loading.textContent = 'Erro ao iniciar: ' + message;
