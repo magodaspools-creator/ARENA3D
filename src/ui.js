@@ -364,7 +364,7 @@ export class UI {
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
     this.el.skAbility.querySelector('.label').textContent = voc.ability.name;
     if (this.el.skUltimate) {
-      this.el.skUltimate.classList.toggle('hidden', !['sorcerer', 'knight'].includes(voc.id));
+      this.el.skUltimate.classList.toggle('hidden', !['sorcerer', 'knight', 'druid'].includes(voc.id));
       this.el.skUltimate.querySelector('.label').textContent = voc.ultimate?.name || 'Ultimate';
     }
     this.setProgress(character);
