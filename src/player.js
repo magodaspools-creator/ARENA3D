@@ -274,7 +274,7 @@ export class Player {
   }
 
   gainUltimate(amount) {
-    if (!['sorcerer', 'knight', 'druid', 'paladin'].includes(this.voc.id) || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid', 'paladin', 'monk'].includes(this.voc.id) || this.dead) return;
     this.ultimateCharge = Math.min(100, this.ultimateCharge + Math.max(0, Number(amount) || 0));
   }
 
@@ -312,6 +312,92 @@ export class Player {
           g.rig.shake(0.28 + i * 0.1);
         });
       }
+      return;
+    }
+
+    if (this.voc.id === 'monk') {
+      const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
+      const center = target.clone().setY(0);
+      const offset = center.clone().sub(this.pos);
+      if (offset.length() > 9) center.copy(this.pos).addScaledVector(offset.normalize(), 9);
+
+      this.ultimateCharge = 0;
+      this.face(center.clone().sub(this.pos), 0.7);
+      this.anim.attack('punch', 0.8);
+      this.slowT = 1.0;
+      g.ui.toast('MIL MÃOS!');
+
+      g.fx.telegraphCircle(center, 2.1, 0.55, u.color);
+      g.fx.ring(center, u.color, 2.1, 0.45);
+
+      const hits = 8;
+      for (let i = 0; i < hits; i++) {
+        g.schedule(0.28 + i * 0.14, () => {
+          if (this.dead) return;
+
+          const angle = (i % 2 === 0 ? -1 : 1) * (0.16 + (i % 4) * 0.11);
+          const dir = center.clone().sub(this.pos).setY(0);
+          if (dir.lengthSq() < 0.01) dir.set(Math.sin(this.facing), 0, Math.cos(this.facing));
+          dir.normalize();
+
+          const side = new THREE.Vector3(-dir.z, 0, dir.x);
+          const punchPoint = center.clone()
+            .addScaledVector(side, Math.sin(i * 2.4) * 0.75)
+            .addScaledVector(dir, Math.cos(i * 1.7) * 0.35);
+
+          g.fx.ring(punchPoint, i % 2 ? 0xffffff : u.color, 0.85, 0.16);
+          g.fx.emit(V.copy(punchPoint).setY(0.7), {
+            count: 10,
+            color: i % 2 ? 0xffffff : u.color,
+            speed: 5.5,
+            up: 1.8,
+            life: 0.28,
+            size: 0.22,
+            gravity: 2.5,
+            drag: 4,
+          });
+
+          const fistDir = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+          g.fx.slash(this.pos, fistDir, 2.5, 0.65, u.color);
+          g.combat.aoe(
+            punchPoint,
+            1.45,
+            s ? [s.abilityMin * 0.34, s.abilityMax * 0.34] : [52, 66],
+            u.color,
+            undefined,
+            this.damageContext('physical', s)
+          );
+          g.rig.shake(0.08);
+        });
+      }
+
+      g.schedule(1.55, () => {
+        if (this.dead) return;
+
+        g.fx.ring(center, 0xffffff, 2.4, 0.28);
+        g.fx.ring(center, u.color, u.radius, 0.5);
+        g.fx.emit(V.copy(center).setY(0.35), {
+          count: 48,
+          color: u.color,
+          speed: 8,
+          up: 2.8,
+          life: 0.7,
+          size: 0.36,
+          gravity: 4,
+          drag: 3,
+        });
+
+        g.combat.aoe(
+          center,
+          u.radius,
+          s ? [s.abilityMin * 1.45, s.abilityMax * 1.45] : u.damage,
+          u.color,
+          undefined,
+          this.damageContext('physical', s)
+        );
+        g.rig.shake(0.6);
+        g.hitstop = 0.08;
+      });
       return;
     }
 
