@@ -84,7 +84,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 .skill .key { display: block; font-size: 10px; color: #e8c77a; font-weight: bold; }
 .skill .label { display: block; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .skill .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0,0,0,.65); }
-.skill.ready { border-color: rgba(232,199,122,.8); }
+.skill.ready { border-color: rgba(184,117,255,.95); box-shadow: 0 0 12px rgba(184,117,255,.25); }
+.ultimate-skill { min-width: 88px; }
+.ultimate-skill::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: var(--ult-progress, 0%); background: rgba(184,117,255,.95); box-shadow: 0 0 8px rgba(184,117,255,.7); }
 #objective { position: absolute; top: 16px; right: 18px; width: 330px; background: linear-gradient(90deg, rgba(8,10,16,0), rgba(8,10,16,.75) 25%); padding: 8px 12px 9px 40px; text-align: right; border-right: 2px solid #e8c77a; }
 #objective .otitle { font-family: Georgia, serif; font-size: 12px; letter-spacing: 3px; color: #e8c77a; text-transform: uppercase; }
 #obj-text { font-size: 15px; margin-top: 2px; text-shadow: 0 1px 3px #000; }
