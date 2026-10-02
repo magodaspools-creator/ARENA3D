@@ -2030,7 +2030,7 @@ const leaveMine = () => {
       '"Nas profundezas, a luz comum não alcança todos os caminhos."',
       '"Concentre sua energia arcana para iluminar o que está oculto."',
       'Pressione L para lançar a Luz Arcana.',
-      'A luz permanece por 10 segundos e então se desfaz.',
+      'A luz permanece por 20 segundos e então se desfaz.',
     ], mineLightRune.anchor),
   });
 
