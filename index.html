@@ -174,7 +174,7 @@
       // Important: a normal <script type="module" src="..."> does not reliably
       // expose every module-graph failure to our page-level handler. Dynamic
       // import lets us catch errors from main.js and its entire import graph.
-      import('./src/main.js?v=20261002-7').catch((error) => {
+      import('./src/main.js?v=20261002-8').catch((error) => {
         showBootError(
           'ERRO AO CARREGAR O JOGO',
           error?.stack || error?.message || String(error)
