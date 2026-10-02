@@ -284,7 +284,10 @@ export class MineBoss {
       applyFlash(this.mats, this.flash, WHITE);
     }
 
-    this.updateHazards(dt);
+    // Diagnostic isolation: hazards are unrelated to the leap itself. Skip
+    // their per-frame processing during pounce to rule out a hazard/update
+    // loop being triggered at the same time as the freeze.
+    if (this.state !== 'pounce') this.updateHazards(dt);
 
     if (!this.alive) {
       if (this.state === 'dead') {
