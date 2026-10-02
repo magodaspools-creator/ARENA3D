@@ -476,7 +476,7 @@ export class Player {
         g.combat.aoe(
           center,
           u.radius,
-          s ? [s.abilityMin * 1.0, s.abilityMax * 1.0] : u.damage,
+          s ? [s.abilityMin * 2.5, s.abilityMax * 2.5] : u.damage,
           u.color,
           undefined,
           this.damageContext('physical', s)
