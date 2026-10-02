@@ -221,6 +221,7 @@ export class Player {
 
     this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
     g.ui.setHP(this.hp, this.maxHp);
+    g.ui.setMana?.(this.mana, this.maxMana);
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
     g.ui.setCooldown('ability', this.abilityCd / (characterStats?.abilityCooldown ?? this.voc.ability.cooldown));
     g.ui.setCooldown('dash', this.dashCd / 1.1);
