@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Arena — Protótipo Vertical</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=20261002-4">
+  <link rel="stylesheet" href="style.css?v=20261002-6">
   <link rel="icon" href="data:,">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
@@ -128,6 +128,70 @@
       }
     });
   </script>
-  <script type="module" src="src/main.js?v=20261002-5"></script>
+  <script type="module">
+    // Mobile-safe boot logger: catches module/import failures and startup hangs
+    // directly on the game screen, without requiring DevTools.
+    (() => {
+      const box = document.getElementById('loading');
+      const startedAt = performance.now();
+
+      const showBootError = (title, detail = '') => {
+        if (!box) return;
+        box.textContent = '';
+        box.style.whiteSpace = 'pre-wrap';
+        box.style.overflow = 'auto';
+        box.style.maxWidth = '94vw';
+        box.style.maxHeight = '82vh';
+        box.style.padding = '18px';
+        box.style.textAlign = 'left';
+        box.style.fontFamily = 'monospace';
+        box.style.fontSize = '12px';
+        box.style.lineHeight = '1.45';
+        box.style.zIndex = '99999';
+        const pre = document.createElement('div');
+        pre.textContent = [
+          title,
+          '',
+          detail || 'Sem detalhes adicionais.',
+          '',
+          'Tempo desde o início: ' + Math.round(performance.now() - startedAt) + ' ms',
+          '',
+          'URL: ' + location.href
+        ].join('\\n');
+        box.appendChild(pre);
+      };
+
+      window.addEventListener('error', (event) => {
+        const msg = event.error?.stack || event.message || 'Erro JavaScript desconhecido';
+        showBootError('ERRO AO INICIAR A ARENA', msg);
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason?.stack || event.reason?.message || String(event.reason || 'Promise rejeitada');
+        showBootError('ERRO AO INICIAR A ARENA', reason);
+      });
+
+      // Important: a normal <script type="module" src="..."> does not reliably
+      // expose every module-graph failure to our page-level handler. Dynamic
+      // import lets us catch errors from main.js and its entire import graph.
+      import('./src/main.js?v=20261002-6').catch((error) => {
+        showBootError(
+          'ERRO AO CARREGAR O JOGO',
+          error?.stack || error?.message || String(error)
+        );
+      });
+
+      // If imports succeed but main.js hangs during initialization, make that
+      // visible instead of leaving the user on an endless "Carregando...".
+      setTimeout(() => {
+        if (document.getElementById('loading')) {
+          showBootError(
+            'A ARENA NÃO TERMINOU DE INICIAR',
+            'main.js não concluiu a inicialização dentro de 15 segundos.\\n\\nIsso indica travamento durante o boot ou carregamento de algum recurso.'
+          );
+        }
+      }, 15000);
+    })();
+  </script>
 </body>
 </html>
