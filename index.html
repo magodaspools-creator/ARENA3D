@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Arena — Protótipo Vertical</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=mobile-landscape-2">
   <link rel="icon" href="data:,">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
@@ -12,6 +12,13 @@
 </head>
 <body>
   <div id="game"></div>
+
+  <div id="mobile-rotate-hint" aria-hidden="true">
+    <div class="rotate-phone">▯</div>
+    <div class="rotate-hand">☝</div>
+    <div class="rotate-title">Vire o celular de lado</div>
+    <div class="rotate-sub">A Arena foi feita para jogar em paisagem.</div>
+  </div>
 
   <div id="mobile-controls" aria-hidden="true">
     <div id="mobile-joystick" class="mobile-joystick">
