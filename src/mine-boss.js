@@ -76,34 +76,83 @@ export class MineBoss {
       head.add(fang);
     }
 
-    // Eight articulated-looking legs. Each pair is a pivot group so the
-    // walking cycle can alternate without depending on the humanoid animator.
+    // Eight articulated legs: four mirrored pairs, with connected upper/lower
+    // segments. The old version rotated each cylinder around its own center,
+    // which made the joints disconnect and visually collapse to one side.
     this.legs = [];
-    for (let i = 0; i < 8; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const pair = Math.floor(i / 2);
-      const z = 0.56 - pair * 0.42;
-      const pivot = new THREE.Group();
-      pivot.position.set(side * (0.42 + pair * 0.035), 0.48, z);
-      this.body.add(pivot);
 
-      const upper = new THREE.Group();
-      pivot.add(upper);
-      upper.rotation.z = side * 0.18;
+    const makeBone = (from, to, rTop, rBottom) => {
+      const dir = to.clone().sub(from);
+      const len = dir.length();
+      const bone = new THREE.Mesh(
+        new THREE.CylinderGeometry(rBottom, rTop, len, 7),
+        legMat
+      );
+      bone.position.copy(from).add(to).multiplyScalar(0.5);
+      bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+      bone.castShadow = true;
+      bone.receiveShadow = true;
+      return bone;
+    };
 
-      const upperMesh = mesh(new THREE.CylinderGeometry(0.095, 0.13, 0.85, 7), legMat, 0, -0.38, side * 0.05);
-      upperMesh.rotation.z = side * 0.82;
-      upper.add(upperMesh);
+    for (let pair = 0; pair < 4; pair++) {
+      const z = 0.58 - pair * 0.40;
+      for (const side of [-1, 1]) {
+        const hip = new THREE.Vector3(side * (0.48 + pair * 0.025), 0.42, z);
+        const kneePoint = new THREE.Vector3(
+          side * (1.05 + pair * 0.10),
+          0.12,
+          z + (pair - 1.5) * 0.035
+        );
+        const footPoint = new THREE.Vector3(
+          side * (1.68 + pair * 0.13),
+          0.055,
+          z + (pair - 1.5) * 0.10
+        );
 
-      const knee = new THREE.Group();
-      knee.position.set(side * 0.52, -0.68, 0);
-      upper.add(knee);
+        const pivot = new THREE.Group();
+        pivot.position.copy(hip);
+        this.body.add(pivot);
 
-      const lowerMesh = mesh(new THREE.CylinderGeometry(0.06, 0.085, 0.95, 7), legMat, 0, -0.43, 0);
-      lowerMesh.rotation.z = -side * 0.72;
-      knee.add(lowerMesh);
+        const upper = new THREE.Group();
+        pivot.add(upper);
 
-      this.legs.push({ pivot, upper, knee, side, phase: i % 2 ? Math.PI : 0 });
+        const upperBone = makeBone(
+          new THREE.Vector3(0, 0, 0),
+          kneePoint.clone().sub(hip),
+          0.13,
+          0.095
+        );
+        upper.add(upperBone);
+
+        const knee = new THREE.Group();
+        knee.position.copy(kneePoint.clone().sub(hip));
+        upper.add(knee);
+
+        const lowerBone = makeBone(
+          new THREE.Vector3(0, 0, 0),
+          footPoint.clone().sub(kneePoint),
+          0.085,
+          0.055
+        );
+        knee.add(lowerBone);
+
+        // A small pointed foot gives the silhouette a clearer spider shape.
+        const foot = new THREE.Mesh(
+          new THREE.ConeGeometry(0.055, 0.26, 6),
+          legMat
+        );
+        foot.position.copy(footPoint.clone().sub(kneePoint));
+        foot.rotation.x = Math.PI / 2;
+        knee.add(foot);
+
+        this.legs.push({
+          pivot,
+          knee,
+          side,
+          phase: pair % 2 === 0 ? 0 : Math.PI,
+        });
+      }
     }
 
     // Small venom glands on the rear make the projectile attacks readable.
@@ -779,10 +828,13 @@ export class MineBoss {
   animate(dt, time) {
     const moving = this.state === 'chase' || this.state === 'ambush';
     const speed = moving ? 7.5 : 3.5;
+
     for (const leg of this.legs) {
-      const swing = Math.sin(time * speed + leg.phase) * (moving ? 0.22 : 0.06);
-      leg.pivot.rotation.y = leg.side * 0.16 + swing;
-      leg.knee.rotation.y = -leg.side * 0.10 - swing * 0.6;
+      const swing = Math.sin(time * speed + leg.phase) * (moving ? 0.13 : 0.035);
+      // Swing each whole leg forward/back around its hip. The knee keeps a
+      // small mirrored bend so both sides remain symmetrical.
+      leg.pivot.rotation.y = swing;
+      leg.knee.rotation.y = -swing * 0.75;
     }
 
     if (this.state === 'chase') {
