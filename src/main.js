@@ -358,14 +358,15 @@ class Game {
   }
 
   equipItem(itemId) {
-    if (!this.character) return;
+    if (!this.character) return false;
     const result = this.character.equip(itemId);
     if (!result.ok) {
       if (result.reason === 'wrong_vocation') this.ui.toast('Esse equipamento não pertence à sua vocação.');
-      return;
+      return false;
     }
     this.ui.toast('Equipado: ' + (getItem(itemId)?.name || itemId));
     this.ui.setInventory(this.character);
+    return true;
     this.ui.setProgress(this.character);
     if (this.state === 'profile') this.ui.showProfile(this.character);
   }
