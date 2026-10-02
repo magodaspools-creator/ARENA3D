@@ -145,9 +145,13 @@ export class Collision {
       for (const o of this.obstacles) {
         if (!o.enabled) continue;
 
-        // A marked walkable top behaves like a small step/ramp: once the
-        // actor is at the correct height, its 2D footprint no longer blocks.
-        if (o.walkableTop && Math.abs(o.topY - ny) <= maxStep + 1e-4) continue;
+        // Walkable step colliders may overlap in XZ (the visible staircase
+        // boxes are intentionally deep). Once the actor is on or above a
+        // lower step, that lower box must never push the actor sideways while
+        // descending. A higher walkable surface is also non-blocking when it
+        // is reachable within this movement step; surfaceHeight() will snap
+        // the actor to its top instead.
+        if (o.walkableTop && o.topY <= ny + maxStep + 1e-4) continue;
 
         if (o.type === 'circle') {
           const ox = nx - o.x, oz = nz - o.z, min = o.r + r, d2 = ox * ox + oz * oz;
