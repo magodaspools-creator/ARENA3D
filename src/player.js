@@ -326,99 +326,161 @@ export class Player {
       this.anim.attack('shoot', 0.9);
       this.slowT = 0.7;
       g.ui.toast('CHUVA DIVINA!');
-      g.fx.telegraphCircle(center, u.radius, 0.9, u.color);
-      g.fx.ring(center, u.color, u.radius, 0.9);
 
-      const arrows = 18;
-      const duration = 1.8;
-      for (let i = 0; i < arrows; i++) {
-        const delay = 0.28 + (i / (arrows - 1)) * 1.15;
+      // Visual-only rebuild: one sacred seal, a vertical divine beam,
+      // ordered light pillars around the impact zone, then a final burst.
+      const sealMat = new THREE.MeshBasicMaterial({
+        color: u.color,
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const seal = new THREE.Group();
+
+      const outer = new THREE.Mesh(
+        new THREE.RingGeometry(u.radius * 0.72, u.radius * 0.78, 48),
+        sealMat
+      );
+      outer.rotation.x = -Math.PI / 2;
+      outer.position.y = 0.045;
+      seal.add(outer);
+
+      const inner = new THREE.Mesh(
+        new THREE.RingGeometry(u.radius * 0.32, u.radius * 0.37, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.75,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      inner.rotation.x = -Math.PI / 2;
+      inner.position.y = 0.05;
+      seal.add(inner);
+
+      for (let i = 0; i < 4; i++) {
+        const line = new THREE.Mesh(
+          new THREE.BoxGeometry(u.radius * 1.35, 0.035, 0.055),
+          sealMat
+        );
+        line.position.y = 0.06;
+        line.rotation.y = i * Math.PI / 4;
+        seal.add(line);
+      }
+
+      seal.position.copy(center);
+      g.scene.add(seal);
+
+      g.fx.telegraphCircle(center, u.radius, 0.75, u.color);
+      g.fx.ring(center, u.color, u.radius * 0.78, 0.75);
+
+      // Divine light descends vertically into the center.
+      g.schedule(0.58, () => {
+        if (this.dead) return;
+
+        const beam = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.7, 1.45, 9, 20, 1, true),
+          new THREE.MeshBasicMaterial({
+            color: u.color,
+            transparent: true,
+            opacity: 0.34,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+          })
+        );
+        beam.position.set(center.x, 4.5, center.z);
+        g.scene.add(beam);
+
+        const core = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.55, 8.5, 12, 1, true),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.72,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+          })
+        );
+        core.position.set(center.x, 4.5, center.z);
+        g.scene.add(core);
+
+        g.fx.ring(center, 0xffffff, 1.7, 0.3);
+        g.fx.emit(V.copy(center).setY(0.55), {
+          count: 24,
+          color: u.color,
+          speed: 5.5,
+          up: 3,
+          life: 0.65,
+          size: 0.3,
+          gravity: 3,
+          drag: 3,
+        });
+        g.rig.shake(0.35);
+
+        g.schedule(0.42, () => {
+          g.scene.remove(beam);
+          g.scene.remove(core);
+          beam.geometry.dispose();
+          beam.material.dispose();
+          core.geometry.dispose();
+          core.material.dispose();
+        });
+      });
+
+      // Small radial pillars make the area read as a single sacred strike,
+      // without spawning a cloud of individual projectiles.
+      const pillars = 8;
+      for (let i = 0; i < pillars; i++) {
+        const delay = 0.82 + i * 0.08;
         g.schedule(delay, () => {
           if (this.dead) return;
 
-          const a = i * 2.399963;
-          const r = 0.8 + ((i * 1.73) % 5.7);
+          const a = (i / pillars) * Math.PI * 2 + Math.PI / 8;
+          const r = u.radius * (0.42 + (i % 2) * 0.18);
           const hit = center.clone().add(new THREE.Vector3(Math.sin(a) * r, 0, Math.cos(a) * r));
-          const arrowDir = new THREE.Vector3(Math.sin(a + Math.PI), 0, Math.cos(a + Math.PI));
 
-          // Sacred arrow descending from above.
-          const shaft = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.045, 0.045, 2.4, 6),
-            new THREE.MeshBasicMaterial({
-              color: u.color,
-              transparent: true,
-              opacity: 0.95,
-              depthWrite: false,
-            })
-          );
-          shaft.position.set(hit.x, 4.0, hit.z);
-          shaft.rotation.x = Math.PI / 2;
-          shaft.rotation.z = -Math.atan2(arrowDir.z, arrowDir.x);
-          g.scene.add(shaft);
-
-          const tip = new THREE.Mesh(
-            new THREE.ConeGeometry(0.11, 0.34, 6),
-            shaft.material
-          );
-          tip.position.set(hit.x, 2.72, hit.z);
-          tip.rotation.x = Math.PI;
-          shaft.add(tip);
-
-          g.fx.telegraphCircle(hit, 0.72, 0.22, u.color);
-
-          g.schedule(0.18, () => {
-            if (this.dead) return;
-            g.scene.remove(shaft);
-            shaft.traverse((o) => {
-              if (o.geometry) o.geometry.dispose();
-              if (o.material) o.material.dispose();
-            });
-
-            g.fx.ring(hit, u.color, 1.0, 0.24);
-            g.fx.emit(V.copy(hit).setY(0.45), {
-              count: 9,
-              color: u.color,
-              speed: 4.5,
-              up: 2.5,
-              life: 0.45,
-              size: 0.24,
-              gravity: 4,
-            });
-            g.combat.aoe(
-              hit,
-              1.15,
-              s ? [s.abilityMin * 0.72, s.abilityMax * 0.72] : u.damage,
-              u.color,
-              undefined,
-              this.damageContext('physical', s)
-            );
+          g.fx.ring(hit, u.color, 0.9, 0.2);
+          g.fx.emit(V.copy(hit).setY(0.35), {
+            count: 8,
+            color: 0xffffff,
+            speed: 3.5,
+            up: 2.4,
+            life: 0.42,
+            size: 0.22,
+            gravity: 3,
           });
         });
       }
 
-      // A final sacred burst makes the whole area feel like one ultimate,
-      // rather than a collection of independent arrows.
-      g.schedule(1.85, () => {
+      // Final burst reuses the existing combat/damage behaviour exactly;
+      // only the presentation is being replaced here.
+      g.schedule(1.55, () => {
         if (this.dead) return;
-        g.fx.ring(center, u.color, u.radius, 0.5);
-        g.fx.emit(V.copy(center).setY(0.7), {
-          count: 32,
+
+        g.fx.ring(center, 0xffffff, u.radius * 0.95, 0.45);
+        g.fx.ring(center, u.color, u.radius, 0.55);
+        g.fx.emit(V.copy(center).setY(0.8), {
+          count: 42,
           color: u.color,
           speed: 7,
-          up: 3.2,
-          life: 0.7,
+          up: 3.5,
+          life: 0.75,
           size: 0.34,
           gravity: 4,
         });
-        g.combat.aoe(
-          center,
-          u.radius,
-          s ? [s.abilityMin * 1.0, s.abilityMax * 1.0] : u.damage,
-          u.color,
-          undefined,
-          this.damageContext('physical', s)
-        );
-        g.rig.shake(0.45);
+        g.rig.shake(0.5);
+      });
+
+      g.schedule(2.0, () => {
+        g.scene.remove(seal);
+        seal.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) o.material.dispose();
+        });
       });
       return;
     }
