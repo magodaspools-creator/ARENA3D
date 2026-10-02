@@ -231,7 +231,7 @@ export class Player {
   castLightSpell() {
     this.lightSpellT = 20;
     this.lightSpell.intensity = 30;
-    this.game.ui.toast('Luz Arcana lançada por 10 segundos.');
+    this.game.ui.toast('Luz Arcana lançada por 20 segundos.');
     this.game.fx.ring(this.pos, 0x9ec8ff, 1.4, 0.35, 0.45);
   }
 
