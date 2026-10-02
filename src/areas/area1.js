@@ -1980,6 +1980,7 @@ const leaveMine = () => {
         npcName: 'Doran, o Mercador',
         stock: [
           { itemId: 'red_potion', price: 20 },
+          { itemId: 'mana_potion', price: 22 },
           { itemId: 'iron_scrap', price: 12 },
           { itemId: 'wisp_essence', price: 25 },
           { itemId: 'moon_herb', price: 40 },
