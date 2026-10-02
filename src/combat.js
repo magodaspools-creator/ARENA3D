@@ -61,6 +61,7 @@ export class Combat {
     this.game.ui.damageNumber(V.copy(e.pos).setY(e.height), amount, damageClass);
     this.game.fx.damageImpact(impactPos, { color, type: context.damageType || 'physical', crit });
     this.game.stats.damage += amount;
+    this.game.player?.gainUltimate?.(Math.min(4, Math.max(0.5, amount * 0.045)));
     return amount;
   }
 
