@@ -763,8 +763,13 @@ class Game {
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
       if (p && !p.dead) {
-        const dx = p.pos.x - a.pos.x, dz = p.pos.z - a.pos.z, d = Math.hypot(dx, dz), min = a.radius + p.radius;
-        if (d < min && d > 1e-4) this.collision.move(p.pos, (dx / d) * (min - d), (dz / d) * (min - d), p.radius);
+        // A boss that is currently airborne must own its leap space. Do not
+        // run player/boss body separation during the pounce; the attack itself
+        // handles the hit radius on landing.
+        if (a.state !== 'pounce') {
+          const dx = p.pos.x - a.pos.x, dz = p.pos.z - a.pos.z, d = Math.hypot(dx, dz), min = a.radius + p.radius;
+          if (d < min && d > 1e-4) this.collision.move(p.pos, (dx / d) * (min - d), (dz / d) * (min - d), p.radius);
+        }
       }
       for (let j = i + 1; j < list.length; j++) {
         const b = list[j];
