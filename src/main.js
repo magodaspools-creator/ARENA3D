@@ -401,6 +401,21 @@ class Game {
       this.ui.setActionBar(this.character);
       return true;
     }
+
+    if (item.effect.type === 'restoreMana') {
+      if (this.player.mana >= this.player.maxMana) {
+        this.ui.toast('Sua mana já está cheia.');
+        return false;
+      }
+      const restored = this.player.restoreMana(item.effect.value);
+      if (restored <= 0) return false;
+      if (!this.character.removeItem(itemId, 1)) return false;
+      this.ui.setInventory(this.character);
+      this.ui.setActionBar(this.character);
+      this.ui.toast('+' + Math.round(restored) + ' mana');
+      return true;
+    }
+
     return false;
   }
 
