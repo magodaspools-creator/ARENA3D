@@ -410,7 +410,7 @@ export class UI {
       const entries = isSell ? sellStock : stock;
       this.el.shopTitle.textContent = 'Comércio — ' + npcName;
       this.el.shopSubtitle.textContent = isSell
-        ? 'Venda itens encontrados ou equipamentos que não deseja mais'
+        ? 'Venda apenas os itens que estão na mochila'
         : 'Escolha um item para comprar';
 
       this.el.shopItem.innerHTML = entries.length
