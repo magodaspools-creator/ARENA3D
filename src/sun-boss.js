@@ -60,7 +60,7 @@ export class SunGodBoss {
     this.pos.y = 1.2;
     this.hp = this.maxHp;
     this.alive = true;
-    this.state = 'idle';
+    this.state = 'dormant';
     this.stateT = 0;
     this.phase = 1;
     this.pendingAttack = null;
@@ -70,6 +70,7 @@ export class SunGodBoss {
     this.nextDecision = 0.8;
     this.attackCooldowns = { dawn: 1.8, orb: 3.2, rain: 5.0 };
     this.phase1BoundaryShown = false;
+    this.wakeFx = false;
     this.root.rotation.y = 0;
     this.root.visible = true;
     this.anim.revive();
@@ -81,7 +82,7 @@ export class SunGodBoss {
   }
 
   get targetable() {
-    return this.alive && this.state !== 'waking' && this.state !== 'dead';
+    return this.alive && this.state !== 'dormant' && this.state !== 'waking' && this.state !== 'dead';
   }
 
   setEyes(color) {
@@ -95,7 +96,7 @@ export class SunGodBoss {
   }
 
   awaken() {
-    if (this.state !== 'idle') return;
+    if (this.state !== 'dormant') return;
     this.state = 'waking';
     this.stateT = 0;
     this.pos.y = 0.2;
