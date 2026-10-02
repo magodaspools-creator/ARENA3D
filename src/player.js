@@ -53,8 +53,11 @@ export class Player {
     game.scene.add(this.root);
 
     this.radius = 0.45;
-    this.maxHp = this.game.character?.stats.maxHp ?? this.voc.hp;
+    const initialStats = this.game.character?.stats;
+    this.maxHp = initialStats?.maxHp ?? this.voc.hp;
     this.hp = this.maxHp;
+    this.maxMana = initialStats?.maxMana ?? 100;
+    this.mana = this.maxMana;
     this.vel = new THREE.Vector3();
     this.facing = 0;
     this.attackCd = 0; this.abilityCd = 0; this.dashCd = 0;
@@ -69,6 +72,13 @@ export class Player {
   }
 
   get invulnerable() { return this.dashT > 0; }
+
+  restoreMana(amount) {
+    const restored = Math.max(0, Math.min(Number(amount) || 0, this.maxMana - this.mana));
+    if (restored <= 0) return 0;
+    this.mana += restored;
+    return restored;
+  }
 
   dispose() {
     this.game.scene.remove(this.root);
@@ -116,6 +126,12 @@ export class Player {
       this.maxHp = characterStats.maxHp;
       if (hpDelta > 0 && !this.dead) this.hp += hpDelta;
       this.hp = Math.min(this.hp, this.maxHp);
+    }
+    if (characterStats && characterStats.maxMana !== this.maxMana) {
+      const manaDelta = characterStats.maxMana - this.maxMana;
+      this.maxMana = characterStats.maxMana;
+      if (manaDelta > 0 && !this.dead) this.mana += manaDelta;
+      this.mana = Math.min(this.mana, this.maxMana);
     }
     this.attackCd -= dt; this.abilityCd -= dt; this.dashCd -= dt; this.aimFaceT -= dt; this.slowT -= dt;
     if (this.poisonT > 0) {
