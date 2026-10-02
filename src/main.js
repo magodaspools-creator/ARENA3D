@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Input } from './input.js?v=20261002-3';
 import { CameraRig } from './camera.js?v=20261002-3';
-import { Collision, initCollision } from './collision.js?v=20261002-7';
+import { Collision } from './collision.js?v=20261002-8';
 import { Effects } from './effects.js?v=20261002-3';
 import { Combat } from './combat.js?v=20261002-3';
 import { UI } from './ui.js?v=20261002-3';
@@ -18,8 +18,7 @@ import { createArea1 } from './areas/area1.js?v=20261002-3';
 const FOG = 0x0b1220;
 
 class Game {
-  constructor(rapier) {
-    this.rapier = rapier;
+  constructor() {
     const container = document.getElementById('game');
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -55,7 +54,7 @@ class Game {
     this.input = new Input(renderer.domElement);
     this.ui = new UI(this);
     this.rig = new CameraRig(this.camera);
-    this.collision = new Collision(this.rapier);
+    this.collision = new Collision();
     this.fx = new Effects(this);
     this.combat = new Combat(this);
     this.interaction = new Interaction(this);
@@ -254,10 +253,8 @@ async function boot() {
   };
 
   try {
-    setBootStage('Carregando motor físico…');
-    const rapier = await initCollision();
     setBootStage('Montando a Arena…');
-    window.game = new Game(rapier);
+    window.game = new Game();
   } catch (error) {
     console.error('Arena startup failed:', error);
     const message = error?.stack || error?.message || String(error);
