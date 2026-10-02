@@ -121,6 +121,9 @@ export class MineBoss {
     this.combatStallT = 0;
     this.ambushTarget = null;
     this.pounceTarget = null;
+    this.pounceStart = null;
+    this.pounceDistance = 0;
+    this.pounceHit = false;
     this.orbitDir = 1;
     this.orbitT = 0;
     this.tele = [];
@@ -507,32 +510,58 @@ export class MineBoss {
     if (this.stateT < 0.42) {
       if (!this.pounceTarget) {
         this.pounceTarget = g.player.pos.clone();
+        this.pounceStart = this.pos.clone();
+        this.pounceDistance = Math.min(
+          this.pounceStart.distanceTo(this.pounceTarget),
+          5.8
+        );
         this.tele.push(g.fx.telegraphCircle(this.pounceTarget, 2.15, 0.42, 0xffa43b));
         this.facing = Math.atan2(
           this.pounceTarget.x - this.pos.x,
           this.pounceTarget.z - this.pos.z
         );
       }
-      this.body.position.y = 0.22 + Math.sin(this.stateT * 18) * 0.06;
+
+      // Crouch before jumping. The actual leap is animated over several
+      // frames so it never snaps several meters in one update.
+      this.body.position.y = 0.18 + Math.sin(this.stateT * 7) * 0.04;
       return;
     }
 
     if (!this.struck) {
       this.struck = true;
-      const dx = this.pounceTarget.x - this.pos.x;
-      const dz = this.pounceTarget.z - this.pos.z;
-      const d = Math.hypot(dx, dz);
+      this.pounceStart = this.pounceStart || this.pos.clone();
+      this.pounceTarget = this.pounceTarget || g.player.pos.clone();
+    }
 
-      if (d > 0.35) {
-        const step = Math.min(d, 5.8);
-        g.collision.move(
-          this.pos,
-          (dx / Math.max(d, 0.001)) * step,
-          (dz / Math.max(d, 0.001)) * step,
-          this.radius
-        );
-      }
+    // Smoothly interpolate the leap instead of teleporting with one large
+    // collision.move(). Collision is checked along the path in small steps.
+    const leapT = Math.min(1, (this.stateT - 0.42) / 0.32);
+    const eased = leapT < 0.5
+      ? 2 * leapT * leapT
+      : 1 - Math.pow(-2 * leapT + 2, 2) / 2;
+    const targetX = THREE.MathUtils.lerp(this.pounceStart.x, this.pounceTarget.x, eased);
+    const targetZ = THREE.MathUtils.lerp(this.pounceStart.z, this.pounceTarget.z, eased);
+    const moveX = targetX - this.pos.x;
+    const moveZ = targetZ - this.pos.z;
 
+    if (Math.abs(moveX) + Math.abs(moveZ) > 0.001) {
+      const maxStep = 0.42;
+      const stepLen = Math.hypot(moveX, moveZ);
+      const scale = Math.min(1, maxStep / stepLen);
+      g.collision.move(
+        this.pos,
+        moveX * scale,
+        moveZ * scale,
+        this.radius
+      );
+    }
+
+    // Lift the spider during the leap and settle it back down.
+    this.body.position.y = Math.sin(Math.min(1, leapT) * Math.PI) * 0.85;
+
+    if (leapT >= 1 && !this.pounceHit) {
+      this.pounceHit = true;
       g.rig.shake(0.55);
       g.fx.ring(this.pos, 0xffa43b, 4.3, 0.42);
       g.fx.emit(V.copy(this.pos).setY(0.65), {
@@ -765,6 +794,9 @@ export class MineBoss {
     this._pendingWebPositions = [];
     this.ambushTarget = null;
     this.pounceTarget = null;
+    this.pounceStart = null;
+    this.pounceDistance = 0;
+    this.pounceHit = false;
     this.orbitT = 0;
   }
 }
