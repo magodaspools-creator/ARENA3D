@@ -501,15 +501,9 @@ class Game {
         byId.set(item.id, entry);
       }
 
-      for (const slotName of ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']) {
-        const itemId = this.character.equipment?.[slotName];
-        const item = itemId ? getItem(itemId) : null;
-        if (!item || item.category === 'quest' || item.sellable === false) continue;
-        const entry = byId.get(item.id) || { item, owned: 0, equipped: 0, price: sellPrice(item) };
-        entry.equipped += 1;
-        entry.owned += 1;
-        byId.set(item.id, entry);
-      }
+      // Equipamentos atualmente usados ficam protegidos contra venda.
+      // Apenas cópias que estão na mochila entram no estoque de venda.
+
 
       return [...byId.values()].sort((a, b) => a.item.name.localeCompare(b.item.name, 'pt-BR'));
     };
@@ -573,19 +567,11 @@ class Game {
 
           const unitValue = Math.max(1, Math.floor(price || sellPrice(item)));
           const inventoryOwned = this.character.getItemCount(itemId);
-          const equippedSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
-            .find((slot) => this.character.equipment?.[slot] === itemId);
-
           let sold = 0;
 
           if (inventoryOwned > 0) {
             const result = this.character.sellItem(itemId, inventoryOwned);
             if (result.ok) sold += result.quantity;
-          }
-
-          if (this.character.equipment && equippedSlot) {
-            const result = this.character.sellEquipped(equippedSlot);
-            if (result.ok) sold += 1;
           }
 
           if (!sold) {
@@ -611,8 +597,6 @@ class Game {
           const requested = Math.max(1, Math.floor(Number(quantity) || 1));
           const unitValue = Math.max(1, Math.floor(price || sellPrice(item)));
           const inventoryOwned = this.character.getItemCount(itemId);
-          const equippedSlot = ['head', 'armor', 'legs', 'boots', 'weapon', 'shield', 'amulet', 'ring']
-            .find((slot) => this.character.equipment?.[slot] === itemId);
 
           let remaining = requested;
           let sold = 0;
@@ -623,13 +607,6 @@ class Game {
             remaining -= inventoryResult.quantity || 0;
           }
 
-          if (remaining > 0 && remaining === 1 && equippedSlot) {
-            const equippedResult = this.character.sellEquipped(equippedSlot);
-            if (equippedResult.ok) {
-              sold += 1;
-              remaining = 0;
-            }
-          }
 
           if (!sold) {
             this.ui.showShopFeedback('Esse item não está mais disponível para venda.', true);
