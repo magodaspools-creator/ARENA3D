@@ -406,24 +406,33 @@ export class MineBoss {
     const g = this.game;
     if (this.stateT < 0.55) {
       if (!this.tele.length) {
+        const dx = g.player.pos.x - this.pos.x;
+        const dz = g.player.pos.z - this.pos.z;
+        const dist = Math.max(2.4, Math.hypot(dx, dz));
+        const angle = Math.atan2(dx, dz);
+        const dirX = Math.sin(angle);
+        const dirZ = Math.cos(angle);
         const count = this.phase === 3 ? 4 : 3;
+
+        // Instead of dropping random circular patches around the player, the
+        // spider now throws a readable web line from itself toward the player.
+        // Standing still is dangerous because one of the strands deliberately
+        // crosses the player's current position.
+        this._pendingWebPositions = [];
         for (let i = 0; i < count; i++) {
-          const a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
-          const r = 1.7 + Math.random() * 3.0;
-          const pos = new THREE.Vector3(
-            g.player.pos.x + Math.sin(a) * r,
-            0,
-            g.player.pos.z + Math.cos(a) * r
-          );
-          this.tele.push(g.fx.telegraphCircle(pos, 1.55, 0.55, 0xd7a6ff));
-          this._pendingWebPositions = this._pendingWebPositions || [];
-          this._pendingWebPositions.push(pos);
+          const t = (i + 1) / count;
+          const side = i === count - 1 ? 0 : (i % 2 ? -0.72 : 0.72);
+          const px = this.pos.x + dirX * dist * t + Math.cos(angle) * side;
+          const pz = this.pos.z + dirZ * dist * t - Math.sin(angle) * side;
+          const pos = new THREE.Vector3(px, 0, pz);
+          this.tele.push(g.fx.telegraphCircle(pos, i === count - 1 ? 1.15 : 0.9, 0.55, 0xd7a6ff));
+          this._pendingWebPositions.push({ pos, angle, length: i === count - 1 ? 2.4 : 2.7, width: 1.0 });
         }
       }
     } else if (!this.struck) {
       this.struck = true;
-      const positions = this._pendingWebPositions || [];
-      for (const pos of positions) this.createWeb(pos);
+      const pending = this._pendingWebPositions || [];
+      for (const web of pending) this.createWeb(web.pos, web.angle, web.length, web.width);
       this._pendingWebPositions = [];
       g.fx.emit(V.copy(this.pos).setY(0.7), {
         count: 30, color: 0xd7a6ff, speed: 4, up: 1.5, life: 0.7, size: 0.35,
@@ -436,36 +445,55 @@ export class MineBoss {
     }
   }
 
-  createWeb(pos) {
+  createWeb(pos, angle, length = 2.6, width = 1.0) {
     const group = new THREE.Group();
     group.position.set(pos.x, 0.075, pos.z);
+    group.rotation.y = angle;
 
     const m = new THREE.MeshBasicMaterial({
       color: 0xd7a6ff,
       transparent: true,
-      opacity: 0.48,
+      opacity: 0.44,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
 
-    group.add(new THREE.Mesh(
-      new THREE.CircleGeometry(1.5, 24).rotateX(-Math.PI / 2),
+    // A flattened, elongated web: two crossing strands and a few horizontal
+    // threads. It reads as a patch of real webbing rather than a magic circle.
+    const sheet = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, length).rotateX(-Math.PI / 2),
       m
-    ));
+    );
+    group.add(sheet);
 
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const line = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.035, 1.45).rotateX(-Math.PI / 2),
+    for (const offset of [-0.42, 0, 0.42]) {
+      const thread = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.028, length * 0.92).rotateX(-Math.PI / 2),
         m
       );
-      line.position.set(Math.sin(a) * 0.72, 0.002, Math.cos(a) * 0.72);
-      line.rotation.y = a;
-      group.add(line);
+      thread.position.x = offset;
+      group.add(thread);
+    }
+
+    for (const offset of [-0.35, 0.35]) {
+      const thread = new THREE.Mesh(
+        new THREE.PlaneGeometry(width * 0.92, 0.025).rotateX(-Math.PI / 2),
+        m
+      );
+      thread.position.z = offset * (length / 2.2);
+      group.add(thread);
     }
 
     this.game.scene.add(group);
-    this.webs.push({ group, pos: pos.clone(), life: this.phase === 3 ? 9 : 7, damageT: 0 });
+    this.webs.push({
+      group,
+      pos: pos.clone(),
+      angle,
+      length,
+      width,
+      life: this.phase === 3 ? 9 : 7,
+      damageT: 0
+    });
   }
 
   attackAmbush(dt) {
@@ -656,38 +684,56 @@ export class MineBoss {
     const g = this.game;
 
     if (this.stateT < 0.65) {
+      const targetAngle = Math.atan2(
+        g.player.pos.x - this.pos.x,
+        g.player.pos.z - this.pos.z
+      );
       this.facing += Math.atan2(
-        Math.sin(Math.atan2(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) - this.facing),
-        Math.cos(Math.atan2(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) - this.facing)
-      ) * dt * 7;
+        Math.sin(targetAngle - this.facing),
+        Math.cos(targetAngle - this.facing)
+      ) * dt * 9;
 
+      // Venom is a close-range spider attack now: small droplets expelled
+      // from the fangs in a short cone, not long green energy bolts.
       if (!this.struck) {
         this.struck = true;
-        const count = this.phase === 3 ? 5 : 3;
+        const count = this.phase === 3 ? 3 : 2;
+        const origin = new THREE.Vector3(
+          this.pos.x + Math.sin(this.facing) * 1.0,
+          0.85,
+          this.pos.z + Math.cos(this.facing) * 1.0
+        );
+
         for (let i = 0; i < count; i++) {
-          const target = g.player.pos.clone();
-          const spread = (i - (count - 1) / 2) * 0.18;
+          const spread = (i - (count - 1) / 2) * 0.28;
           const dir = new THREE.Vector3(
-            target.x - this.pos.x,
+            Math.sin(this.facing + spread),
             0,
-            target.z - this.pos.z
-          ).normalize();
-          const side = new THREE.Vector3(dir.z, 0, -dir.x);
-          dir.addScaledVector(side, spread).normalize();
+            Math.cos(this.facing + spread)
+          );
 
           g.combat.spawn({
             team: 'enemy',
-            pos: V.copy(this.pos).setY(1.2).addScaledVector(dir, 1.0),
+            pos: origin,
             dir,
-            speed: this.phase === 3 ? 8.5 : 7,
-            range: 14,
-            damage: this.phase === 3 ? [18, 26] : [14, 22],
+            speed: 5.2,
+            range: this.phase === 3 ? 7 : 5.5,
+            damage: this.phase === 3 ? [16, 23] : [11, 17],
             damageType: 'poison',
-            visual: 'bigOrb',
-            color: 0x7cff5b,
-            radius: 0.32,
+            visual: 'orb',
+            color: 0x79a84b,
+            radius: 0.20,
           });
         }
+
+        g.fx.emit(V.copy(origin), {
+          count: this.phase === 3 ? 14 : 9,
+          color: 0x79a84b,
+          speed: 1.8,
+          up: 0.6,
+          life: 0.35,
+          size: 0.18,
+        });
       }
     }
 
@@ -707,10 +753,21 @@ export class MineBoss {
       web.life -= dt;
       web.damageT -= dt;
 
-      const d = Math.hypot(p.pos.x - web.pos.x, p.pos.z - web.pos.z);
-      if (d < 1.5 + p.radius && web.damageT <= 0) {
+      // Test the player against the rotated rectangular web instead of a
+      // circular radius. This matches the new elongated visual and prevents
+      // the web from feeling like an arbitrary magic AoE.
+      const dx = p.pos.x - web.pos.x;
+      const dz = p.pos.z - web.pos.z;
+      const ca = Math.cos(web.angle);
+      const sa = Math.sin(web.angle);
+      const localX = dx * ca - dz * sa;
+      const localZ = dx * sa + dz * ca;
+      const inside = Math.abs(localX) <= web.width * 0.5 + p.radius &&
+        Math.abs(localZ) <= web.length * 0.5 + p.radius;
+
+      if (inside && web.damageT <= 0) {
         web.damageT = 0.8;
-        p.takeDamage(this.game.combat.roll([6, 10], 0).amount, web.pos);
+        p.takeDamage(this.game.combat.roll([7, 11], 0).amount, web.pos);
       }
 
       web.group.children.forEach((child) => {
