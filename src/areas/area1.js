@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
   createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign,
-} from '../world.js';
-import { NPC } from '../npc.js';
-import { Enemy } from '../enemy.js';
-import { Boss } from '../boss.js';
-import { Progression } from '../progression.js';
+} from '../world.js?v=20261002-3';
+import { NPC } from '../npc.js?v=20261002-3';
+import { Enemy } from '../enemy.js?v=20261002-3';
+import { Boss } from '../boss.js?v=20261002-3';
+import { Progression } from '../progression.js?v=20261002-3';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
