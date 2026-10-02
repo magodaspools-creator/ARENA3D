@@ -92,13 +92,17 @@ export class Collision {
       minX, maxX, minZ, maxZ,
       enabled: opts.enabled ?? true,
       projectiles: opts.projectiles ?? true,
+      // A step/altar can expose its real top height to Rapier. Normal boxes
+      // remain full-height walls.
+      height: Number.isFinite(opts.topY) ? Math.max(0.001, opts.topY) : (Number.isFinite(opts.height) ? Math.max(0.001, opts.height) : COLLISION_HEIGHT),
       collider: null,
     };
 
     const hx = Math.max(0.001, (maxX - minX) * 0.5);
     const hz = Math.max(0.001, (maxZ - minZ) * 0.5);
-    const desc = RAPIER.ColliderDesc.cuboid(hx, COLLISION_HEIGHT * 0.5, hz)
-      .setTranslation((minX + maxX) * 0.5, COLLISION_HEIGHT * 0.5, (minZ + maxZ) * 0.5)
+    const hh = o.height * 0.5;
+    const desc = RAPIER.ColliderDesc.cuboid(hx, hh, hz)
+      .setTranslation((minX + maxX) * 0.5, hh, (minZ + maxZ) * 0.5)
       .setCollisionGroups(STATIC_GROUPS)
       .setFriction(0);
     desc.setEnabled(o.enabled);
@@ -247,7 +251,7 @@ export class Collision {
     if (distance < 1e-8) return;
 
     const collider = this.getActorCollider(pos, radius);
-    collider.setTranslation({ x: pos.x, y: ACTOR_HALF_HEIGHT + radius, z: pos.z });
+    collider.setTranslation({ x: pos.x, y: pos.y + ACTOR_HALF_HEIGHT + radius, z: pos.z });
 
     this.controller.computeColliderMovement(
       collider,
@@ -259,9 +263,12 @@ export class Collision {
 
     const movement = this.controller.computedMovement();
     pos.x += movement.x;
+    pos.y += movement.y;
     pos.z += movement.z;
 
-    collider.setTranslation({ x: pos.x, y: ACTOR_HALF_HEIGHT + radius, z: pos.z });
+    // Keep the kinematic capsule at the resulting ground height. This is
+    // essential for descending steps: Rapier reports the downward snap in Y.
+    collider.setTranslation({ x: pos.x, y: pos.y + ACTOR_HALF_HEIGHT + radius, z: pos.z });
   }
 
   /**
