@@ -297,6 +297,12 @@ export class Player {
 
   useUltimate() {
     if (!['sorcerer', 'knight', 'druid', 'paladin', 'monk'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
+    const ultimateManaCost = this.voc.ultimate?.manaCost ?? 60;
+    if (this.mana < ultimateManaCost) {
+      this.game.ui.toast(`Mana insuficiente. (${Math.ceil(this.mana)}/${ultimateManaCost})`);
+      return;
+    }
+    this.mana -= ultimateManaCost;
 
     const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
 
@@ -745,6 +751,12 @@ export class Player {
 
   useAbility() {
     const g = this.game, ab = this.voc.ability, s = g.character?.stats;
+    const manaCost = ab.manaCost ?? 20;
+    if (this.mana < manaCost) {
+      g.ui.toast(`Mana insuficiente. (${Math.ceil(this.mana)}/${manaCost})`);
+      return;
+    }
+    this.mana -= manaCost;
     this.abilityCd = s?.abilityCooldown ?? ab.cooldown;
     const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
     const dir = this.aimDir(target);
