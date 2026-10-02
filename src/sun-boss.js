@@ -68,6 +68,8 @@ export class SunGodBoss {
     this.lastAttack = null;
     this.orbitAngle = 0;
     this.nextDecision = 0.8;
+    // Watchdog: guarantees the boss cannot remain in an inactive combat state.
+    this.combatStallT = 0;
     this.attackCooldowns = { dawn: 1.8, orb: 3.2, rain: 5.0 };
     this.phase1BoundaryShown = false;
     this.wakeFx = false;
@@ -147,6 +149,7 @@ export class SunGodBoss {
     this.stateT = 0;
     this.struck = false;
     this.lastAttack = state;
+    this.combatStallT = 0;
   }
 
   finishAttack() {
@@ -289,6 +292,18 @@ export class SunGodBoss {
   update(dt) {
     const g = this.game, p = g.player;
     this.stateT += dt;
+    if (this.state !== 'dormant' && this.state !== 'dead') this.combatStallT += dt;
+    if (this.combatStallT > 6) {
+      this.combatStallT = 0;
+      this.clearTelegraphs();
+      this.clearHazards();
+      this.state = 'idle';
+      this.stateT = 0;
+      this.nextDecision = 0;
+      this.attackCooldowns.dawn = 0;
+      this.attackCooldowns.orb = 0;
+      this.attackCooldowns.rain = 0;
+    }
     if (this.flash > 0) {
       this.flash = Math.max(0, this.flash - dt * 6);
       applyFlash(this.mats, this.flash, WHITE);
