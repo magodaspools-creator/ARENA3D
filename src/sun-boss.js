@@ -81,7 +81,7 @@ export class SunGodBoss {
   }
 
   get targetable() {
-    return this.alive && this.state !== 'idle' && this.state !== 'waking' && this.state !== 'dead';
+    return this.alive && this.state !== 'waking' && this.state !== 'dead';
   }
 
   setEyes(color) {
