@@ -473,6 +473,14 @@ export class Player {
           gravity: 4,
         });
         g.rig.shake(0.5);
+        g.combat.aoe(
+          center,
+          u.radius,
+          s ? [s.abilityMin * 1.0, s.abilityMax * 1.0] : u.damage,
+          u.color,
+          undefined,
+          this.damageContext('physical', s)
+        );
       });
 
       g.schedule(2.0, () => {
