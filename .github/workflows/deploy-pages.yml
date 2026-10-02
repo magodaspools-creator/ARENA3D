@@ -3,7 +3,7 @@ name: Deploy ARENA3D to GitHub Pages
 on:
   push:
     branches:
-      - feat/rpg-core-foundation
+      - main
   workflow_dispatch:
 
 permissions:
