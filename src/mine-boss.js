@@ -291,6 +291,22 @@ export class MineBoss {
     // loop being triggered at the same time as the freeze.
     this.updateHazards(dt);
 
+    if (this.webProjectile) {
+      this.webProjectile.t += dt;
+      const q = Math.min(1, this.webProjectile.t / this.webProjectile.duration);
+      this.webProjectile.mesh.position.lerpVectors(this.webProjectile.start, this.webProjectile.end, q);
+      this.webProjectile.mesh.rotation.y += dt * 7;
+      this.webProjectile.mesh.rotation.x += dt * 3;
+      if (q >= 1) {
+        this.game.scene.remove(this.webProjectile.mesh);
+        this.webProjectile.mesh.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) o.material.dispose();
+        });
+        this.webProjectile = null;
+      }
+    }
+
     if (!this.alive) {
       if (this.state === 'dead') {
         this.stateT += dt;
@@ -450,24 +466,55 @@ export class MineBoss {
     const g = this.game;
     const p = g.player;
 
-    // The old attack created several floor web patches. Replace it with a
-    // direct web shot that targets the player and briefly roots them.
     if (this.stateT < 0.32) {
       if (!this.webShot) {
         this.webShot = true;
-        const dx = p.pos.x - this.pos.x;
-        const dz = p.pos.z - this.pos.z;
-        const dist = Math.hypot(dx, dz) || 1;
-        const angle = Math.atan2(dx, dz);
+
+        const target = new THREE.Vector3(p.pos.x, 0.9, p.pos.z);
+        const start = new THREE.Vector3(this.pos.x, 1.05, this.pos.z);
+        const dir = target.clone().sub(start).normalize();
 
         this.tele.push(g.fx.telegraphCircle(p.pos, 1.0, 0.32, 0xd7a6ff));
-        g.fx.emit(V.copy(this.pos).setY(0.75), {
-          count: 16, color: 0xd7a6ff, speed: 3.5, up: 1.2, life: 0.45, size: 0.28,
+
+        // 3D web projectile: a small spinning bundle of crossed web strands.
+        const projectile = new THREE.Group();
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xe5c7ff,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false,
+          side: THREE.DoubleSide,
         });
 
+        for (let i = 0; i < 3; i++) {
+          const strand = new THREE.Mesh(
+            new THREE.TorusGeometry(0.16 + i * 0.035, 0.025, 6, 12),
+            material
+          );
+          strand.rotation.x = Math.PI / 2;
+          strand.rotation.z = i * Math.PI / 3;
+          projectile.add(strand);
+        }
+
+        const core = new THREE.Mesh(
+          new THREE.SphereGeometry(0.13, 8, 8),
+          material
+        );
+        projectile.add(core);
+
+        projectile.position.copy(start);
+        projectile.lookAt(start.clone().add(dir));
+        g.scene.add(projectile);
+
+        this.webProjectile = {
+          mesh: projectile,
+          start,
+          end: target,
+          t: 0,
+          duration: Math.min(0.42, Math.max(0.18, start.distanceTo(target) / 22)),
+        };
+
         this.webTarget = { x: p.pos.x, z: p.pos.z };
-        this.webAngle = angle;
-        this.webDistance = dist;
       }
       return;
     }
@@ -475,41 +522,17 @@ export class MineBoss {
     if (!this.struck) {
       this.struck = true;
 
-      const dx = this.webTarget.x - this.pos.x;
-      const dz = this.webTarget.z - this.pos.z;
-      const dist = Math.hypot(dx, dz) || 1;
-      const angle = Math.atan2(dx, dz);
-
-      // Visual projectile: one stretched web strand from the spider to the
-      // player's position. The actual root is applied on impact.
-      const mid = new THREE.Vector3(
-        this.pos.x + dx * 0.5,
-        0.9,
-        this.pos.z + dz * 0.5
+      const hitDist = Math.hypot(
+        p.pos.x - this.webTarget.x,
+        p.pos.z - this.webTarget.z
       );
-      const strand = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.8, dist).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({
-          color: 0xd7a6ff,
-          transparent: true,
-          opacity: 0.58,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        })
-      );
-      strand.position.copy(mid);
-      strand.rotation.y = angle;
-      this.game.scene.add(strand);
-      this.game.schedule(0.28, () => {
-        this.game.scene.remove(strand);
-        strand.geometry.dispose();
-        strand.material.dispose();
-      });
 
-      const hitDist = Math.hypot(p.pos.x - this.webTarget.x, p.pos.z - this.webTarget.z);
       if (hitDist < 1.35 + p.radius) {
         const rootDuration = this.phase === 3 ? 1.6 : this.phase === 2 ? 1.35 : 1.1;
-        p.webbedUntil = Math.max(p.webbedUntil || 0, this.game.time + rootDuration);
+        p.webbedUntil = Math.max(
+          p.webbedUntil || 0,
+          this.game.time + rootDuration
+        );
         g.ui.toast('Você ficou preso na teia!', 1.5);
       }
     }
@@ -521,7 +544,6 @@ export class MineBoss {
       this.webTarget = null;
     }
   }
-
 
   attackAmbush(dt) {
     const g = this.game;
