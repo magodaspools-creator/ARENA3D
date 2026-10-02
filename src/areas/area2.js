@@ -40,6 +40,9 @@ export function createArea2(game) {
     const x = bounds.minX + 2 + r() * 76;
     const z = bounds.minZ + 2 + r() * 96;
     if (Math.abs(x - ORIGIN.x) < 14 && Math.abs(z) < 9) continue;
+    // Keep the boss arena open: random desert rocks must not spawn inside the
+    // combat field and break movement around the guardian.
+    if (Math.hypot(x - ORIGIN.x, z - 40) < 9.5) continue;
     const s = 0.5 + r() * 2.4;
     decor.rock(x, 0, z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
     // Every gameplay-visible rock is also a physical obstacle.
@@ -134,21 +137,20 @@ export function createArea2(game) {
   addBox(136,0.8,47,10,1.6,2.2,darkStone);
   addBox(164,0.8,47,10,1.6,2.2,darkStone);
   addBox(150,3.8,43,30,1.4,2.2,stoneMat);
-  // Altar: solid gameplay footprint. The collision system is XZ-only, so
-  // the raised visual height cannot be used as a physical walkable level.
-  // We therefore make the altar itself solid instead of letting the player
-  // walk through its mesh. The stairs remain visible as the intended access
-  // point, but they are not a true vertical step-up in this collision model.
+  // Altar: solid gameplay footprint. Its walkable top is paired with the
+  // staircase colliders below so the player can climb and descend naturally.
   addBox(150,0.45,35,15,0.9,11,darkStone);
 
   const altarStepMat = new THREE.MeshStandardMaterial({ color:0x5b4735, roughness:1, flatShading:true });
   for (const [z, h] of [[27.8,0.3],[28.7,0.5],[29.5,0.7]]) {
-    const step = new THREE.Mesh(new THREE.BoxGeometry(5.2,h,1.15), altarStepMat);
+    // Give each step enough depth for the player's collision radius to
+    // transition cleanly in both directions at the altar edge.
+    const step = new THREE.Mesh(new THREE.BoxGeometry(5.2,h,1.8), altarStepMat;
     step.position.set(150,h/2,z);
     step.castShadow = true;
     step.receiveShadow = true;
     temple.add(step);
-    collision.addBox(147.35,152.65,z - 0.575,z + 0.575,{ walkableTop:true, topY:h });
+    collision.addBox(147.35,152.65,z - 0.9,z + 0.9,{ walkableTop:true, topY:h });
   }
 
   // The previous perimeter-only setup left the middle of the altar with no
@@ -165,8 +167,8 @@ export function createArea2(game) {
   collision.addBox(166.9,169.1,27,35);   // east entrance wall
   collision.addBox(136,146,45.9,49);      // north-left ruined wall
   collision.addBox(154,164,45.9,49);       // north-right ruined wall
-  // The 15x11 temple slab is a floor/platform, not a wall. It must stay
-  // non-colliding or the boss would spawn inside its collider at z=40.
+  // The altar slab is a walkable raised platform; its collider is deliberately
+  // marked with topY so the player can stand on it instead of being blocked by it.
 
   // Sun glyph over the buried doorway.
   const sun = new THREE.Group();
