@@ -371,6 +371,14 @@ export class UI {
     this.setActionBar(character);
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
   }
+  setUltimate(progress) {
+    const el = this.el.skUltimate;
+    if (!el) return;
+    const pct = Math.max(0, Math.min(1, Number(progress) || 0)) * 100;
+    el.style.setProperty('--ult-progress', pct + '%');
+    el.classList.toggle('ready', pct >= 100);
+  }
+
   toggleHelp() { this.el.help.classList.toggle('hidden'); }
   showPause() { this.el.pause?.classList.remove('hidden'); }
   hidePause() { this.el.pause?.classList.add('hidden'); }
