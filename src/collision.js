@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js';
 
-await RAPIER.init();
+let rapierReady = false;
+
+// Keep WASM initialization out of module evaluation. Some mobile Safari/WebKit
+// versions can leave a top-level await pending without surfacing an error.
+export async function initCollision() {
+  if (rapierReady) return;
+  await RAPIER.init();
+  rapierReady = true;
+}
 
 const STATIC = 1;
 const ACTOR = 2;
