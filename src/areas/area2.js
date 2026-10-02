@@ -11,6 +11,14 @@ export function createArea2(game) {
   const { scene, collision } = game;
   const r = rng(24017);
 
+  // Snapshot the shared registries so leaving/re-entering Map 2 cannot leave
+  // duplicate bosses, rocks, interactions or collision volumes behind.
+  const sceneBaseline = new Set(scene.children);
+  const collisionZoneBaseline = collision.zones.length;
+  const collisionObstacleBaseline = collision.obstacles.length;
+  const interactionBaseline = game.interaction.items.length;
+  const areaEnemies = [];
+
   const ORIGIN = { x: 150, z: 0 };
   const bounds = { minX: 112, maxX: 188, minZ: -48, maxZ: 48 };
 
@@ -244,6 +252,7 @@ export function createArea2(game) {
     if (name) e.def.name=name;
     e.aggro();
     enemies.push(e);
+    areaEnemies.push(e);
     game.addEnemy(e);
     return e;
   };
@@ -315,13 +324,16 @@ export function createArea2(game) {
       game.stats.bossTime = game.time - fightStart;
       exitPortal.rise();
       game.rig.cinematic(exitPortal.pos, 3);
-      game.schedule(1.0, () => game.ui.banner('O SOL FOI SEPULTADO', 'Azhur caiu. O portal de retorno foi despertado.', 'victory', 4));
-      game.schedule(3.2, () => game.ui.hideBoss());
+      game.schedule(1.0, () => {
+        if (game.area === area) game.ui.banner('O SOL FOI SEPULTADO', 'Azhur caiu. O portal de retorno foi despertado.', 'victory', 4);
+      });
+      game.schedule(3.2, () => { if (game.area === area) game.ui.hideBoss(); });
       game.saveWorldState?.();
       game.ui.toast('Azhur tombou. O portal de retorno foi despertado.');
     },
   });
   game.addEnemy(desertBoss);
+  areaEnemies.push(desertBoss);
   desertBoss.arena = bossArena;
 
   function startDesertBoss() {
@@ -363,7 +375,8 @@ export function createArea2(game) {
     },
   });
 
-  const area = {
+  let area;
+  area = {
     name: 'Deserto do Sol Sepultado',
     spawn: { x: ORIGIN.x, z: -41, facing: 0 },
     checkpoint: { x: ORIGIN.x, z: -41, facing: 0 },
@@ -381,7 +394,9 @@ export function createArea2(game) {
 
     onStart() {
       game.ui.banner('DESERTO DO SOL SEPULTADO', 'Mapa 2', 'boss', 3.5);
-      game.schedule(3.8, () => game.ui.toast('O portal trouxe você a um templo que deveria continuar enterrado.'));
+      game.schedule(3.8, () => {
+        if (game.area === area) game.ui.toast('O portal trouxe você a um templo que deveria continuar enterrado.');
+      });
     },
 
     // Area 1 owns progression on enemy kills. Area 2 is still a prototype,
@@ -412,6 +427,23 @@ export function createArea2(game) {
         game.ui.hideBoss();
         game.ui.toast('O selo de Azhur está se recompondo...');
       }
+    },
+
+    dispose() {
+      // Remove every Area 2 interaction and collision entry created after the snapshot.
+      game.interaction.items.length = interactionBaseline;
+      collision.zones.length = collisionZoneBaseline;
+      collision.obstacles.length = collisionObstacleBaseline;
+
+      for (const enemy of areaEnemies) enemy.dispose?.();
+      game.enemies = game.enemies.filter((enemy) => !areaEnemies.includes(enemy));
+
+      for (const child of [...scene.children]) {
+        if (!sceneBaseline.has(child)) scene.remove(child);
+      }
+      game.ui.hideBoss();
+      game.ui.hidePrompt();
+      game.dialogue.close(false);
     },
 
     update(dt,t) {
