@@ -634,12 +634,13 @@ export class MineBoss {
       const maxStep = 0.42;
       const stepLen = Math.hypot(moveX, moveZ);
       const scale = Math.min(1, maxStep / stepLen);
-      g.collision.move(
-        this.pos,
-        moveX * scale,
-        moveZ * scale,
-        this.radius
-      );
+
+      // The spider is airborne during the leap. Do not run the full dungeon
+      // collider for every airborne step: that collider is designed for
+      // grounded movement and can become extremely expensive around dense
+      // mine geometry. The landing is resolved separately below.
+      this.pos.x += moveX * scale;
+      this.pos.z += moveZ * scale;
     }
 
     // Lift the spider during the leap and settle it back down.
