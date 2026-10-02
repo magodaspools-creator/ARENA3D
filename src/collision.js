@@ -25,8 +25,11 @@ export class Collision {
     this.controller.setSlideEnabled(true);
     this.controller.setMaxSlopeClimbAngle(Math.PI * 0.5);
     this.controller.setMinSlopeSlideAngle(Math.PI * 0.5);
-    this.controller.enableAutostep(0.28, 0.22, false);
-    this.controller.disableSnapToGround();
+    this.controller.enableAutostep(0.35, 0.22, false);
+    // Autostep handles climbing; snap-to-ground is also required for descending
+    // small steps without leaving the character floating above the lower surface.
+    // Keep the same 0.35 limit so a larger drop is still blocked.
+    this.controller.enableSnapToGround(0.35);
 
     this.zones = [];
     this.obstacles = [];
