@@ -153,11 +153,13 @@ export function createArea2(game) {
     collision.addBox(147.35,152.65,z - 0.9,z + 0.9,{ walkableTop:true, topY:h });
   }
 
-  // Raised platform: only the visible altar slab is collidable. The
-  // staircase occupies the center of the slab mouth, so do not add separate
-  // invisible side strips here; those strips were creating two large hidden
-  // rectangular walls beside the altar.
+  // Raised altar platform: the whole visible slab is solid and walkable
+  // on top. Keep the stair mouth open in the center, but make the left and
+  // right portions climbable from above and blocking from ground level.
+  // Using walkableTop avoids the old invisible vertical-wall behavior.
+  collision.addBox(142.5,147.35,29.5,40.5,{ walkableTop:true, topY:0.9 });
   collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9 });
+  collision.addBox(152.65,157.5,29.5,40.5,{ walkableTop:true, topY:0.9 });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
