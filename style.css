@@ -296,12 +296,33 @@ button:hover { filter: brightness(1.1); }
 /* ---------- mobile landscape gate ---------- */
 #mobile-rotate-hint { display: none; }
 
-body.touch-device #mobile-controls {
-  display: block;
+/* Mobile is landscape-only: portrait is a hard gate. */
+@media (orientation: portrait) and (max-width: 1100px) {
+  body.touch-device #mobile-controls,
+  #mobile-controls {
+    display: none !important;
+  }
 }
 
-body.touch-device.portrait-mobile #mobile-controls {
-  display: none;
+@media (orientation: portrait) and (max-width: 1100px) and (pointer: coarse) {
+  #mobile-rotate-hint {
+    display: grid;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
+    padding: 30px;
+    text-align: center;
+    background: radial-gradient(circle at center, rgba(25,28,38,.98), rgba(4,6,10,.99));
+    color: #f0d9a8;
+    pointer-events: auto;
+  }
+}
+
+body.touch-device:not(.portrait-mobile) #mobile-controls {
+  display: block;
 }
 
 @media (max-width: 900px) and (orientation: portrait) {
