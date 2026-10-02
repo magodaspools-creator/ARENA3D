@@ -1,41 +1,7 @@
 import * as THREE from 'three';
-let RAPIER = null;
-let rapierReady = false;
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js';
 
-const withTimeout = (promise, ms, label) => Promise.race([
-  promise,
-  new Promise((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
-]);
-
-// Load Rapier dynamically so a CDN/network problem cannot block the entire
-// JavaScript module graph on mobile. jsDelivr remains the primary source;
-// unpkg is a fallback.
-export async function initCollision() {
-  if (rapierReady) return RAPIER;
-
-  const sources = [
-    'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js',
-    'https://unpkg.com/@dimforge/rapier3d-compat@0.21.0/rapier.es.js',
-  ];
-
-  let lastError = null;
-  for (const url of sources) {
-    try {
-      const mod = await withTimeout(import(url), 8000, 'Tempo esgotado ao carregar o motor de colisão');
-      RAPIER = mod.default ?? mod;
-      await withTimeout(RAPIER.init(), 8000, 'Tempo esgotado ao inicializar o motor de colisão');
-      rapierReady = true;
-      return RAPIER;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw new Error(
-    'Não foi possível carregar o motor de colisão (Rapier). ' +
-    (lastError?.message || lastError || 'erro desconhecido')
-  );
-}
+await RAPIER.init();
 
 const STATIC = 1;
 const ACTOR = 2;
@@ -51,12 +17,9 @@ const FLOOR_Y = -0.12;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class Collision {
-  constructor(rapier = RAPIER) {
-    if (!rapier) {
-      throw new Error('Motor de colisão não inicializado: initCollision() deve ser executado antes de new Collision().');
-    }
-    this.RAPIER = rapier;
-    this.world = new rapier.World({ x: 0, y: -9.81, z: 0 });
+  constructor() {
+    this.RAPIER = RAPIER;
+    this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     this.controller = this.world.createCharacterController(0.025);
     this.controller.setUp({ x: 0, y: 1, z: 0 });
     this.controller.setSlideEnabled(true);
