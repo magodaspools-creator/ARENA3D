@@ -51,15 +51,10 @@ export class Collision {
     return o;
   }
 
-  // Find the next reachable surface relative to the actor's current height.
-  // This must work in BOTH directions: when climbing, choose the nearest
-  // higher step; when descending, choose the highest lower step. Simply taking
-  // the highest candidate breaks descent because the 0.9 altar slab overlaps
-  // the 0.7 stair footprint.
+  // Returns the highest nearby walkable surface that can be reached from the
+  // current height in one movement step. The base ground is always Y=0.
   surfaceHeight(x, z, currentY = 0, maxStep = 0.35) {
-    const eps = 1e-4;
-    const candidates = [];
-
+    let h = 0;
     for (const o of this.obstacles) {
       if (!o.enabled || !o.walkableTop) continue;
       if (o.type === 'box') {
@@ -69,20 +64,10 @@ export class Collision {
       } else {
         continue;
       }
-
       const top = o.topY;
-      if (Math.abs(top - currentY) <= maxStep + eps) candidates.push(top);
+      if (Math.abs(top - currentY) <= maxStep + 1e-4) h = Math.max(h, top);
     }
-
-    // Prefer the next higher step while climbing, or the next lower step
-    // while descending. Never jump over an intermediate stair height.
-    const above = candidates.filter((h) => h > currentY + eps).sort((a, b) => a - b);
-    if (above.length) return above[0];
-
-    const below = candidates.filter((h) => h < currentY - eps).sort((a, b) => b - a);
-    if (below.length) return below[0];
-
-    return currentY;
+    return h;
   }
 
   /** Signed distance to the walkable area (negative = inside). */
