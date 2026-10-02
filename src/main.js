@@ -94,6 +94,21 @@ class Game {
       if (e.code === 'Escape' && this.state === 'pause-controls') { e.preventDefault(); this.showPauseMenu(); return; }
       if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resumeGame(); return; }
       if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
+
+      // Hidden admin testing tool: revive the optional mine boss without
+      // resetting the character. This is intentionally gated by the same
+      // admin password used by the map editor.
+      if (e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyR' && this.state === 'play') {
+        e.preventDefault();
+        const password = prompt('Senha de administrador:');
+        if (password === 't88415890') {
+          if (this.area?.reviveMineBossForTesting) this.area.reviveMineBossForTesting();
+          else this.ui.toast('A ferramenta de teste só funciona na área da Mina.');
+        } else if (password !== null) {
+          this.ui.toast('Senha incorreta.');
+        }
+        return;
+      }
       if (e.code.startsWith('Digit') && this.state === 'play') {
         const slot = Number(e.code.slice(5));
         if (slot >= 1 && slot <= 6) {
