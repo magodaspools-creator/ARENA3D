@@ -62,6 +62,7 @@ export class Player {
     this.dashT = 0; this.dashDir = new THREE.Vector3(); this.dashHits = null;
     this.aimFaceT = 0; this.aimAngle = 0; this.slowT = 0;
     this.poisonT = 0; this.poisonTickT = 0;
+    this.webbedUntil = 0;
     this.lastHurt = -99;
     this.flash = 0;
     this.dead = false;
@@ -79,6 +80,7 @@ export class Player {
     this.facing = facing;
     this.root.rotation.y = facing;
     this.vel.set(0, 0, 0);
+    this.webbedUntil = 0;
   }
 
   aimDir(target) {
@@ -142,7 +144,12 @@ export class Player {
     }
 
     if (this.dead) { this.anim.update(dt, 0); return; }
-    const locked = g.inputLocked || g.state !== 'play';
+    const webbed = this.webbedUntil > g.time;
+    if (this.webbedUntil > 0 && !webbed) {
+      this.webbedUntil = 0;
+      g.ui.toast('Você se soltou da teia.');
+    }
+    const locked = g.inputLocked || g.state !== 'play' || webbed;
     if (!locked && input.wasPressed('KeyL')) this.castLightSpell();
     if (!locked && input.wasPressed('KeyR')) this.useUltimate();
 
@@ -176,7 +183,11 @@ export class Player {
       const speed = (characterStats?.speed ?? this.voc.speed) * (this.slowT > 0 ? 0.55 : 1);
       this.vel.lerp(V.copy(dir).multiplyScalar(speed), 1 - Math.exp(-12 * dt));
     }
-    g.collision.move(this.pos, this.vel.x * dt, this.vel.z * dt, this.radius);
+    if (webbed) {
+      this.vel.set(0, 0, 0);
+    } else {
+      g.collision.move(this.pos, this.vel.x * dt, this.vel.z * dt, this.radius);
+    }
 
     // --- facing ---
     let want = null;
