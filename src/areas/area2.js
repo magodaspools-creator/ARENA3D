@@ -145,7 +145,7 @@ export function createArea2(game) {
   for (const [z, h] of [[27.8,0.3],[28.7,0.5],[29.5,0.7]]) {
     // Give each step enough depth for the player's collision radius to
     // transition cleanly in both directions at the altar edge.
-    const step = new THREE.Mesh(new THREE.BoxGeometry(5.2,h,1.8), altarStepMat;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(5.2,h,1.8), altarStepMat);
     step.position.set(150,h/2,z);
     step.castShadow = true;
     step.receiveShadow = true;
