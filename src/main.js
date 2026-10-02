@@ -3,17 +3,17 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { Input } from './input.js';
-import { CameraRig } from './camera.js';
-import { Collision } from './collision.js';
-import { Effects } from './effects.js';
-import { Combat } from './combat.js';
-import { UI } from './ui.js';
-import { Interaction } from './interaction.js';
-import { Dialogue } from './npc.js';
-import { Player } from './player.js';
-import { VOCATIONS } from './vocations.js';
-import { createArea1 } from './areas/area1.js';
+import { Input } from './input.js?v=20261002-3';
+import { CameraRig } from './camera.js?v=20261002-3';
+import { Collision } from './collision.js?v=20261002-3';
+import { Effects } from './effects.js?v=20261002-3';
+import { Combat } from './combat.js?v=20261002-3';
+import { UI } from './ui.js?v=20261002-3';
+import { Interaction } from './interaction.js?v=20261002-3';
+import { Dialogue } from './npc.js?v=20261002-3';
+import { Player } from './player.js?v=20261002-3';
+import { VOCATIONS } from './vocations.js?v=20261002-3';
+import { createArea1 } from './areas/area1.js?v=20261002-3';
 
 const FOG = 0x0b1220;
 
