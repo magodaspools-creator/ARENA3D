@@ -171,6 +171,8 @@ export class MineBoss {
     this.pounceCooldown = 0;
     this.orbitDir = 1;
     this.orbitT = 0;
+    this.moveVelocity.set(0, 0, 0);
+    this.moveTargetAngle = this.facing;
     this.root.visible = false;
     this.root.rotation.set(0, Math.PI, 0);
     this.root.scale.setScalar(1.65);
