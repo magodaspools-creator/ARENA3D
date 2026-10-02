@@ -124,6 +124,7 @@ export class MineBoss {
     this.attackT = 0;
     this.struck = false;
     this.combatStallT = 0;
+    this.wakeFxEmitted = false;
     this.ambushTarget = null;
     this.pounceTarget = null;
     this.pounceStart = null;
@@ -165,6 +166,7 @@ export class MineBoss {
     this.nextAttack = 1.2;
     this.struck = false;
     this.combatStallT = 0;
+    this.wakeFxEmitted = false;
     this.webCooldown = 0;
     this.eggCooldown = 0;
     this.ambushCooldown = 0;
@@ -306,7 +308,8 @@ export class MineBoss {
 
       case 'waking':
         this.body.position.y = Math.sin(this.stateT * 5) * 0.06;
-        if (this.stateT > 1.0) {
+        if (this.stateT > 1.0 && !this.wakeFxEmitted) {
+          this.wakeFxEmitted = true;
           g.rig.shake(0.6);
           g.fx.emit(V.copy(this.pos).setY(0.6), {
             count: 35, color: 0x8b5cff, speed: 5, up: 2.5, life: 0.8, size: 0.45,
