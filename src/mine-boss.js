@@ -609,10 +609,26 @@ export class MineBoss {
     const eased = leapT < 0.5
       ? 2 * leapT * leapT
       : 1 - Math.pow(-2 * leapT + 2, 2) / 2;
-    const targetX = THREE.MathUtils.lerp(this.pounceStart.x, this.pounceTarget.x, eased);
-    const targetZ = THREE.MathUtils.lerp(this.pounceStart.z, this.pounceTarget.z, eased);
-    const moveX = targetX - this.pos.x;
-    const moveZ = targetZ - this.pos.z;
+    const rawTargetX = THREE.MathUtils.lerp(this.pounceStart.x, this.pounceTarget.x, eased);
+    const rawTargetZ = THREE.MathUtils.lerp(this.pounceStart.z, this.pounceTarget.z, eased);
+
+    // Never finish the leap inside the player's body. The attack still lands
+    // through the impact radius, but the boss itself stays just outside the
+    // player collider so the body resolver does not have to separate two
+    // overlapping actors on the same frame.
+    const pdx = this.pos.x - g.player.pos.x;
+    const pdz = this.pos.z - g.player.pos.z;
+    const pd = Math.hypot(pdx, pdz);
+    const safeGap = this.radius + g.player.radius + 0.08;
+    const finalTarget = leapT >= 1 && pd < safeGap
+      ? {
+          x: g.player.pos.x + (pdx / (pd || 1)) * safeGap,
+          z: g.player.pos.z + (pdz / (pd || 1)) * safeGap,
+        }
+      : { x: rawTargetX, z: rawTargetZ };
+
+    const moveX = finalTarget.x - this.pos.x;
+    const moveZ = finalTarget.z - this.pos.z;
 
     if (Math.abs(moveX) + Math.abs(moveZ) > 0.001) {
       const maxStep = 0.42;
