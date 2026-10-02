@@ -172,6 +172,25 @@ export class Effects {
     });
   }
 
+  /** Ground line warning used by directional dashes and beams. */
+  telegraphLine(from, to, duration, color = 0xffd21f, width = 0.18) {
+    const dx = to.x - from.x, dz = to.z - from.z;
+    const len = Math.hypot(dx, dz);
+    const g = new THREE.Group();
+    g.position.set(from.x, 0.065, from.z);
+    g.rotation.y = Math.atan2(dx, dz);
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, Math.max(0.1, len)).rotateX(-Math.PI / 2),
+      decalMat(color, 0.9)
+    );
+    m.position.z = len * 0.5;
+    g.add(m);
+    return this.add(g, duration, (it, p) => {
+      m.material.opacity = 0.35 + 0.65 * Math.sin(it.t * 22) ** 2;
+      m.scale.x = 0.7 + 0.3 * p;
+    });
+  }
+
   telegraphCone(pos, yaw, radius, arc, duration, color = 0xff2a1a) {
     const theta = Math.atan2(-Math.cos(yaw), Math.sin(yaw));
     const g = new THREE.Group();
