@@ -153,10 +153,17 @@ export function createArea2(game) {
     collision.addBox(147.35,152.65,z - 0.9,z + 0.9,{ walkableTop:true, topY:h });
   }
 
-  // The previous perimeter-only setup left the middle of the altar with no
-  // obstacle, so the player could enter the slab and visibly pass through it.
-  // Use the exact slab footprint as the physical obstacle.
-  collision.addBox(142.5,157.5,29.5,40.5,{ walkableTop:true, topY:0.9 });
+  // Keep the raised platform physically split at the stair mouth.
+  // The old single collider overlapped the last 0.7 step (z 28.6..30.4)
+  // with the 0.9 platform (starting at z 29.5). That made the collision
+  // solver see two different walkable heights at the same position and
+  // prevented a stable transition when descending.
+  //
+  // Side strips remain solid so the player cannot climb the altar from the
+  // sides. The walkable 0.9 surface begins exactly after the final step.
+  collision.addBox(142.5,147.35,29.5,40.5);
+  collision.addBox(152.65,157.5,29.5,40.5);
+  collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9 });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
