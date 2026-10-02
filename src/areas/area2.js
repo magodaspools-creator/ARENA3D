@@ -148,13 +148,13 @@ export function createArea2(game) {
     step.castShadow = true;
     step.receiveShadow = true;
     temple.add(step);
-    collision.addBox(147.35,152.65,z - 0.575,z + 0.575);
+    collision.addBox(147.35,152.65,z - 0.575,z + 0.575,{ walkableTop:true, topY:h });
   }
 
   // The previous perimeter-only setup left the middle of the altar with no
   // obstacle, so the player could enter the slab and visibly pass through it.
   // Use the exact slab footprint as the physical obstacle.
-  collision.addBox(142.5,157.5,29.5,40.5);
+  collision.addBox(142.5,157.5,29.5,40.5,{ walkableTop:true, topY:0.9 });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
