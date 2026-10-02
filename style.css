@@ -291,3 +291,72 @@ button:hover { filter: brightness(1.1); }
   #toasts { bottom: 205px; width: 90vw; }
   #items-panel { max-width: calc(100vw - 20px); }
 }
+
+
+/* ---------- mobile landscape gate ---------- */
+#mobile-rotate-hint { display: none; }
+
+body.touch-device #mobile-controls {
+  display: block;
+}
+
+body.touch-device.portrait-mobile #mobile-controls {
+  display: none;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  body.touch-device #mobile-rotate-hint {
+    display: grid;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
+    padding: 30px;
+    text-align: center;
+    background: radial-gradient(circle at center, rgba(25,28,38,.98), rgba(4,6,10,.99));
+    color: #f0d9a8;
+    pointer-events: auto;
+  }
+  .rotate-phone {
+    font-size: 78px;
+    line-height: 1;
+    transform: rotate(90deg);
+    animation: phone-turn 1.5s ease-in-out infinite;
+    text-shadow: 0 0 22px rgba(232,199,122,.45);
+  }
+  .rotate-hand {
+    font-size: 38px;
+    line-height: 1;
+    margin-top: -12px;
+    animation: hand-hint 1.5s ease-in-out infinite;
+  }
+  .rotate-title {
+    font-family: Georgia, serif;
+    font-size: 24px;
+    letter-spacing: 1px;
+    margin-top: 8px;
+  }
+  .rotate-sub {
+    max-width: 300px;
+    color: #a99f88;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  @keyframes phone-turn {
+    0%, 100% { transform: rotate(90deg); }
+    50% { transform: rotate(0deg); }
+  }
+  @keyframes hand-hint {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(14px); }
+  }
+}
+
+/* On touch devices in landscape, force the mobile controls on regardless of pointer classification. */
+@media (orientation: landscape) and (max-width: 1100px) {
+  body.touch-device #mobile-controls {
+    display: block;
+  }
+}
