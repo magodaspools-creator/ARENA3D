@@ -64,6 +64,8 @@ export class Boss {
     this.root.visible = true;
     this.nextAttack = 1.5;
     this.lastAttack = null;
+    // Watchdog: prevents a rare combat-state stall from leaving the boss passive.
+    this.combatStallT = 0;
     this.flash = 0;
     this.tele?.forEach((t) => this.game.fx.remove(t));
     this.tele = [];
@@ -134,6 +136,15 @@ export class Boss {
   update(dt) {
     const g = this.game, p = g.player;
     this.stateT += dt;
+    if (this.state !== 'dormant' && this.state !== 'dead') this.combatStallT += dt;
+    if (this.combatStallT > 6) {
+      this.combatStallT = 0;
+      this.pendingEnrage = false;
+      this.state = 'chase';
+      this.stateT = 0;
+      this.struck = false;
+      this.nextAttack = 0.15;
+    }
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 6); applyFlash(this.mats, this.flash, WHITE); }
     const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z, dist = Math.hypot(dx, dz);
     const toPlayer = Math.atan2(dx, dz);
@@ -296,6 +307,7 @@ export class Boss {
     this.stateT = 0;
     this.struck = false;
     this.lastAttack = state;
+    this.combatStallT = 0;
   }
 
   pickAttack(dist) {
