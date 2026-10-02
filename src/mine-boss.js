@@ -120,12 +120,16 @@ export class MineBoss {
     this.struck = false;
     this.combatStallT = 0;
     this.ambushTarget = null;
+    this.pounceTarget = null;
+    this.orbitDir = 1;
+    this.orbitT = 0;
     this.tele = [];
     this.webs = [];
     this.eggs = [];
     this.webCooldown = 0;
     this.eggCooldown = 0;
     this.ambushCooldown = 0;
+    this.pounceCooldown = 0;
     this.root.visible = false;
 
     this.game.scene.add(this.root);
@@ -154,6 +158,9 @@ export class MineBoss {
     this.webCooldown = 0;
     this.eggCooldown = 0;
     this.ambushCooldown = 0;
+    this.pounceCooldown = 0;
+    this.orbitDir = 1;
+    this.orbitT = 0;
     this.root.visible = false;
     this.root.rotation.set(0, Math.PI, 0);
     this.root.scale.setScalar(1.65);
@@ -301,20 +308,35 @@ export class MineBoss {
         break;
 
       case 'chase': {
-        this.facing += Math.atan2(
-          Math.sin(toPlayer - this.facing),
-          Math.cos(toPlayer - this.facing)
-        ) * Math.min(1, dt * 7);
-
-        const speed = this.phase === 3 ? 3.45 : this.phase === 2 ? 3.05 : 2.55;
-        if (dist > 4.0) {
-          g.collision.move(
-            this.pos,
-            Math.sin(this.facing) * speed * dt,
-            Math.cos(this.facing) * speed * dt,
-            this.radius
-          );
+        this.orbitT += dt;
+        if (this.orbitT > 1.8) {
+          this.orbitT = 0;
+          this.orbitDir *= -1;
         }
+
+        // The spider should never just park beside the player. It approaches,
+        // circles and briefly backs off, making its movement readable but
+        // unpredictable instead of behaving like a stationary turret.
+        const preferred = this.phase === 1 ? 3.2 : this.phase === 2 ? 3.6 : 4.0;
+        let moveAngle = toPlayer;
+        if (dist < preferred + 1.1) {
+          moveAngle = toPlayer + this.orbitDir * (Math.PI * 0.48);
+          if (dist < 2.25) moveAngle = toPlayer + Math.PI;
+        }
+
+        this.facing += Math.atan2(
+          Math.sin(moveAngle - this.facing),
+          Math.cos(moveAngle - this.facing)
+        ) * Math.min(1, dt * 9);
+
+        const speed = this.phase === 3 ? 4.25 : this.phase === 2 ? 3.75 : 3.15;
+        const moveScale = dist < 2.0 ? 0.92 : 1;
+        g.collision.move(
+          this.pos,
+          Math.sin(this.facing) * speed * moveScale * dt,
+          Math.cos(this.facing) * speed * moveScale * dt,
+          this.radius
+        );
 
         this.nextAttack -= dt;
         if (this.nextAttack <= 0) this.chooseAttack(dist);
@@ -327,6 +349,10 @@ export class MineBoss {
 
       case 'ambush':
         this.attackAmbush(dt);
+        break;
+
+      case 'pounce':
+        this.attackPounce(dt);
         break;
 
       case 'egg':
@@ -353,20 +379,24 @@ export class MineBoss {
     const phase = this.phase;
     const choices = [];
 
-    if (phase >= 1 && this.webCooldown <= 0) choices.push('web');
+    if (this.webCooldown <= 0) choices.push('web');
+    if (this.pounceCooldown <= 0) choices.push('pounce');
     if (phase >= 2 && this.ambushCooldown <= 0) choices.push('ambush');
     if (phase >= 2 && this.eggCooldown <= 0) choices.push('egg');
     if (phase >= 2) choices.push('poison');
 
-    // Stay threatening in melee without copying Morvhal's smash/quake kit.
-    if (dist < 3.8) choices.push('poison');
+    // Phase 1 is intentionally active: the spider can already pressure the
+    // player with poison and a pounce instead of waiting for later phases.
+    if (dist < 4.2) choices.push('poison');
+    if (dist < 5.5 && this.pounceCooldown <= 0) choices.push('pounce');
 
     const state = choices[Math.floor(Math.random() * choices.length)] || 'web';
     this.begin(state);
 
-    if (state === 'web') this.webCooldown = this.phase === 3 ? 5.0 : 7.0;
-    if (state === 'ambush') this.ambushCooldown = this.phase === 3 ? 5.0 : 8.0;
-    if (state === 'egg') this.eggCooldown = this.phase === 3 ? 7.0 : 10.0;
+    if (state === 'web') this.webCooldown = this.phase === 3 ? 4.5 : this.phase === 2 ? 5.5 : 6.0;
+    if (state === 'ambush') this.ambushCooldown = this.phase === 3 ? 4.5 : 7.0;
+    if (state === 'egg') this.eggCooldown = this.phase === 3 ? 6.0 : 8.5;
+    if (state === 'pounce') this.pounceCooldown = this.phase === 3 ? 2.8 : 4.2;
   }
 
   attackWeb(dt) {
@@ -469,6 +499,62 @@ export class MineBoss {
     }
 
     if (this.stateT > 1.45) this.toChase();
+  }
+
+  attackPounce(dt) {
+    const g = this.game;
+
+    if (this.stateT < 0.42) {
+      if (!this.pounceTarget) {
+        this.pounceTarget = g.player.pos.clone();
+        this.tele.push(g.fx.telegraphCircle(this.pounceTarget, 2.15, 0.42, 0xffa43b));
+        this.facing = Math.atan2(
+          this.pounceTarget.x - this.pos.x,
+          this.pounceTarget.z - this.pos.z
+        );
+      }
+      this.body.position.y = 0.22 + Math.sin(this.stateT * 18) * 0.06;
+      return;
+    }
+
+    if (!this.struck) {
+      this.struck = true;
+      const dx = this.pounceTarget.x - this.pos.x;
+      const dz = this.pounceTarget.z - this.pos.z;
+      const d = Math.hypot(dx, dz);
+
+      if (d > 0.35) {
+        const step = Math.min(d, 5.8);
+        g.collision.move(
+          this.pos,
+          (dx / Math.max(d, 0.001)) * step,
+          (dz / Math.max(d, 0.001)) * step,
+          this.radius
+        );
+      }
+
+      g.rig.shake(0.55);
+      g.fx.ring(this.pos, 0xffa43b, 4.3, 0.42);
+      g.fx.emit(V.copy(this.pos).setY(0.65), {
+        count: 32,
+        color: 0xffa43b,
+        speed: 6,
+        up: 2.4,
+        life: 0.65,
+        size: 0.38,
+      });
+
+      if (Math.hypot(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) < 2.45 + g.player.radius) {
+        g.player.takeDamage(g.combat.roll(
+          this.phase === 3 ? [42, 58] : this.phase === 2 ? [34, 48] : [28, 40],
+          0
+        ).amount, this.pos);
+      }
+
+      this.pounceTarget = null;
+    }
+
+    if (this.stateT > 0.92) this.toChase();
   }
 
   attackEggs(dt) {
@@ -583,6 +669,7 @@ export class MineBoss {
     this.webCooldown = Math.max(0, this.webCooldown - dt);
     this.eggCooldown = Math.max(0, this.eggCooldown - dt);
     this.ambushCooldown = Math.max(0, this.ambushCooldown - dt);
+    this.pounceCooldown = Math.max(0, this.pounceCooldown - dt);
 
     const p = this.game.player;
 
@@ -677,5 +764,7 @@ export class MineBoss {
     this.eggs = [];
     this._pendingWebPositions = [];
     this.ambushTarget = null;
+    this.pounceTarget = null;
+    this.orbitT = 0;
   }
 }
