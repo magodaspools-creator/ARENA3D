@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js?v=20261002-3';
 
 // Morvhal, the Hollow Warden. Attack pattern:
 //   cleave — cone in front, telegraphed on the ground
