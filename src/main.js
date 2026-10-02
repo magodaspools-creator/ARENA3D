@@ -702,6 +702,9 @@ class Game {
     this.inputLocked = true;
     this.stats.deaths++;
     this.combat.clearEnemyProjectiles();
+    // Boss UI belongs to the current combat encounter. When the player dies,
+    // the area may reset the boss before respawn, so never leave a stale HP bar.
+    this.ui.hideBoss();
 
     const xpLoss = this.character?.loseXP(0.10);
     const deathDrop = this.character?.createDeathDrop(this.player?.pos);
