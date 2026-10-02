@@ -96,6 +96,38 @@
     <div id="loading">Carregando…</div>
   </div>
 
-  <script type="module" src="src/main.js?v=20261002-3"></script>
+  <script>
+    // Startup diagnostics: if the game fails before the module finishes booting,
+    // show the actual browser error on-screen so mobile users do not need DevTools.
+    window.addEventListener('error', (event) => {
+      const msg = event.error?.stack || event.message || 'Erro JavaScript desconhecido';
+      const box = document.getElementById('loading');
+      if (box) {
+        box.textContent = 'Erro ao iniciar: ' + msg;
+        box.style.whiteSpace = 'pre-wrap';
+        box.style.maxWidth = '92vw';
+        box.style.padding = '18px';
+        box.style.textAlign = 'left';
+        box.style.fontFamily = 'monospace';
+        box.style.fontSize = '12px';
+        box.style.zIndex = '99999';
+      }
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason?.stack || event.reason?.message || String(event.reason || 'Promise rejeitada');
+      const box = document.getElementById('loading');
+      if (box) {
+        box.textContent = 'Erro ao iniciar: ' + reason;
+        box.style.whiteSpace = 'pre-wrap';
+        box.style.maxWidth = '92vw';
+        box.style.padding = '18px';
+        box.style.textAlign = 'left';
+        box.style.fontFamily = 'monospace';
+        box.style.fontSize = '12px';
+        box.style.zIndex = '99999';
+      }
+    });
+  </script>
+  <script type="module" src="src/main.js?v=20261002-4"></script>
 </body>
 </html>
