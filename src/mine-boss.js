@@ -543,7 +543,7 @@ export class MineBoss {
     if (this.stateT < 0.65) {
       this.facing += Math.atan2(
         Math.sin(Math.atan2(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) - this.facing),
-        Math.cos(Math.atan2(g.player.pos.x - this.pos.x, g.player.pos.z - this.facing))
+        Math.cos(Math.atan2(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) - this.facing)
       ) * dt * 7;
 
       if (!this.struck) {
