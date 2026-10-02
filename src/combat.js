@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { glow } from './models.js';
+import { glow } from './models.js?v=20261002-3';
 
 // Damage resolution for melee arcs, area hits and projectiles.
 // `game.enemies` holds everything the player can hit (including the boss).
