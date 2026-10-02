@@ -14,6 +14,7 @@ export const VOCATIONS = {
     look: { skin: 0xd9a47c, body: 0xe8dcc0, legs: 0x6b5a3a, accent: 0xd9b04a, head: 'hair', hair: 0x6b4a2a, shoulder: true, cape: 0xb8902a, weapon: 'bow', glow: 0xffd76a },
     attack: { kind: 'projectile', name: 'Flecha', visual: 'arrow', speed: 30, range: 22, damage: [20, 27], cooldown: 0.5, style: 'shoot', color: 0xffe6a0 },
     ability: { kind: 'volley', name: 'Chuva Sagrada', count: 7, spread: 0.9, damage: [22, 28], cooldown: 6, color: 0xffd76a },
+    ultimate: { kind: 'divineBarrage', name: 'Chuva Divina', radius: 7.0, damage: [120, 150], color: 0xffe6a0 },
   },
   sorcerer: {
     id: 'sorcerer', name: 'Sorcerer', title: 'Mestre das Chamas', color: '#ff7a3d', hp: 150, speed: 5.9, armor: 1,
