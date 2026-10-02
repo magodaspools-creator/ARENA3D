@@ -20,6 +20,7 @@ export const VOCATIONS = {
     look: { skin: 0xe3b592, body: 0x5a1f2a, legs: 0x2a1216, robe: 0x4a1622, accent: 0xd08a2a, head: 'hat', weapon: 'staff', orb: 0xff6a2a, glow: 0xff7a3d },
     attack: { kind: 'projectile', name: 'Bola de Fogo', visual: 'fire', speed: 17, range: 18, damage: [30, 38], splash: 1.8, cooldown: 0.8, style: 'cast', color: 0xff6a2a },
     ability: { kind: 'meteor', name: 'Meteoro', radius: 4, damage: [80, 100], cooldown: 7, delay: 0.8, color: 0xff5a1a },
+    ultimate: { kind: 'arcaneCataclysm', name: 'Cataclisma Arcano', radius: 5.2, damage: [105, 135], color: 0xb875ff },
   },
   druid: {
     id: 'druid', name: 'Druid', title: 'Voz da Floresta', color: '#7dff9a', hp: 175, speed: 6.0, armor: 1,
