@@ -362,10 +362,12 @@ export class UI {
     this.el.portrait.style.setProperty('--vc', voc.color);
     this.el.portrait.textContent = voc.name[0];
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
-    this.el.skAbility.querySelector('.label').textContent = voc.ability.name;
+    this.el.skAbility.querySelector('.label').textContent = `${voc.ability.name}${voc.ability.manaCost ? ` · ${voc.ability.manaCost} MP` : ''}`;
     if (this.el.skUltimate) {
       this.el.skUltimate.classList.toggle('hidden', !['sorcerer', 'knight', 'druid', 'paladin', 'monk'].includes(voc.id));
-      this.el.skUltimate.querySelector('.label').textContent = voc.ultimate?.name || 'Ultimate';
+      const ultimateName = voc.ultimate?.name || 'Ultimate';
+      const ultimateCost = voc.ultimate?.manaCost;
+      this.el.skUltimate.querySelector('.label').textContent = `${ultimateName}${ultimateCost ? ` · ${ultimateCost} MP` : ''}`;
     }
     this.setProgress(character);
     this.setActionBar(character);
