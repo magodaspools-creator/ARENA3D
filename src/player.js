@@ -279,7 +279,7 @@ export class Player {
   }
 
   useUltimate() {
-    if (!['sorcerer', 'knight', 'druid', 'paladin'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid', 'paladin', 'monk'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
 
     const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
 
