@@ -789,13 +789,38 @@ export class Player {
         g.fx.emit(V.copy(this.pos).setY(0.5), { count: 50, color: ab.color, speed: 4, up: 2.5, life: 1.2, size: 0.4, drag: 2 });
         g.combat.aoe(this.pos, ab.radius, s ? [s.abilityMin, s.abilityMax] : ab.damage, ab.color, undefined, this.damageContext('magic', s));
         break;
-      case 'dash':
-        this.face(dir, 0.3);
-        this.anim.attack('punch', 0.3);
-        this.dashDir.copy(dir);
-        this.dashHits = new Set();
-        this.startDash(ab.distance / 26, 26, 0);
-        g.fx.emit(V.copy(this.pos).setY(1), { count: 20, color: ab.color, speed: 5, life: 0.4 });
+      case 'palmStrike':
+        this.face(dir, 0.45);
+        this.anim.attack('punch', 0.42);
+        this.slowT = 0.35;
+        g.schedule(0.16, () => {
+          if (this.dead) return;
+
+          g.fx.ring(this.pos, ab.color, ab.radius * 0.75, 0.22);
+          g.fx.slash(this.pos, dir, ab.radius, ab.arc, ab.color);
+          g.fx.emit(V.copy(this.pos).addScaledVector(dir, 1.0).setY(0.75), {
+            count: 28,
+            color: ab.color,
+            speed: 6,
+            up: 2.2,
+            life: 0.5,
+            size: 0.28,
+            gravity: 3,
+            drag: 4,
+            flat: true,
+          });
+
+          g.combat.meleeArc(
+            this.pos,
+            dir,
+            ab.radius,
+            ab.arc,
+            s ? [s.abilityMin, s.abilityMax] : ab.damage,
+            ab.color,
+            this.damageContext('physical', s)
+          );
+          g.rig.shake(0.22);
+        });
         break;
     }
   }
