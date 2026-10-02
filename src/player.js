@@ -58,6 +58,7 @@ export class Player {
     this.vel = new THREE.Vector3();
     this.facing = 0;
     this.attackCd = 0; this.abilityCd = 0; this.dashCd = 0;
+    this.ultimateCharge = 0;
     this.dashT = 0; this.dashDir = new THREE.Vector3(); this.dashHits = null;
     this.aimFaceT = 0; this.aimAngle = 0; this.slowT = 0;
     this.poisonT = 0; this.poisonTickT = 0;
@@ -143,6 +144,7 @@ export class Player {
     if (this.dead) { this.anim.update(dt, 0); return; }
     const locked = g.inputLocked || g.state !== 'play';
     if (!locked && input.wasPressed('KeyL')) this.castLightSpell();
+    if (!locked && input.wasPressed('KeyR')) this.useUltimate();
 
     // --- movement (camera relative) ---
     let mx = 0, mz = 0;
@@ -195,6 +197,7 @@ export class Player {
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
     g.ui.setCooldown('ability', this.abilityCd / (characterStats?.abilityCooldown ?? this.voc.ability.cooldown));
     g.ui.setCooldown('dash', this.dashCd / 1.1);
+    g.ui.setUltimate?.(this.ultimateCharge / 100);
   }
 
   castLightSpell() {
@@ -255,6 +258,43 @@ export class Player {
           visual: a.visual, color: a.color, splash: a.splash,
           ...this.damageContext('physical', s),
         });
+      });
+    }
+  }
+
+  gainUltimate(amount) {
+    if (this.voc.id !== 'sorcerer' || this.dead) return;
+    this.ultimateCharge = Math.min(100, this.ultimateCharge + Math.max(0, Number(amount) || 0));
+  }
+
+  useUltimate() {
+    if (this.voc.id !== 'sorcerer' || this.ultimateCharge < 100 || this.dead) return;
+    const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
+    const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
+    const t = target.clone().setY(0);
+    const offset = t.clone().sub(this.pos);
+    if (offset.length() > 12) t.copy(this.pos).addScaledVector(offset.normalize(), 12);
+
+    this.ultimateCharge = 0;
+    this.face(t.clone().sub(this.pos), 0.6);
+    this.anim.attack('cast', 0.9);
+    g.ui.toast('CATACLISMA ARCANO!');
+    g.fx.telegraphCircle(t, u.radius, 0.75, u.color);
+
+    for (let i = 0; i < 3; i++) {
+      g.schedule(0.75 + i * 0.28, () => {
+        if (this.dead) return;
+        const radius = u.radius * (i === 2 ? 1.08 : 1);
+        g.fx.ring(t, u.color, radius, 0.45);
+        g.fx.emit(V.copy(t).setY(0.5), {
+          count: 55, color: u.color, speed: 9 + i * 2, up: 2.5,
+          life: 0.7, size: 0.45, gravity: 5, drag: 3
+        });
+        g.combat.aoe(
+          t, radius, s ? [s.abilityMin * 1.35, s.abilityMax * 1.35] : u.damage,
+          u.color, undefined, this.damageContext('magic', s)
+        );
+        g.rig.shake(0.28 + i * 0.1);
       });
     }
   }
@@ -355,6 +395,7 @@ export class Player {
     if (this.invulnerable) { this.game.ui.floatText(V.copy(this.pos).setY(2.2), 'Esquiva!', 'info'); return; }
     amount = Math.round(amount * (this.game.character?.stats.damageMultiplier ?? this.voc.armor));
     this.hp -= amount;
+    this.gainUltimate(2);
     this.lastHurt = this.game.time;
     this.flash = 1;
     this.anim.hit();
@@ -380,6 +421,7 @@ export class Player {
     this.attackCd = 0;
     this.abilityCd = 0;
     this.dashCd = 0;
+    this.ultimateCharge = 0;
     this.dashT = 0;
     this.dashHits = null;
     this.slowT = 0;
