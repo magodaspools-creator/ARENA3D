@@ -31,8 +31,13 @@ export class MineBoss {
     this.root.scale.setScalar(1.65);
     this.pos = this.root.position;
     this.home = new THREE.Vector3(x, 0, z);
-    this.radius = 1.55;
+    // The visual body is scaled by 1.65 and the legs extend beyond the
+    // abdomen. Keep the gameplay collider close to the full silhouette so
+    // the spider does not feel like it only has collision around its head.
+    this.radius = 2.25;
     this.height = 3.6;
+    this.moveVelocity = new THREE.Vector3();
+    this.moveTargetAngle = Math.PI;
 
     const bodyMat = mat(0x171217, { rough: 0.72 });
     const abdomenMat = mat(0x241824, { rough: 0.62 });
@@ -126,6 +131,8 @@ export class MineBoss {
     this.pounceHit = false;
     this.orbitDir = 1;
     this.orbitT = 0;
+    this.moveVelocity.set(0, 0, 0);
+    this.moveTargetAngle = this.facing;
     this.tele = [];
     this.webs = [];
     this.eggs = [];
@@ -312,32 +319,61 @@ export class MineBoss {
 
       case 'chase': {
         this.orbitT += dt;
-        if (this.orbitT > 1.8) {
+        if (this.orbitT > 2.8) {
           this.orbitT = 0;
           this.orbitDir *= -1;
         }
 
-        // The spider should never just park beside the player. It approaches,
-        // circles and briefly backs off, making its movement readable but
-        // unpredictable instead of behaving like a stationary turret.
-        const preferred = this.phase === 1 ? 3.2 : this.phase === 2 ? 3.6 : 4.0;
+        // Smooth spider movement: choose a desired direction, then steer
+        // toward it with acceleration. This avoids the abrupt side-switching
+        // that made the old orbit look like a sequence of turns.
+        const preferred = this.phase === 1 ? 3.4 : this.phase === 2 ? 3.8 : 4.1;
         let moveAngle = toPlayer;
-        if (dist < preferred + 1.1) {
-          moveAngle = toPlayer + this.orbitDir * (Math.PI * 0.48);
-          if (dist < 2.25) moveAngle = toPlayer + Math.PI;
+
+        if (dist < preferred + 1.2) {
+          const orbitStrength = dist < 2.7 ? 0.95 : 0.72;
+          moveAngle = toPlayer + this.orbitDir * (Math.PI * orbitStrength);
+
+          // If the player gets inside the spider's body space, retreat
+          // smoothly instead of trying to rotate in place.
+          if (dist < this.radius + 0.65) {
+            moveAngle = toPlayer + Math.PI;
+          }
         }
 
-        this.facing += Math.atan2(
-          Math.sin(moveAngle - this.facing),
-          Math.cos(moveAngle - this.facing)
-        ) * Math.min(1, dt * 9);
+        this.moveTargetAngle = moveAngle;
 
-        const speed = this.phase === 3 ? 4.25 : this.phase === 2 ? 3.75 : 3.15;
-        const moveScale = dist < 2.0 ? 0.92 : 1;
+        const angleDelta = Math.atan2(
+          Math.sin(this.moveTargetAngle - this.facing),
+          Math.cos(this.moveTargetAngle - this.facing)
+        );
+        const turnRate = this.phase === 3 ? 5.8 : 5.2;
+        this.facing += angleDelta * Math.min(1, dt * turnRate);
+
+        const maxSpeed = this.phase === 3 ? 4.15 : this.phase === 2 ? 3.65 : 3.05;
+        const targetSpeed = dist < this.radius + 0.55
+          ? maxSpeed * 0.72
+          : Math.min(maxSpeed, maxSpeed * (0.72 + Math.min(0.28, Math.abs(angleDelta))));
+
+        // Accelerate/decelerate instead of instantly changing speed.
+        const acceleration = 8.0;
+        const desiredVX = Math.sin(this.facing) * targetSpeed;
+        const desiredVZ = Math.cos(this.facing) * targetSpeed;
+        const blend = 1 - Math.exp(-acceleration * dt);
+        this.moveVelocity.x += (desiredVX - this.moveVelocity.x) * blend;
+        this.moveVelocity.z += (desiredVZ - this.moveVelocity.z) * blend;
+
+        const velocityLen = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
+        if (velocityLen > maxSpeed) {
+          const scale = maxSpeed / velocityLen;
+          this.moveVelocity.x *= scale;
+          this.moveVelocity.z *= scale;
+        }
+
         g.collision.move(
           this.pos,
-          Math.sin(this.facing) * speed * moveScale * dt,
-          Math.cos(this.facing) * speed * moveScale * dt,
+          this.moveVelocity.x * dt,
+          this.moveVelocity.z * dt,
           this.radius
         );
 
@@ -855,5 +891,7 @@ export class MineBoss {
     this.pounceDistance = 0;
     this.pounceHit = false;
     this.orbitT = 0;
+    this.moveVelocity.set(0, 0, 0);
+    this.moveTargetAngle = this.facing;
   }
 }
