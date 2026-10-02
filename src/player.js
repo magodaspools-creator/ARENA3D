@@ -107,12 +107,14 @@ export class Player {
       if (input.down('KeyS') || input.down('ArrowDown')) mz -= 1;
       if (input.down('KeyD') || input.down('ArrowRight')) mx += 1;
       if (input.down('KeyA') || input.down('ArrowLeft')) mx -= 1;
+      mx += input.touch.moveX;
+      mz += input.touch.moveY;
     }
     g.rig.forward(F); g.rig.right(R);
     const dir = new THREE.Vector3().addScaledVector(F, mz).addScaledVector(R, mx);
     if (dir.lengthSq() > 0) dir.normalize();
 
-    if (!locked && (input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight')) && this.dashCd <= 0) {
+    if (!locked && (input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight') || input.touch.dashPressed) && this.dashCd <= 0) {
       this.dashDir.copy(dir.lengthSq() > 0 ? dir : V.set(Math.sin(this.facing), 0, Math.cos(this.facing)));
       this.startDash(0.2, 17, 1.1);
     }
@@ -139,8 +141,12 @@ export class Player {
     // --- combat ---
     if (!locked) {
       const mouseAtk = input.mouse.left;
-      if ((mouseAtk || input.down('Space')) && this.attackCd <= 0) this.attack(this.aimTarget(mouseAtk));
-      if ((input.wasPressed('KeyQ') || input.wasPressed('Digit1')) && this.abilityCd <= 0) this.useAbility();
+      const mobileAtk = input.touch.attack;
+      if ((mouseAtk || input.down('Space') || mobileAtk) && this.attackCd <= 0) this.attack(this.aimTarget(mouseAtk && !mobileAtk));
+      if ((input.wasPressed('KeyQ') || input.wasPressed('Digit1') || input.touch.abilityPressed) && this.abilityCd <= 0) this.useAbility();
+      if (input.touch.lightPressed) {
+        this.light.intensity = this.light.intensity > 0 ? 0 : 9;
+      }
     }
 
     // out-of-combat regeneration
