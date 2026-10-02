@@ -647,25 +647,11 @@ export class MineBoss {
     this.body.position.y = Math.sin(Math.min(1, leapT) * Math.PI) * 0.85;
 
     if (leapT >= 1 && !this.pounceHit) {
+      // Diagnostic isolation: the browser still freezes during the leap, so
+      // temporarily remove every landing-side effect (damage, camera shake,
+      // ring and particles). If the freeze disappears, we can reintroduce
+      // these one by one and identify the exact subsystem.
       this.pounceHit = true;
-      g.rig.shake(0.55);
-      g.fx.ring(this.pos, 0xffa43b, 4.3, 0.42);
-      g.fx.emit(V.copy(this.pos).setY(0.65), {
-        count: 32,
-        color: 0xffa43b,
-        speed: 6,
-        up: 2.4,
-        life: 0.65,
-        size: 0.38,
-      });
-
-      if (Math.hypot(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z) < 2.45 + g.player.radius) {
-        g.player.takeDamage(g.combat.roll(
-          this.phase === 3 ? [42, 58] : this.phase === 2 ? [34, 48] : [28, 40],
-          0
-        ).amount, this.pos);
-      }
-
       this.pounceTarget = null;
     }
 
