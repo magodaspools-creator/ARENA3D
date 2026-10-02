@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Input } from './input.js?v=20261002-3';
 import { CameraRig } from './camera.js?v=20261002-3';
-import { Collision } from './collision.js?v=20261002-3';
+import { Collision, initCollision } from './collision.js?v=20261002-4';
 import { Effects } from './effects.js?v=20261002-3';
 import { Combat } from './combat.js?v=20261002-3';
 import { UI } from './ui.js?v=20261002-3';
@@ -246,4 +246,31 @@ class Game {
   }
 }
 
-window.game = new Game();
+async function boot() {
+  const loading = document.getElementById('loading');
+  const setBootStage = (message) => {
+    if (loading) loading.textContent = message;
+  };
+
+  try {
+    setBootStage('Carregando motor físico…');
+    await initCollision();
+    setBootStage('Montando a Arena…');
+    window.game = new Game();
+  } catch (error) {
+    console.error('Arena startup failed:', error);
+    const message = error?.stack || error?.message || String(error);
+    if (loading) {
+      loading.textContent = 'Erro ao iniciar: ' + message;
+      loading.style.whiteSpace = 'pre-wrap';
+      loading.style.maxWidth = '92vw';
+      loading.style.padding = '18px';
+      loading.style.textAlign = 'left';
+      loading.style.fontFamily = 'monospace';
+      loading.style.fontSize = '12px';
+      loading.style.zIndex = '99999';
+    }
+  }
+}
+
+boot();
