@@ -280,15 +280,18 @@ export class Player {
     this.anim.attack('cast', 0.9);
     g.ui.toast('CATACLISMA ARCANO!');
     g.fx.telegraphCircle(t, u.radius, 0.75, u.color);
+    // Keep the ultimate visually strong without creating a burst of short-lived
+    // GPU objects during an already busy boss encounter.
+    g.fx.ring(t, u.color, u.radius * 0.9, 0.9);
 
     for (let i = 0; i < 3; i++) {
       g.schedule(0.75 + i * 0.28, () => {
         if (this.dead) return;
         const radius = u.radius * (i === 2 ? 1.08 : 1);
-        g.fx.ring(t, u.color, radius, 0.45);
+        g.fx.ring(t, u.color, radius, 0.32);
         g.fx.emit(V.copy(t).setY(0.5), {
-          count: 55, color: u.color, speed: 9 + i * 2, up: 2.5,
-          life: 0.7, size: 0.45, gravity: 5, drag: 3
+          count: 22, color: u.color, speed: 8 + i * 1.5, up: 2.2,
+          life: 0.55, size: 0.38, gravity: 5, drag: 3
         });
         g.combat.aoe(
           t, radius, s ? [s.abilityMin * 1.35, s.abilityMax * 1.35] : u.damage,
