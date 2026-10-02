@@ -125,6 +125,17 @@ export const ITEMS = {
     icon: '◆',
     effect: { type: 'healPercent', value: 0.35 },
   },
+  mana_potion: {
+    id: 'mana_potion',
+    sprite: 'uploads/02_pocao_de_mana.png',
+    name: 'Poção de Mana',
+    description: 'Recupera uma quantidade de mana ao ser usada.',
+    category: 'consumível',
+    maxStack: 20,
+    value: 22,
+    icon: '◆',
+    effect: { type: 'restoreMana', value: 40 },
+  },
   iron_scrap: {
     id: 'iron_scrap',
     sprite: 'assets/items/iron-scrap.svg',
