@@ -39,9 +39,35 @@ export class Collision {
     return o;
   }
   addBox(minX, maxX, minZ, maxZ, opts = {}) {
-    const o = { type: 'box', minX, maxX, minZ, maxZ, enabled: opts.enabled ?? true, projectiles: opts.projectiles ?? true };
+    const o = {
+      type: 'box',
+      minX, maxX, minZ, maxZ,
+      enabled: opts.enabled ?? true,
+      projectiles: opts.projectiles ?? true,
+      walkableTop: opts.walkableTop ?? false,
+      topY: Number.isFinite(opts.topY) ? opts.topY : 0,
+    };
     this.obstacles.push(o);
     return o;
+  }
+
+  // Returns the highest nearby walkable surface that can be reached from the
+  // current height in one movement step. The base ground is always Y=0.
+  surfaceHeight(x, z, currentY = 0, maxStep = 0.35) {
+    let h = 0;
+    for (const o of this.obstacles) {
+      if (!o.enabled || !o.walkableTop) continue;
+      if (o.type === 'box') {
+        if (x < o.minX || x > o.maxX || z < o.minZ || z > o.maxZ) continue;
+      } else if (o.type === 'circle') {
+        if (Math.hypot(x - o.x, z - o.z) > o.r) continue;
+      } else {
+        continue;
+      }
+      const top = o.topY;
+      if (Math.abs(top - currentY) <= maxStep + 1e-4) h = Math.max(h, top);
+    }
+    return h;
   }
 
   /** Signed distance to the walkable area (negative = inside). */
@@ -78,26 +104,51 @@ export class Collision {
     return false;
   }
 
-  /** Moves pos (Vector3, XZ only) with wall sliding and obstacle resolution. */
+  /** Moves a circle with wall sliding, obstacle resolution and small step-ups. */
   move(pos, dx, dz, r) {
     const lim = -r;
+    const maxStep = 0.35;
     let nx = pos.x;
     let nz = pos.z;
+    let ny = Number.isFinite(pos.y) ? pos.y : 0;
 
     const tryX = pos.x + dx;
-    if (this.inside(tryX, nz, lim)) nx = tryX;
+    if (this.inside(tryX, nz, lim)) {
+      const h = this.surfaceHeight(tryX, nz, ny, maxStep);
+      if (Math.abs(h - ny) <= maxStep + 1e-4) {
+        nx = tryX;
+        ny = h;
+      }
+    }
 
-    const tryZ = pos.z + dz;
-    if (this.inside(nx, tryZ, lim)) nz = tryZ;
+    const tryZ = nz + dz;
+    if (this.inside(nx, tryZ, lim)) {
+      const h = this.surfaceHeight(nx, tryZ, ny, maxStep);
+      if (Math.abs(h - ny) <= maxStep + 1e-4) {
+        nz = tryZ;
+        ny = h;
+      }
+    }
 
     if (nx === pos.x && nz !== pos.z && dx !== 0) {
       const retryX = pos.x + dx;
-      if (this.inside(retryX, nz, lim)) nx = retryX;
+      if (this.inside(retryX, nz, lim)) {
+        const h = this.surfaceHeight(retryX, nz, ny, maxStep);
+        if (Math.abs(h - ny) <= maxStep + 1e-4) {
+          nx = retryX;
+          ny = h;
+        }
+      }
     }
 
     for (let it = 0; it < 2; it++) {
       for (const o of this.obstacles) {
         if (!o.enabled) continue;
+
+        // A marked walkable top behaves like a small step/ramp: once the
+        // actor is at the correct height, its 2D footprint no longer blocks.
+        if (o.walkableTop && Math.abs(o.topY - ny) <= maxStep + 1e-4) continue;
+
         if (o.type === 'circle') {
           const ox = nx - o.x, oz = nz - o.z, min = o.r + r, d2 = ox * ox + oz * oz;
           if (d2 < min * min) {
@@ -126,8 +177,16 @@ export class Collision {
     if (!this.inside(nx, nz, lim) && this.inside(pos.x, pos.z, lim)) {
       nx = pos.x;
       nz = pos.z;
+      ny = pos.y;
     }
+
+    // Prevent walking/falling off a raised surface when the drop is larger
+    // than one allowed step.
+    const finalH = this.surfaceHeight(nx, nz, ny, maxStep);
+    if (Math.abs(finalH - ny) <= maxStep + 1e-4) ny = finalH;
+
     pos.x = nx;
+    pos.y = ny;
     pos.z = nz;
   }
 }
