@@ -274,12 +274,12 @@ export class Player {
   }
 
   gainUltimate(amount) {
-    if (!['sorcerer', 'knight'].includes(this.voc.id) || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid'].includes(this.voc.id) || this.dead) return;
     this.ultimateCharge = Math.min(100, this.ultimateCharge + Math.max(0, Number(amount) || 0));
   }
 
   useUltimate() {
-    if (!['sorcerer', 'knight'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
 
     const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
 
@@ -312,6 +312,116 @@ export class Player {
           g.rig.shake(0.28 + i * 0.1);
         });
       }
+      return;
+    }
+
+    if (this.voc.id === 'druid') {
+      this.ultimateCharge = 0;
+      this.anim.attack('cast', 0.9);
+      this.slowT = 0.55;
+      g.ui.toast('TEMPESTADE GLACIAL!');
+      g.fx.telegraphCircle(this.pos, u.radius, 0.8, u.color);
+      g.fx.ring(this.pos, u.color, u.radius, 0.8);
+
+      const stormDuration = 2.4;
+      const vortexes = 8;
+      const vortexMeshes = [];
+
+      for (let i = 0; i < vortexes; i++) {
+        const angle = (i / vortexes) * Math.PI * 2;
+        const distance = 2.2 + (i % 2) * 2.1;
+        const mesh = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({
+          color: u.color,
+          transparent: true,
+          opacity: 0.72,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+
+        for (let j = 0; j < 3; j++) {
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.42 + j * 0.13, 0.055, 7, 18),
+            mat
+          );
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = 0.7 + j * 0.48;
+          ring.rotation.z = j * 0.8;
+          mesh.add(ring);
+        }
+
+        const core = new THREE.Mesh(
+          new THREE.ConeGeometry(0.42, 2.4, 8, 1, true),
+          mat
+        );
+        core.position.y = 1.25;
+        mesh.add(core);
+
+        mesh.position.set(
+          this.pos.x + Math.sin(angle) * distance,
+          0,
+          this.pos.z + Math.cos(angle) * distance
+        );
+        g.scene.add(mesh);
+        vortexMeshes.push({ mesh, angle, distance, phase: i * 0.8 });
+      }
+
+      let pulseT = 0;
+      const tick = 0.22;
+      const ticks = Math.ceil(stormDuration / tick);
+      for (let i = 0; i < ticks; i++) {
+        g.schedule(0.35 + i * tick, () => {
+          if (this.dead) return;
+          const pulse = i / Math.max(1, ticks - 1);
+          const radius = u.radius * (0.72 + pulse * 0.18);
+          g.combat.aoe(
+            this.pos,
+            radius,
+            s ? [s.abilityMin * 0.55, s.abilityMax * 0.55] : u.damage,
+            u.color,
+            undefined,
+            this.damageContext('magic', s)
+          );
+          g.fx.emit(V.copy(this.pos).setY(0.8), {
+            count: 12,
+            color: u.color,
+            speed: 4.5,
+            up: 2.4,
+            life: 0.5,
+            size: 0.28,
+            drag: 3,
+          });
+        });
+      }
+
+      g.schedule(0.35, () => {
+        const start = g.time;
+        const animateStorm = () => {
+          if (!vortexMeshes.length) return;
+          const elapsed = g.time - start;
+          for (const v of vortexMeshes) {
+            const a = v.angle + elapsed * (v.phase % 2 ? -0.7 : 0.7);
+            const wobble = Math.sin(elapsed * 4 + v.phase) * 0.35;
+            v.mesh.position.x = this.pos.x + Math.sin(a) * (v.distance + wobble);
+            v.mesh.position.z = this.pos.z + Math.cos(a) * (v.distance + wobble);
+            v.mesh.rotation.y += 0.18;
+            v.mesh.rotation.x = Math.sin(elapsed * 5 + v.phase) * 0.18;
+          }
+          if (elapsed < stormDuration && !this.dead) {
+            requestAnimationFrame(animateStorm);
+          } else {
+            for (const v of vortexMeshes) {
+              g.scene.remove(v.mesh);
+              v.mesh.traverse((o) => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) o.material.dispose();
+              });
+            }
+            vortexMeshes.length = 0;
+          }
+        };
+        animateStorm();
+      });
       return;
     }
 
