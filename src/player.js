@@ -274,12 +274,12 @@ export class Player {
   }
 
   gainUltimate(amount) {
-    if (!['sorcerer', 'knight', 'druid'].includes(this.voc.id) || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid', 'paladin'].includes(this.voc.id) || this.dead) return;
     this.ultimateCharge = Math.min(100, this.ultimateCharge + Math.max(0, Number(amount) || 0));
   }
 
   useUltimate() {
-    if (!['sorcerer', 'knight', 'druid'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
+    if (!['sorcerer', 'knight', 'druid', 'paladin'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
 
     const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
 
@@ -312,6 +312,114 @@ export class Player {
           g.rig.shake(0.28 + i * 0.1);
         });
       }
+      return;
+    }
+
+    if (this.voc.id === 'paladin') {
+      const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
+      const center = target.clone().setY(0);
+      const offset = center.clone().sub(this.pos);
+      if (offset.length() > 14) center.copy(this.pos).addScaledVector(offset.normalize(), 14);
+
+      this.ultimateCharge = 0;
+      this.face(center.clone().sub(this.pos), 0.6);
+      this.anim.attack('shoot', 0.9);
+      this.slowT = 0.7;
+      g.ui.toast('CHUVA DIVINA!');
+      g.fx.telegraphCircle(center, u.radius, 0.9, u.color);
+      g.fx.ring(center, u.color, u.radius, 0.9);
+
+      const arrows = 18;
+      const duration = 1.8;
+      for (let i = 0; i < arrows; i++) {
+        const delay = 0.28 + (i / (arrows - 1)) * 1.15;
+        g.schedule(delay, () => {
+          if (this.dead) return;
+
+          const a = i * 2.399963;
+          const r = 0.8 + ((i * 1.73) % 5.7);
+          const hit = center.clone().add(new THREE.Vector3(Math.sin(a) * r, 0, Math.cos(a) * r));
+          const arrowDir = new THREE.Vector3(Math.sin(a + Math.PI), 0, Math.cos(a + Math.PI));
+
+          // Sacred arrow descending from above.
+          const shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.045, 0.045, 2.4, 6),
+            new THREE.MeshBasicMaterial({
+              color: u.color,
+              transparent: true,
+              opacity: 0.95,
+              depthWrite: false,
+            })
+          );
+          shaft.position.set(hit.x, 4.0, hit.z);
+          shaft.rotation.x = Math.PI / 2;
+          shaft.rotation.z = -Math.atan2(arrowDir.z, arrowDir.x);
+          g.scene.add(shaft);
+
+          const tip = new THREE.Mesh(
+            new THREE.ConeGeometry(0.11, 0.34, 6),
+            shaft.material
+          );
+          tip.position.set(hit.x, 2.72, hit.z);
+          tip.rotation.x = Math.PI;
+          shaft.add(tip);
+
+          g.fx.telegraphCircle(hit, 0.72, 0.22, u.color);
+
+          g.schedule(0.18, () => {
+            if (this.dead) return;
+            g.scene.remove(shaft);
+            shaft.traverse((o) => {
+              if (o.geometry) o.geometry.dispose();
+              if (o.material) o.material.dispose();
+            });
+
+            g.fx.ring(hit, u.color, 1.0, 0.24);
+            g.fx.emit(V.copy(hit).setY(0.45), {
+              count: 9,
+              color: u.color,
+              speed: 4.5,
+              up: 2.5,
+              life: 0.45,
+              size: 0.24,
+              gravity: 4,
+            });
+            g.combat.aoe(
+              hit,
+              1.15,
+              s ? [s.abilityMin * 0.72, s.abilityMax * 0.72] : u.damage,
+              u.color,
+              undefined,
+              this.damageContext('physical', s)
+            );
+          });
+        });
+      }
+
+      // A final sacred burst makes the whole area feel like one ultimate,
+      // rather than a collection of independent arrows.
+      g.schedule(1.85, () => {
+        if (this.dead) return;
+        g.fx.ring(center, u.color, u.radius, 0.5);
+        g.fx.emit(V.copy(center).setY(0.7), {
+          count: 32,
+          color: u.color,
+          speed: 7,
+          up: 3.2,
+          life: 0.7,
+          size: 0.34,
+          gravity: 4,
+        });
+        g.combat.aoe(
+          center,
+          u.radius,
+          s ? [s.abilityMin * 1.0, s.abilityMax * 1.0] : u.damage,
+          u.color,
+          undefined,
+          this.damageContext('physical', s)
+        );
+        g.rig.shake(0.45);
+      });
       return;
     }
 
