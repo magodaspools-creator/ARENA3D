@@ -363,6 +363,10 @@ export class UI {
     this.el.portrait.textContent = voc.name[0];
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
     this.el.skAbility.querySelector('.label').textContent = voc.ability.name;
+    if (this.el.skUltimate) {
+      this.el.skUltimate.classList.toggle('hidden', voc.id !== 'sorcerer');
+      this.el.skUltimate.querySelector('.label').textContent = voc.ultimate?.name || 'Ultimate';
+    }
     this.setProgress(character);
     this.setActionBar(character);
     setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
