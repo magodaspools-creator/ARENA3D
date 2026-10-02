@@ -29,6 +29,7 @@ export const VOCATIONS = {
     look: { skin: 0xc99a74, body: 0x2f4a2a, legs: 0x3a2e20, robe: 0x2a3f24, accent: 0x9acd5a, head: 'hood', hood: 0x3a5530, weapon: 'staff', orb: 0x7dff9a, glow: 0x7dff9a },
     attack: { kind: 'projectile', name: 'Espinho', visual: 'thorn', speed: 22, range: 19, damage: [21, 27], cooldown: 0.6, style: 'cast', color: 0x7dff9a },
     ability: { kind: 'bloom', name: 'Florescer', radius: 4.8, heal: 0.45, damage: [28, 36], cooldown: 9, color: 0x7dff9a },
+    ultimate: { kind: 'iceTempest', name: 'Tempestade Glacial', radius: 7.5, damage: [115, 145], color: 0xbfeaff },
   },
   monk: {
     id: 'monk', name: 'Monk', title: 'Punho Sereno', color: '#ffb45a', hp: 200, speed: 6.9, armor: 0.95,
