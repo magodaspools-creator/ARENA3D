@@ -1,14 +1,40 @@
 import * as THREE from 'three';
-import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js';
-
+let RAPIER = null;
 let rapierReady = false;
 
-// Keep WASM initialization out of module evaluation. Some mobile Safari/WebKit
-// versions can leave a top-level await pending without surfacing an error.
+const withTimeout = (promise, ms, label) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
+]);
+
+// Load Rapier dynamically so a CDN/network problem cannot block the entire
+// JavaScript module graph on mobile. jsDelivr remains the primary source;
+// unpkg is a fallback.
 export async function initCollision() {
   if (rapierReady) return;
-  await RAPIER.init();
-  rapierReady = true;
+
+  const sources = [
+    'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/rapier.es.js',
+    'https://unpkg.com/@dimforge/rapier3d-compat@0.21.0/rapier.es.js',
+  ];
+
+  let lastError = null;
+  for (const url of sources) {
+    try {
+      const mod = await withTimeout(import(url), 8000, 'Tempo esgotado ao carregar o motor de colisão');
+      RAPIER = mod.default ?? mod;
+      await withTimeout(RAPIER.init(), 8000, 'Tempo esgotado ao inicializar o motor de colisão');
+      rapierReady = true;
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    'Não foi possível carregar o motor de colisão (Rapier). ' +
+    (lastError?.message || lastError || 'erro desconhecido')
+  );
 }
 
 const STATIC = 1;
