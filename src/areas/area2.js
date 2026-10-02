@@ -134,7 +134,26 @@ export function createArea2(game) {
   addBox(136,0.8,47,10,1.6,2.2,darkStone);
   addBox(164,0.8,47,10,1.6,2.2,darkStone);
   addBox(150,3.8,43,30,1.4,2.2,stoneMat);
+  // Altar: raised visual platform with a clear central staircase.
+  // The top remains walkable; only its perimeter blocks the player/boss.
   addBox(150,0.45,35,15,0.9,11,darkStone);
+
+  const altarStepMat = new THREE.MeshStandardMaterial({ color:0x5b4735, roughness:1, flatShading:true });
+  for (const [z, h] of [[27.8,0.3],[28.7,0.5],[29.5,0.7]]) {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(5.2,h,1.15), altarStepMat);
+    step.position.set(150,h/2,z);
+    step.castShadow = true;
+    step.receiveShadow = true;
+    temple.add(step);
+  }
+
+  // Keep the altar's footprint solid without creating an invisible wall
+  // across the staircase or trapping Azhur on the platform.
+  collision.addBox(142.0,142.9,29.0,41.0);
+  collision.addBox(157.1,158.0,29.0,41.0);
+  collision.addBox(142.0,158.0,40.4,41.4);
+  collision.addBox(142.0,147.4,29.0,30.0);
+  collision.addBox(152.6,158.0,29.0,30.0);
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
