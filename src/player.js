@@ -274,43 +274,82 @@ export class Player {
   }
 
   gainUltimate(amount) {
-    if (this.voc.id !== 'sorcerer' || this.dead) return;
+    if (!['sorcerer', 'knight'].includes(this.voc.id) || this.dead) return;
     this.ultimateCharge = Math.min(100, this.ultimateCharge + Math.max(0, Number(amount) || 0));
   }
 
   useUltimate() {
-    if (this.voc.id !== 'sorcerer' || this.ultimateCharge < 100 || this.dead) return;
+    if (!['sorcerer', 'knight'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
+
     const g = this.game, u = this.voc.ultimate, s = g.character?.stats;
-    const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
-    const t = target.clone().setY(0);
-    const offset = t.clone().sub(this.pos);
-    if (offset.length() > 12) t.copy(this.pos).addScaledVector(offset.normalize(), 12);
 
-    this.ultimateCharge = 0;
-    this.face(t.clone().sub(this.pos), 0.6);
-    this.anim.attack('cast', 0.9);
-    g.ui.toast('CATACLISMA ARCANO!');
-    g.fx.telegraphCircle(t, u.radius, 0.75, u.color);
-    // Keep the ultimate visually strong without creating a burst of short-lived
-    // GPU objects during an already busy boss encounter.
-    g.fx.ring(t, u.color, u.radius * 0.9, 0.9);
+    if (this.voc.id === 'sorcerer') {
+      const target = g.input.mouse.onCanvas ? g.aimPoint() : this.aimTarget(false);
+      const t = target.clone().setY(0);
+      const offset = t.clone().sub(this.pos);
+      if (offset.length() > 12) t.copy(this.pos).addScaledVector(offset.normalize(), 12);
 
-    for (let i = 0; i < 3; i++) {
-      g.schedule(0.75 + i * 0.28, () => {
-        if (this.dead) return;
-        const radius = u.radius * (i === 2 ? 1.08 : 1);
-        g.fx.ring(t, u.color, radius, 0.32);
-        g.fx.emit(V.copy(t).setY(0.5), {
-          count: 22, color: u.color, speed: 8 + i * 1.5, up: 2.2,
-          life: 0.55, size: 0.38, gravity: 5, drag: 3
+      this.ultimateCharge = 0;
+      this.face(t.clone().sub(this.pos), 0.6);
+      this.anim.attack('cast', 0.9);
+      g.ui.toast('CATACLISMA ARCANO!');
+      g.fx.telegraphCircle(t, u.radius, 0.75, u.color);
+      g.fx.ring(t, u.color, u.radius * 0.9, 0.9);
+
+      for (let i = 0; i < 3; i++) {
+        g.schedule(0.75 + i * 0.28, () => {
+          if (this.dead) return;
+          const radius = u.radius * (i === 2 ? 1.08 : 1);
+          g.fx.ring(t, u.color, radius, 0.32);
+          g.fx.emit(V.copy(t).setY(0.5), {
+            count: 22, color: u.color, speed: 8 + i * 1.5, up: 2.2,
+            life: 0.55, size: 0.38, gravity: 5, drag: 3
+          });
+          g.combat.aoe(
+            t, radius, s ? [s.abilityMin * 1.35, s.abilityMax * 1.35] : u.damage,
+            u.color, undefined, this.damageContext('magic', s)
+          );
+          g.rig.shake(0.28 + i * 0.1);
         });
-        g.combat.aoe(
-          t, radius, s ? [s.abilityMin * 1.35, s.abilityMax * 1.35] : u.damage,
-          u.color, undefined, this.damageContext('magic', s)
-        );
-        g.rig.shake(0.28 + i * 0.1);
-      });
+      }
+      return;
     }
+
+    // Knight: a single committed frontal strike. It uses the player's facing
+    // instead of the mouse point so the ultimate reads as a heavy melee finisher.
+    const dir = new THREE.Vector3(Math.sin(this.facing), 0, Math.cos(this.facing));
+    this.ultimateCharge = 0;
+    this.face(dir, 0.5);
+    this.anim.attack('slash', 0.7);
+    this.slowT = 0.45;
+    g.ui.toast('GOLPE COLOSSAL!');
+    g.fx.telegraphCircle(this.pos, u.radius, 0.55, u.color);
+
+    g.schedule(0.45, () => {
+      if (this.dead) return;
+      const center = this.pos.clone().addScaledVector(dir, 2.0);
+      center.y = 0;
+
+      g.fx.slash(this.pos, dir, u.radius, u.arc, u.color);
+      g.fx.ring(center, u.color, u.radius, 0.35);
+      g.fx.ring(this.pos, 0xffffff, 2.0, 0.22, 0.75);
+      g.fx.emit(V.copy(center).setY(0.35), {
+        count: 38, color: u.color, speed: 8, up: 2.8,
+        life: 0.6, size: 0.42, gravity: 5, drag: 4, flat: true
+      });
+
+      g.combat.meleeArc(
+        this.pos,
+        dir,
+        u.radius,
+        u.arc,
+        s ? [s.abilityMin * 2.0, s.abilityMax * 2.0] : u.damage,
+        u.color,
+        this.damageContext('physical', s)
+      );
+      g.rig.shake(0.55);
+      g.hitstop = 0.1;
+    });
   }
 
   useAbility() {
