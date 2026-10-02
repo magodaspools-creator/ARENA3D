@@ -67,6 +67,8 @@ export class MineBoss {
     this.pendingEnrage = false;
     this.nextAttack = 1.5;
     this.attackT = 0;
+    // Watchdog: recover if any combat state ever gets stuck.
+    this.combatStallT = 0;
     this.struck = false;
     this.chargeFrom = null;
     this.chargeTo = null;
@@ -92,6 +94,7 @@ export class MineBoss {
     this.pendingEnrage = false;
     this.nextAttack = 1.5;
     this.struck = false;
+    this.combatStallT = 0;
     this.roared = false;
     this.root.visible = false;
     this.anim.revive();
@@ -151,11 +154,22 @@ export class MineBoss {
     this.state = state;
     this.stateT = 0;
     this.struck = false;
+    this.combatStallT = 0;
   }
 
   update(dt) {
     const g = this.game, p = g.player;
     this.stateT += dt;
+    if (this.state !== 'dormant' && this.state !== 'dead') this.combatStallT += dt;
+    if (this.combatStallT > 6) {
+      this.combatStallT = 0;
+      this.tele.forEach((t) => this.game.fx.remove(t));
+      this.tele = [];
+      this.struck = false;
+      this.state = 'chase';
+      this.stateT = 0;
+      this.nextAttack = 0.25;
+    }
     if (this.flash > 0) {
       this.flash = Math.max(0, this.flash - dt * 6);
       applyFlash(this.mats, this.flash, WHITE);
@@ -285,5 +299,6 @@ export class MineBoss {
     this.state = 'chase';
     this.stateT = 0;
     this.nextAttack = this.enraged ? 0.55 : 1.0;
+    this.combatStallT = 0;
   }
 }
