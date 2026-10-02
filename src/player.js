@@ -899,6 +899,8 @@ export class Player {
   revive(x, z, facing) {
     this.dead = false;
     this.hp = this.maxHp;
+    this.mana = this.maxMana;
+    this.webbedUntil = 0;
     this.attackCd = 0;
     this.abilityCd = 0;
     this.dashCd = 0;
@@ -917,5 +919,6 @@ export class Player {
     this.anim.revive();
     this.place(x, z, facing);
     this.game.ui.setHP(this.hp, this.maxHp);
+    this.game.ui.setMana?.(this.mana, this.maxMana);
   }
 }
