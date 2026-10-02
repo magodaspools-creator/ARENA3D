@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ARENA_ITEMS } from './items.js';
+import { ARENA_ITEMS } from './items.js?v=20261002-3';
 
 // Minimal DOM HUD + world-anchored elements (damage numbers, HP bars,
 // interaction prompts, speech bubbles) projected from 3D each frame.
