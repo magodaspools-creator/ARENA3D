@@ -2430,6 +2430,19 @@ const leaveMine = () => {
     },
 
     /** Called after the player dies: reset the boss fight if it was running. */
+    reviveMineBossForTesting() {
+      if (!mine.active) {
+        game.ui.toast('Entre na Mina antes de reviver o boss.');
+        return;
+      }
+      mineMiniboss.reset();
+      mineMiniboss.activeWhenMine = true;
+      stage4Trigger.started = false;
+      prog.setCounter('mineMinibossDefeated', false);
+      game.ui.hideBoss();
+      game.ui.toast('Boss da Mina revivido para teste.');
+    },
+
     onRespawn() {
       if (mine.active) {
         ++mine.transitionToken;
