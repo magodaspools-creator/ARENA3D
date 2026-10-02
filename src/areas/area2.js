@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { rng, fbm, smooth, Terrain, createGround, Decor, createPortal, createRuneStone, createChest } from '../world.js';
 import { Enemy } from '../enemy.js';
-import { Boss } from '../boss.js';
+import { SunGodBoss } from '../sun-boss.js';
 
 // Prototype Area 2 — Desert of the Buried Sun.
 // This is intentionally a standalone prototype: it lives far from Area 1 so
@@ -296,14 +296,8 @@ export function createArea2(game) {
   });
 
   let fightStart = 0;
-  let bossCooldown = 0;
-  const desertBoss = new Boss(game, bossArena.x, bossArena.z, {
-    name: 'Azhur, o Guardião do Sol Sepultado',
-    onSummon: () => {
-      for (const [x, z] of [[142, 38], [158, 38]]) {
-        spawn('hollow', x, z, 'area2-boss-add');
-      }
-    },
+  const desertBoss = new SunGodBoss(game, bossArena.x, bossArena.z, {
+    name: 'Azhur, o Deus Sol',
     onDefeated: () => {
       game.onBossDefeated({
         xp: 700,
@@ -319,22 +313,21 @@ export function createArea2(game) {
       game.schedule(1.0, () => game.ui.banner('O SOL FOI SEPULTADO', 'Azhur caiu. O portal de retorno foi despertado.', 'victory', 4));
       game.schedule(3.2, () => game.ui.hideBoss());
       game.saveWorldState?.();
-      game.ui.toast('O Guardião tombou. Um portal se abriu no extremo norte do deserto.');
+      game.ui.toast('Azhur tombou. O portal de retorno foi despertado.');
     },
   });
   game.addEnemy(desertBoss);
   desertBoss.arena = bossArena;
 
   function startDesertBoss() {
-    if (bossCooldown > 0 || desertBoss.state !== 'dormant' || !exitPortal) return;
+    if (desertBoss.state !== 'idle' || !exitPortal) return;
     fightStart = game.time;
     desertBoss.awaken();
     game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
-    game.schedule(0.8, () => game.ui.banner('AZHUR', 'O Guardião do Sol Sepultado desperta', 'boss', 3));
+    game.schedule(0.8, () => game.ui.banner('AZHUR', 'O Deus Sol desperta sob o templo', 'boss', 3));
     game.schedule(1.2, () => game.ui.showBoss(desertBoss.name));
-    game.ui.toast('As pedras tremem. Algo antigo acordou sob o templo.');
+    game.ui.toast('O selo treme. Azhur, Deus Sol, despertou.');
   }
-
 
   // Map-to-map travel is explicit only: no proximity fallback.
   const returnFromStart = new THREE.Object3D();
