@@ -104,6 +104,7 @@ export class Combat {
       radius: p.radius ?? 0.35, visual: p.visual,
       homing: !!p.homing, homingStrength: p.homingStrength ?? 2.5,
       homingLife: p.homingLife ?? Infinity, homingT: 0,
+      trailT: 0,
       onExplode: p.onExplode,
       pos: new THREE.Vector3(p.pos.x, PROJ_Y, p.pos.z),
       vel: new THREE.Vector3(p.dir.x, 0, p.dir.z).normalize().multiplyScalar(p.speed),
@@ -151,9 +152,22 @@ export class Combat {
       p.mesh.position.copy(p.pos);
       if (p.visual === 'fire' || p.visual === 'orb' || p.visual === 'bigOrb') p.mesh.rotation.z += dt * 8;
       p.life -= dt;
-      if (Math.random() < 0.9) {
-        fx.particles.spawn(p.pos.x, p.pos.y, p.pos.z, (Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6,
-          p.color, p.visual === 'arrow' ? 0.2 : 0.4, p.visual === 'fire' ? 0.55 : 0.3, 0, 1);
+      // Projectile trails are cosmetic; throttle them so a burst of enemy
+      // projectiles cannot consume a particle spawn every frame.
+      p.trailT -= dt;
+      if (p.trailT <= 0) {
+        p.trailT = p.visual === 'arrow' ? 0.09 : 0.065;
+        fx.particles.spawn(
+          p.pos.x, p.pos.y, p.pos.z,
+          (Math.random() - 0.5) * 0.6,
+          0.4 + Math.random() * 0.4,
+          (Math.random() - 0.5) * 0.6,
+          p.color,
+          p.visual === 'arrow' ? 0.2 : 0.4,
+          p.visual === 'fire' ? 0.55 : 0.3,
+          0,
+          1
+        );
       }
       if (p.life <= 0 || !collision.inside(p.pos.x, p.pos.z, 0.3) || collision.blocked(p.pos.x, p.pos.z, 0.1)) {
         this.explode(p);
