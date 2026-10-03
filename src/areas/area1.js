@@ -2168,12 +2168,13 @@ const leaveMine = () => {
     ], runeStone.anchor),
   });
 
-  // The diary interaction is anchored to the actual book position so the
-  // prompt and E interaction cannot drift away from the visible object.
+  // Prisoner diary: use the corpse as the interaction zone instead of relying
+  // on the small book mesh. The book remains the visual target, while the
+  // whole prisoner scene reliably responds to E from a comfortable distance.
   game.interaction.add({
-    pos: loreBook.position,
-    radius: 3.0,
-    height: 1.25,
+    pos: prisonerPos,
+    radius: 4.5,
+    height: 2.4,
     label: 'Ler diário do prisioneiro',
     onInteract: () => {
       game.dialogue.open('Diário do Prisioneiro', [
