@@ -141,8 +141,10 @@ export class GltfAnimator {
       }
     }
     this.attackState = null;
+    this.dying = false;
     this.dead = false;
     this.hurt = 0;
+    this._diagnosticLogged = false;
   }
 
   setBaseWeights(speedNorm) {
@@ -176,6 +178,7 @@ export class GltfAnimator {
   hit() { this.hurt = 0.12; }
 
   die() {
+    this.dying = true;
     this.dead = true;
     this.attackState = null;
     for (const name of ['Idle', 'Walking', 'Running', 'Punch']) {
@@ -191,6 +194,7 @@ export class GltfAnimator {
   }
 
   revive() {
+    this.dying = false;
     this.dead = false;
     this.hurt = 0;
     this.attackState = null;
@@ -198,6 +202,85 @@ export class GltfAnimator {
     if (this.actions.Idle) this.actions.Idle.reset().setEffectiveWeight(1).play();
     this.r.root.rotation.set(0, 0, 0);
     this.r.root.position.y = 0;
+  }
+
+  diagnostic() {
+    const mixerActions = {};
+    for (const name of ['Idle', 'Walking', 'Running', 'Punch', 'Death']) {
+      const action = this.actions[name];
+      if (!action) {
+        mixerActions[name.toLowerCase()] = null;
+        continue;
+      }
+      mixerActions[name.toLowerCase()] = {
+        running: action.isRunning(),
+        enabled: action.enabled,
+        weight: Number(action.getEffectiveWeight().toFixed(4)),
+        time: Number(action.time.toFixed(4)),
+      };
+    }
+
+    const materials = [];
+    const meshes = [];
+    let allParentsVisible = true;
+    this.r.root.traverse((o) => {
+      if (!o.visible) allParentsVisible = false;
+      if (!o.isMesh) return;
+      o.frustumCulled = false;
+      o.visible = true;
+      meshes.push({
+        name: o.name || '(unnamed)',
+        skinned: !!o.isSkinnedMesh,
+        visible: o.visible,
+        frustumCulled: o.frustumCulled,
+      });
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const material of mats) {
+        if (!material) continue;
+        material.side = THREE.DoubleSide;
+        material.needsUpdate = true;
+        materials.push({
+          type: material.type,
+          opacity: material.opacity,
+          transparent: material.transparent,
+          colorWrite: material.colorWrite,
+          depthWrite: material.depthWrite,
+          visible: material.visible,
+        });
+      }
+    });
+
+    let chainVisible = true;
+    for (let node = this.r.root; node; node = node.parent) {
+      if (!node.visible) chainVisible = false;
+    }
+
+    this.r.model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(this.r.model);
+    const hand = this.r.handR;
+    hand.updateMatrixWorld(true);
+    const handWorld = new THREE.Vector3();
+    hand.getWorldPosition(handWorld);
+    const rootWorld = new THREE.Vector3();
+    this.r.root.getWorldPosition(rootWorld);
+
+    console.log('[ARENA] GLTF PLAYER DIAGNOSTIC', {
+      dying: this.dying,
+      dead: this.dead,
+      mixer: mixerActions,
+      allParentsVisible,
+      chainVisible,
+      meshCount: meshes.length,
+      skinnedMeshCount: meshes.filter((m) => m.skinned).length,
+      meshes,
+      materials,
+      rootWorld: rootWorld.toArray(),
+      handRWorld: handWorld.toArray(),
+      boxMin: box.min.toArray(),
+      boxMax: box.max.toArray(),
+      boxSize: box.getSize(new THREE.Vector3()).toArray(),
+    });
+    return { box, handWorld, rootWorld };
   }
 
   update(dt, speedNorm) {
