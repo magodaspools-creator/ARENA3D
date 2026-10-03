@@ -2168,15 +2168,22 @@ const leaveMine = () => {
     ], runeStone.anchor),
   });
 
+  // The diary interaction is anchored to the actual book position so the
+  // prompt and E interaction cannot drift away from the visible object.
   game.interaction.add({
-    pos: loreBookAnchor.position, radius: 2.4, height: 2.2, label: 'Ler diário do prisioneiro',
-    onInteract: () => game.dialogue.open('Diário do Prisioneiro', [
-      '"Não sei há quanto tempo estou preso neste pátio. As correntes já feriram meus pulsos até o osso."',
-      '"Eles disseram que eu deveria vigiar a passagem e nunca tocar no selo. Eu deveria ter fugido quando tive a chance."',
-      '"Ouço alguma coisa chamando debaixo das pedras. Morvhal não é o único que está preso aqui."',
-      '"Escrevo estas últimas linhas porque talvez alguém encontre este diário quando eu já não puder falar."',
-      '"Se você chegou até aqui, não repita meu erro. Não acorde o que está enterrado sob o santuário."',
-    ], loreBookAnchor),
+    pos: loreBook.position,
+    radius: 3.0,
+    height: 1.25,
+    label: 'Ler diário do prisioneiro',
+    onInteract: () => {
+      game.dialogue.open('Diário do Prisioneiro', [
+        '"Não sei há quanto tempo estou preso neste pátio. As correntes já feriram meus pulsos até o osso."',
+        '"Eles disseram que eu deveria vigiar a passagem e nunca tocar no selo. Eu deveria ter fugido quando tive a chance."',
+        '"Ouço alguma coisa chamando debaixo das pedras. Morvhal não é o único que está preso aqui."',
+        '"Escrevo estas últimas linhas porque talvez alguém encontre este diário quando eu já não puder falar."',
+        '"Se você chegou até aqui, não repita meu erro. Não acorde o que está enterrado sob o santuário."',
+      ], loreBookAnchor);
+    },
   });
 
   game.interaction.add({
