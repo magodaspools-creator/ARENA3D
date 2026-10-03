@@ -1759,6 +1759,8 @@ const leaveMine = () => {
   corpse.position.copy(prisonerPos);
   corpse.rotation.y = -0.35;
   scene.add(corpse);
+  // Keep the prisoner physically solid without creating a large invisible wall.
+  collision.addCircle(prisonerPos.x, prisonerPos.z, 0.7);
 
   // Rusted floor anchors and chains make it immediately readable that this
   // skeleton was restrained here rather than simply dying in battle.
@@ -2183,7 +2185,7 @@ const leaveMine = () => {
         '"Ouço alguma coisa chamando debaixo das pedras. Morvhal não é o único que está preso aqui."',
         '"Escrevo estas últimas linhas porque talvez alguém encontre este diário quando eu já não puder falar."',
         '"Se você chegou até aqui, não repita meu erro. Não acorde o que está enterrado sob o santuário."',
-      ], loreBookAnchor);
+      ], loreBookAnchor.position);
     },
   });
 
