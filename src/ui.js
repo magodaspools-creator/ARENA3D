@@ -25,7 +25,7 @@ export class UI {
       minimap: $('minimap-canvas'),
       pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
-      fpsBtn: $('fps-btn'), fpsDisplay: $('fps-display'),
+
     };
     this.prompt = this.anchor('prompt');
     this.bubble = this.anchor('bubble');
@@ -35,32 +35,7 @@ export class UI {
     this.minimapCtx = this.el.minimap?.getContext('2d') || null;
     this.minimapLastT = 0;
     this.minimapCache = null;
-    this.fpsVisible = false;
-    this.fpsElapsed = 0;
-    this.fpsFrames = 0;
-    this.fpsValue = 0;
 
-    this.el.fpsBtn?.addEventListener('click', () => this.toggleFPS());
-  }
-
-  toggleFPS(force) {
-    this.fpsVisible = typeof force === 'boolean' ? force : !this.fpsVisible;
-    this.el.fpsDisplay?.classList.toggle('hidden', !this.fpsVisible);
-    this.el.fpsBtn?.classList.toggle('active', this.fpsVisible);
-    this.el.fpsBtn?.setAttribute('aria-pressed', String(this.fpsVisible));
-  }
-
-  updateFPS(dt) {
-    if (!this.fpsVisible) return;
-    this.fpsFrames++;
-    this.fpsElapsed += dt;
-    if (this.fpsElapsed >= 0.5) {
-      this.fpsValue = Math.round(this.fpsFrames / this.fpsElapsed);
-      this.fpsFrames = 0;
-      this.fpsElapsed = 0;
-      if (this.el.fpsDisplay) this.el.fpsDisplay.textContent = `FPS: ${this.fpsValue}`;
-    }
-  }
 
   // ---------- world anchored ----------
   anchor(cls) {
@@ -118,7 +93,6 @@ export class UI {
   }
 
   update(dt) {
-    this.updateFPS(dt);
     this.updateMinimap();
     for (let i = this.floaters.length - 1; i >= 0; i--) {
       const f = this.floaters[i];
