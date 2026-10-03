@@ -799,28 +799,11 @@ mineGroup.add(exitLight);
 exitLight.userData.baseIntensity = 4.0;
 mineLights.push(exitLight);
 
-const undergroundZones = [
-  // Entrance / north shaft
-  [[103, 98], [103, 84], [107, 81], [116, 82], [118, 98], [114, 102], [106, 102]],
-  // Central working hub around the old shaft
-  [[100, 103], [105, 98], [116, 98], [121, 103], [121, 113], [116, 119], [105, 119], [99, 114]],
-  // West extraction gallery
-  [[89, 98], [103, 98], [105, 103], [103, 110], [93, 110], [88, 106]],
-  // West lower chamber
-  [[72, 106], [88, 104], [96, 110], [96, 120], [91, 126], [80, 124], [73, 119]],
-  // West/south return gallery
-  [[82, 120], [95, 118], [105, 123], [105, 131], [99, 135], [88, 132], [80, 127]],
-  // East extraction gallery
-  [[116, 99], [136, 98], [140, 104], [137, 110], [121, 111], [117, 106]],
-  // East chamber
-  [[133, 103], [144, 96], [151, 92], [154, 105], [151, 119], [144, 125], [135, 120], [130, 111]],
-  // East/south gallery
-  [[125, 115], [144, 115], [147, 123], [143, 130], [130, 132], [124, 126]],
-  // South spine into the natural cave
-  [[102, 115], [124, 115], [130, 121], [129, 131], [124, 136], [110, 133], [103, 128]],
-  // Natural boss cave
-  [[109, 128], [115, 126], [126, 127], [131, 132], [130, 138], [144, 139], [149, 146], [143, 153], [124, 154], [110, 151], [104, 144], [106, 136]],
-];
+// NOTE: Do not add interior polygon zones here. The mine intentionally uses
+// one outer polygon as its gameplay boundary; interior wall geometry is handled
+// only by explicit visible rock colliders. Reintroducing room polygons creates
+// invisible seams between otherwise connected galleries.
+
 
 // The outer mine polygon remains the single gameplay boundary.
 // Interior visual walls do not create hidden collision barriers.
