@@ -45,8 +45,11 @@ function buildGltfRig(asset, look = {}) {
   const legR = findBone(root, [/RightUpLeg$/i, /RightLeg$/i, /ThighR$/i, /LegR$/i]);
   const armL = findBone(root, [/LeftArm$/i, /LeftForeArm$/i, /UpperArmL$/i, /ArmL$/i]);
   const armR = findBone(root, [/RightArm$/i, /RightForeArm$/i, /UpperArmR$/i, /ArmR$/i]);
-  const handBoneL = findBone(root, [/LeftHand$/i, /HandL$/i, /LeftPalm$/i]);
-  const handBoneR = findBone(root, [/RightHand$/i, /HandR$/i, /RightPalm$/i]);
+  // GLTFLoader normalizes bone names by removing dots (e.g. Palm2.R -> Palm2R).
+  // Keep both semantic hand names and the normalized Palm2 names so weapon groups
+  // remain attached even when a model uses the latter convention.
+  const handBoneL = findBone(root, [/LeftHand$/i, /HandL$/i, /LeftPalm$/i, /Palm2L$/i, /PalmL$/i]);
+  const handBoneR = findBone(root, [/RightHand$/i, /HandR$/i, /RightPalm$/i, /Palm2R$/i, /PalmR$/i]);
 
   const handL = new THREE.Group();
   const handR = new THREE.Group();
