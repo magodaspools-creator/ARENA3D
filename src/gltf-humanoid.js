@@ -87,6 +87,9 @@ function buildGltfRig(asset, look = {}) {
     armR: armR || torso || root,
     handL, handR, eyes, cape: null, model,
     animations: asset.animations || [],
+    // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
+    // not the loader cache's original scene.
+    sourceScene: asset.scene,
     makeAnimator() { return new GltfAnimator(this); },
   };
 }
@@ -131,6 +134,7 @@ export class GltfAnimator {
   constructor(rig) {
     this.r = rig;
     this.mixer = new THREE.AnimationMixer(rig.model);
+    this.mixerTarget = rig.model;
     this.actions = {};
     for (const clip of rig.animations) {
       const action = this.mixer.clipAction(clip);
@@ -220,69 +224,91 @@ export class GltfAnimator {
       };
     }
 
-    const materials = [];
     const meshes = [];
-    let allParentsVisible = true;
+    const bonesByName = new Map();
     this.r.root.traverse((o) => {
-      if (!o.visible) allParentsVisible = false;
+      if (o.isBone) bonesByName.set(o.name, o);
       if (!o.isMesh) return;
-      o.frustumCulled = false;
       o.visible = true;
+      o.frustumCulled = false;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      const material = mats[0] || null;
+      const sphere = o.geometry?.boundingSphere;
+      if (o.geometry && !sphere) o.geometry.computeBoundingSphere();
+      const worldScale = new THREE.Vector3();
+      o.getWorldScale(worldScale);
       meshes.push({
         name: o.name || '(unnamed)',
-        skinned: !!o.isSkinnedMesh,
         visible: o.visible,
-        frustumCulled: o.frustumCulled,
+        skinned: !!o.isSkinnedMesh,
+        materialType: material?.type ?? null,
+        opacity: material?.opacity ?? null,
+        transparent: material?.transparent ?? null,
+        worldScale: worldScale.toArray().map((v) => Number(v.toFixed(5))),
+        boundingSphereRadius: Number((o.geometry?.boundingSphere?.radius ?? NaN).toFixed(5)),
+        skeletonBones: o.isSkinnedMesh ? o.skeleton.bones.length : 0,
       });
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      for (const material of mats) {
-        if (!material) continue;
-        material.side = THREE.DoubleSide;
-        material.colorWrite = true;
-        material.depthWrite = true;
-        material.needsUpdate = true;
-        materials.push({
-          type: material.type,
-          opacity: material.opacity,
-          transparent: material.transparent,
-          colorWrite: material.colorWrite,
-          depthWrite: material.depthWrite,
-          visible: material.visible,
-        });
+      for (const m of mats) {
+        if (!m) continue;
+        m.side = THREE.DoubleSide;
+        m.visible = true;
+        m.colorWrite = true;
+        m.depthWrite = true;
+        if (m.opacity !== undefined && m.opacity <= 0) m.opacity = 1;
+        if (m.transparent && m.opacity >= 1) m.transparent = false;
+        m.needsUpdate = true;
       }
     });
 
-    let chainVisible = true;
-    for (let node = this.r.root; node; node = node.parent) {
-      if (!node.visible) chainVisible = false;
+    const boneNames = ['Hips', 'Head', 'Palm2R', 'Foot'];
+    const bones = {};
+    for (const requested of boneNames) {
+      let bone = bonesByName.get(requested);
+      if (!bone) {
+        bone = [...bonesByName.entries()].find(([name]) => {
+          const n = name.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          const r = requested.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          return n === r || n.endsWith(r);
+        })?.[1] || null;
+      }
+      if (bone) {
+        bone.updateMatrixWorld(true);
+        const wp = new THREE.Vector3();
+        bone.getWorldPosition(wp);
+        bones[requested] = {
+          actualName: bone.name,
+          world: wp.toArray().map((v) => Number(v.toFixed(5))),
+          finite: wp.toArray().every(Number.isFinite),
+        };
+      } else {
+        bones[requested] = null;
+      }
     }
 
     this.r.model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(this.r.model);
-    const hand = this.r.handR;
-    hand.updateMatrixWorld(true);
-    const handWorld = new THREE.Vector3();
-    hand.getWorldPosition(handWorld);
     const rootWorld = new THREE.Vector3();
     this.r.root.getWorldPosition(rootWorld);
 
+    let activeActions = 0;
+    for (const action of Object.values(this.actions)) {
+      if (action.isRunning() && action.getEffectiveWeight() > 0.0001) activeActions++;
+    }
+
     console.log('[ARENA] GLTF PLAYER DIAGNOSTIC', {
-      dying: this.dying,
-      dead: this.dead,
-      mixer: mixerActions,
-      allParentsVisible,
-      chainVisible,
-      meshCount: meshes.length,
-      skinnedMeshCount: meshes.filter((m) => m.skinned).length,
-      meshes,
-      materials,
-      rootWorld: rootWorld.toArray(),
-      handRWorld: handWorld.toArray(),
-      boxMin: box.min.toArray(),
-      boxMax: box.max.toArray(),
-      boxSize: box.getSize(new THREE.Vector3()).toArray(),
+      mixerTargetIsModel: this.mixerTarget === this.r.model,
+      mixerTargetIsSourceScene: this.mixerTarget === this.r.sourceScene,
+      mixerTargetName: this.mixerTarget?.name || '(unnamed)',
+      activeActions,
+      mixerActions,
+      skinnedMeshes: meshes,
+      bones,
+      rootWorld: rootWorld.toArray().map((v) => Number(v.toFixed(5))),
+      boxMin: box.min.toArray().map((v) => Number(v.toFixed(5))),
+      boxMax: box.max.toArray().map((v) => Number(v.toFixed(5))),
+      boxSize: box.getSize(new THREE.Vector3()).toArray().map((v) => Number(v.toFixed(5))),
     });
-    return { box, handWorld, rootWorld };
+    return { box, bones, meshes };
   }
 
   update(dt, speedNorm) {
