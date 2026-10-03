@@ -1346,7 +1346,6 @@ const mine = {
   transitionToken: 0,
   minimap: {
     bounds: { minX: 68, maxX: 155, minZ: 78, maxZ: 155 },
-    zones: undergroundZones,
   },
 };
 
