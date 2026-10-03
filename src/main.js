@@ -413,7 +413,7 @@ class Game {
       if (!this.character.removeItem(itemId, 1)) return false;
       this.ui.setInventory(this.character);
       this.ui.setActionBar(this.character);
-      this.ui.toast('+' + Math.round(restored) + ' mana');
+      this.ui.floatText(new THREE.Vector3(this.player.pos.x, 2.55, this.player.pos.z), '+' + Math.round(restored) + ' MANA', 'mana', 1.0);
       return true;
     }
 
