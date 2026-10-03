@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { VOCATIONS } from './vocations.js';
 import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { createPlayerRig } from './gltf-humanoid.js';
 
 const V = new THREE.Vector3();
 const F = new THREE.Vector3();
@@ -15,17 +16,24 @@ export class Player {
     this.voc = VOCATIONS[vocId];
     const look = { ...this.voc.look };
     if (look.weapon === 'fists') look.fistGlow = look.glow;
-    this.rig = createHumanoid(look);
+    this.rig = createPlayerRig(look, createHumanoid);
     if (look.weapon !== 'fists') {
       this.weapon = createWeapon(look.weapon, look);
       (look.weapon === 'bow' ? this.rig.handL : this.rig.handR).add(this.weapon);
     }
-    if (look.offhand) this.rig.handL.add(createWeapon(look.offhand, look));
+    if (look.offhand) {
+      this.offhandWeapon = createWeapon(look.offhand, look);
+      this.rig.handL.add(this.offhandWeapon);
+    }
 
     this.root = this.rig.root;
     this.pos = this.root.position;
     this.mats = uniqueMaterials(this.root);
-    this.anim = new HumanoidAnimator(this.rig);
+    this.anim = this.rig.makeAnimator ? this.rig.makeAnimator() : new HumanoidAnimator(this.rig);
+    this.rig.ready?.then((nextRig) => {
+      if (!nextRig || this.dead) return;
+      this.swapToGltfRig(nextRig, look);
+    });
 
     // vocation-coloured ring under the feet: identity + readability in the dark
     const ring = new THREE.Mesh(
@@ -79,6 +87,31 @@ export class Player {
     if (restored <= 0) return 0;
     this.mana += restored;
     return restored;
+  }
+
+  swapToGltfRig(nextRig, look) {
+    const oldRoot = this.root;
+    const oldPosition = oldRoot.position.clone();
+    const oldRotation = oldRoot.rotation.clone();
+
+    if (this.weapon) this.weapon.removeFromParent();
+    if (this.offhandWeapon) this.offhandWeapon.removeFromParent();
+    this.game.scene.remove(oldRoot);
+
+    this.rig = nextRig;
+    this.root = nextRig.root;
+    this.root.position.copy(oldPosition);
+    this.root.rotation.copy(oldRotation);
+    this.pos = this.root.position;
+    this.anim = nextRig.makeAnimator ? nextRig.makeAnimator() : new HumanoidAnimator(nextRig);
+
+    if (this.weapon) (look.weapon === 'bow' ? nextRig.handL : nextRig.handR).add(this.weapon);
+    if (this.offhandWeapon) nextRig.handL.add(this.offhandWeapon);
+
+    if (this.ring) this.root.add(this.ring);
+    if (this.light) this.root.add(this.light);
+    this.mats = uniqueMaterials(this.root);
+    this.game.scene.add(this.root);
   }
 
   dispose() {
