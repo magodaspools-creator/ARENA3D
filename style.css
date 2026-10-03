@@ -26,6 +26,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #070a10; col
 .dmg.player { color: #ff6060; }
 .dmg.heal { color: #7dff9a; }
 .dmg.info { color: #cfe3ff; font-size: 15px; font-weight: 600; }
+.dmg.mana { color: #58b7ff; font-size: 17px; text-shadow: 0 0 8px rgba(60,160,255,.7), 0 2px 0 #000; }
 .dmg.alert { color: #ff4a3a; font-size: 26px; font-family: Georgia, serif; }
 .ebar { width: 58px; height: 7px; background: rgba(0,0,0,.7); border: 1px solid rgba(255,255,255,.25); border-radius: 2px; overflow: hidden; }
 .ebar > div { height: 100%; width: 100%; background: linear-gradient(#e44, #a12); transition: width .12s; }
