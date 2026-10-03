@@ -753,7 +753,7 @@ export class Player {
     const g = this.game, ab = this.voc.ability, s = g.character?.stats;
     const manaCost = ab.manaCost ?? 20;
     if (this.mana < manaCost) {
-      g.ui.floatText(V.copy(this.pos).setY(2.55), '- MANA INSUFICIENTE', 'mana', 1.1);
+      g.ui.floatText(V.copy(this.pos).setY(2.75), '- MANA INSUFICIENTE', 'mana insufficient', 1.25);
       return;
     }
     this.mana -= manaCost;
