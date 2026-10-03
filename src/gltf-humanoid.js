@@ -94,41 +94,27 @@ function buildGltfRig(asset, look = {}) {
   };
 }
 
-function fallbackRig(createHumanoid, look) {
+export async function loadPlayerRig(look = {}, createHumanoid) {
+  const asset = await PLAYER_GLTF_PROMISE;
+  if (asset) {
+    try {
+      const rig = buildGltfRig(asset, look);
+      console.log('[ARENA] Player rig ready: GLTF final rig.', {
+        clonedScene: rig.model !== asset.scene,
+        modelName: rig.model.name || '(unnamed)',
+        sourceName: asset.scene.name || '(unnamed)',
+      });
+      return rig;
+    } catch (error) {
+      console.warn('[ARENA] Failed to build RobotExpressive rig; using procedural player.', error);
+    }
+  }
   const rig = createHumanoid(look);
-  rig.ready = PLAYER_GLTF_PROMISE.then((asset) => {
-    if (!asset) return null;
-    try { return buildGltfRig(asset, look); }
-    catch (error) {
-      console.warn('[ARENA] Failed to build RobotExpressive rig; keeping procedural player.', error);
-      return null;
-    }
-  });
+  rig.isProceduralFallback = true;
+  console.log('[ARENA] Player rig ready: PROCEDURAL FALLBACK.');
   return rig;
 }
 
-export function createPlayerRig(look = {}, createHumanoid) {
-  const rig = fallbackRig(createHumanoid, look);
-  console.log('[ARENA] Player rig: fallback (aguardando RobotExpressive.glb).');
-
-  rig.ready = rig.ready.then((nextRig) => {
-    if (!nextRig) {
-      console.log('[ARENA] Player rig: FALLBACK — modelo glTF não foi usado.');
-      return null;
-    }
-
-    const finalBox = new THREE.Box3().setFromObject(nextRig.model);
-    const finalSize = finalBox.getSize(new THREE.Vector3());
-    console.log('[ARENA] Player rig: GLTF — modelo usado.', {
-      height: Number(finalSize.y.toFixed(4)),
-      minY: Number(finalBox.min.y.toFixed(4)),
-      maxY: Number(finalBox.max.y.toFixed(4)),
-    });
-    return nextRig;
-  });
-
-  return rig;
-}
 
 export class GltfAnimator {
   constructor(rig) {
