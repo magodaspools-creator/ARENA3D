@@ -90,7 +90,26 @@ function fallbackRig(createHumanoid, look) {
 }
 
 export function createPlayerRig(look = {}, createHumanoid) {
-  return fallbackRig(createHumanoid, look);
+  const rig = fallbackRig(createHumanoid, look);
+  console.log('[ARENA] Player rig: fallback (aguardando RobotExpressive.glb).');
+
+  rig.ready = rig.ready.then((nextRig) => {
+    if (!nextRig) {
+      console.log('[ARENA] Player rig: FALLBACK — modelo glTF não foi usado.');
+      return null;
+    }
+
+    const finalBox = new THREE.Box3().setFromObject(nextRig.model);
+    const finalSize = finalBox.getSize(new THREE.Vector3());
+    console.log('[ARENA] Player rig: GLTF — modelo usado.', {
+      height: Number(finalSize.y.toFixed(4)),
+      minY: Number(finalBox.min.y.toFixed(4)),
+      maxY: Number(finalBox.max.y.toFixed(4)),
+    });
+    return nextRig;
+  });
+
+  return rig;
 }
 
 export class GltfAnimator {
