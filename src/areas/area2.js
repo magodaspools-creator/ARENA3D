@@ -165,9 +165,9 @@ export function createArea2(game) {
   // on top. Keep the stair mouth open in the center, but make the left and
   // right portions climbable from above and blocking from ground level.
   // Using walkableTop avoids the old invisible vertical-wall behavior.
-  collision.addBox(142.5,147.35,29.5,40.5,{ walkableTop:true, topY:0.9 });
-  collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9 });
-  collision.addBox(152.65,157.5,29.5,40.5,{ walkableTop:true, topY:0.9 });
+  collision.addBox(142.5,147.35,29.5,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
+  collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
+  collision.addBox(152.65,157.5,29.5,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
