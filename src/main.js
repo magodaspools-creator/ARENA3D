@@ -19,6 +19,7 @@ import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 import { MapEditor } from './map-editor.js';
+import { installExpansion } from './expansion.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
 
@@ -79,6 +80,7 @@ class Game {
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     // Hidden development tool: opens only with Ctrl+Shift+T.
     this.mapEditor = new MapEditor(this);
+    installExpansion(this);
 
     addEventListener('resize', () => this.resize());
     addEventListener('beforeunload', () => this.saveWorldState());
