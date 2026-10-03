@@ -222,8 +222,9 @@ class Game {
   }
 
   async start(id) {
-    if (!id || this.player) return;
+    if (!id || this.player || this.startingPlayer) return;
 
+    this.startingPlayer = true;
     this.inputLocked = true;
     this.ui.toast('Preparando personagem...', 2.5);
 
@@ -269,6 +270,7 @@ class Game {
 
     this.logScenePlayerDiagnostics();
     this.inputLocked = false;
+    this.startingPlayer = false;
   }
 
   logScenePlayerDiagnostics() {
