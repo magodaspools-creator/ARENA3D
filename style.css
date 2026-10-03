@@ -1434,3 +1434,40 @@ button:hover { filter: brightness(1.1); }
   border-color: rgba(158,200,255,.65);
   background: rgba(158,200,255,.14);
 }
+
+
+/* ---------- FPS monitor ---------- */
+#fps-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 30;
+  pointer-events: auto;
+  border: 1px solid rgba(232,199,122,.45);
+  border-radius: 5px;
+  background: rgba(8,10,16,.78);
+  color: #e8c77a;
+  padding: 5px 10px;
+  font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+}
+#fps-btn:hover { background: rgba(20,23,32,.92); }
+#fps-btn.active {
+  border-color: rgba(130,220,170,.7);
+  color: #9affc4;
+}
+#fps-display {
+  position: absolute;
+  top: 48px;
+  right: 18px;
+  z-index: 30;
+  pointer-events: none;
+  padding: 4px 8px;
+  border: 1px solid rgba(130,220,170,.28);
+  border-radius: 4px;
+  background: rgba(5,8,11,.72);
+  color: #9affc4;
+  font: 700 12px/1 "Consolas", "Courier New", monospace;
+  text-shadow: 0 1px 3px #000;
+}
