@@ -129,6 +129,8 @@ export class Player {
     this.gltfDebugBox = new THREE.Box3Helper(debugBox, 0xff00ff);
     this.game.scene.add(this.gltfDebugBox);
 
+    this.anim.diagnostic?.();
+
     // Temporary 5-second render probe: replace only GLTF mesh materials with an
     // unmistakable unlit magenta material. Original materials are restored after
     // the probe so this cannot alter the player's final appearance.
@@ -184,7 +186,7 @@ export class Player {
     });
 
     root.updateMatrixWorld(true);
-    this.anim.diagnostic?.();
+
 
     // Reattach weapons to the GLTF hand groups. Those groups are attached to
     // the animated hand bones, so weapons follow the GLTF animation.
