@@ -403,12 +403,12 @@ class Game {
       return true;
     }
 
-    if (item.effect.type === 'restoreMana') {
+    if (item.effect.type === 'restoreManaPercent') {
       if (this.player.mana >= this.player.maxMana) {
         this.ui.toast('Sua mana já está cheia.');
         return false;
       }
-      const restored = this.player.restoreMana(item.effect.value);
+      const restored = this.player.restoreMana(this.player.maxMana * item.effect.value);
       if (restored <= 0) return false;
       if (!this.character.removeItem(itemId, 1)) return false;
       this.ui.setInventory(this.character);
