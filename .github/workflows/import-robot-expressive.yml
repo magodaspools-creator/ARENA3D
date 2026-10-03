@@ -1,0 +1,36 @@
+name: Import RobotExpressive model
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-robot-expressive.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download RobotExpressive.glb from Three.js r170
+        run: |
+          set -euo pipefail
+          mkdir -p assets/models
+          curl -L --fail --retry 3 \
+            -o assets/models/RobotExpressive.glb \
+            "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/RobotExpressive/RobotExpressive.glb"
+          test "$(stat -c '%s' assets/models/RobotExpressive.glb)" = "463988"
+          test "$(git hash-object assets/models/RobotExpressive.glb)" = "6fec9cfb4b41cb319c70d38cf86965aba5630964"
+
+      - name: Remove temporary importer and commit model
+        run: |
+          set -euo pipefail
+          rm .github/workflows/import-robot-expressive.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/models/RobotExpressive.glb .github/workflows/import-robot-expressive.yml
+          git commit -m "Add RobotExpressive glTF player model"
+          git push
