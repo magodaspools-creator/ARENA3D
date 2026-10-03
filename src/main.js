@@ -20,6 +20,7 @@ import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 import { MapEditor } from './map-editor.js';
 import { installExpansion } from './expansion.js';
+import { installFiveHundred } from './five-hundred.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
 
@@ -81,6 +82,7 @@ class Game {
     // Hidden development tool: opens only with Ctrl+Shift+T.
     this.mapEditor = new MapEditor(this);
     installExpansion(this);
+    installFiveHundred(this);
 
     addEventListener('resize', () => this.resize());
     addEventListener('beforeunload', () => this.saveWorldState());
@@ -816,6 +818,7 @@ class Game {
     if (this.state !== 'map-editor') {
       for (const n of this.npcs) n.update(dt);
       this.area.update(dt, this.time);
+      this.fiveHundred?.update(dt);
       this.fx.update(dt);
     }
 
