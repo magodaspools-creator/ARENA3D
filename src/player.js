@@ -119,6 +119,31 @@ export class Player {
     this.mats = uniqueMaterials(root);
     this.anim = nextRig.makeAnimator ? nextRig.makeAnimator() : new HumanoidAnimator(nextRig);
 
+    // Temporary GLTF render diagnostic: keep a world-space Box3Helper around
+    // the model so we can distinguish "not rendered" from "not present".
+    if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
+    const debugBox = new THREE.Box3().setFromObject(gltfVisual);
+    this.gltfDebugBox = new THREE.Box3Helper(debugBox, 0xff00ff);
+    this.game.scene.add(this.gltfDebugBox);
+
+    // Force every GLTF mesh/material into a diagnostic-safe render state.
+    gltfVisual.traverse((o) => {
+      o.visible = true;
+      if (!o.isMesh) return;
+      o.frustumCulled = false;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const material of mats) {
+        if (!material) continue;
+        material.side = THREE.DoubleSide;
+        material.visible = true;
+        if (material.opacity !== undefined && material.opacity <= 0) material.opacity = 1;
+        material.needsUpdate = true;
+      }
+    });
+
+    root.updateMatrixWorld(true);
+    this.anim.diagnostic?.();
+
     // Reattach weapons to the GLTF hand groups. Those groups are attached to
     // the animated hand bones, so weapons follow the GLTF animation.
     if (this.weapon) {
@@ -162,6 +187,7 @@ export class Player {
   dispose() {
     this.game.scene.remove(this.root);
     this.game.scene.remove(this.lightSpell);
+    if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
   }
 
   place(x, z, facing) {
@@ -235,6 +261,12 @@ export class Player {
 
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
+
+    if (this.gltfDebugBox && this.rig?.model) {
+      this.rig.model.updateMatrixWorld(true);
+      this.gltfDebugBox.box.setFromObject(this.rig.model);
+      this.gltfDebugBox.updateMatrixWorld(true);
+    }
 
     if (this.lightSpellT > 0) {
       // The spell light is intentionally detached from the player rig so it illuminates
