@@ -1,41 +1,58 @@
 import * as THREE from 'three';
 import { VOCATIONS } from './vocations.js';
 import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
-import { createPlayerRig } from './gltf-humanoid.js';
 
 const V = new THREE.Vector3();
 const F = new THREE.Vector3();
 const R = new THREE.Vector3();
 const RED = new THREE.Color(0xff2020);
+let NEXT_PLAYER_ID = 1;
+const ACTIVE_PLAYERS = new Set();
 
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
 
 export class Player {
-  constructor(game, vocId) {
+  constructor(game, vocId, finalRig) {
     this.game = game;
+    this.id = NEXT_PLAYER_ID++;
+    ACTIVE_PLAYERS.add(this);
     this.voc = VOCATIONS[vocId];
     const look = { ...this.voc.look };
     if (look.weapon === 'fists') look.fistGlow = look.glow;
-    this.rig = createPlayerRig(look, createHumanoid);
-    if (look.weapon !== 'fists') {
-      this.weapon = createWeapon(look.weapon, look);
-      (look.weapon === 'bow' ? this.rig.handL : this.rig.handR).add(this.weapon);
-    }
-    if (look.offhand) {
-      this.offhandWeapon = createWeapon(look.offhand, look);
-      this.rig.handL.add(this.offhandWeapon);
-    }
 
+    if (!finalRig) throw new Error('[ARENA] Player requires a final rig before construction.');
+    this.rig = finalRig;
     this.root = this.rig.root;
+    this.root.userData.arenaPlayerRoot = this.id;
     this.pos = this.root.position;
     this.mats = uniqueMaterials(this.root);
     this.anim = this.rig.makeAnimator ? this.rig.makeAnimator() : new HumanoidAnimator(this.rig);
-    this.rig.ready?.then((nextRig) => {
-      if (!nextRig) return;
-      this.swapToGltfRig(nextRig, look);
-    });
 
-    // vocation-coloured ring under the feet: identity + readability in the dark
+    if (look.weapon !== 'fists') {
+      this.weapon = createWeapon(look.weapon, look);
+      this.weapon.userData.arenaPlayerWeapon = look.weapon;
+      (look.weapon === 'bow' ? this.rig.handL : this.rig.handR).add(this.weapon);
+      this.normalizeWeaponScale(this.weapon, look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
+    }
+    if (look.offhand) {
+      this.offhandWeapon = createWeapon(look.offhand, look);
+      this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
+      this.rig.handL.add(this.offhandWeapon);
+      this.normalizeWeaponScale(this.offhandWeapon, this.rig.handL);
+    }
+
+    this.root.visible = true;
+    this.root.updateMatrixWorld(true);
+    game.scene.add(this.root);
+
+    this.gltfDebugBox = null;
+    this.gltfRuler = null;
+    this.gltfProbeMaterials = [];
+    this.lightSpellT = 0;
+    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 32, 1.15);
+    this.lightSpell.position.set(0, 3.5, 0);
+    this.game.scene.add(this.lightSpell);
+
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.55, 0.68, 32).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: look.glow, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false }),
@@ -43,22 +60,10 @@ export class Player {
     ring.position.y = 0.04;
     this.ring = ring;
     this.root.add(ring);
-    // Small permanent fill light keeps the player readable without washing out
-    // the dungeon. Arcane Light adds illumination around the player only.
+
     this.light = new THREE.PointLight(0xffe2b8, 0.8, 5, 1.4);
     this.light.position.set(0, 3, 0.5);
     this.root.add(this.light);
-
-    this.lightSpellT = 0;
-    // Keep the light in the scene even while inactive. Toggling a light on/off
-    // changes Three.js' lighting program defines and can force a shader recompile
-    // on the first cast, causing a visible frame hitch.
-    this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 32, 1.15);
-    // The spell light is a broad overhead source: stronger dungeon illumination without a visible hotspot beside the character.
-    this.lightSpell.position.set(0, 3.5, 0);
-    this.game.scene.add(this.lightSpell);
-
-    game.scene.add(this.root);
 
     this.radius = 0.45;
     const initialStats = this.game.character?.stats;
@@ -78,159 +83,84 @@ export class Player {
     this.flash = 0;
     this.dead = false;
     this.passiveRegenT = 0;
+
+    this.logPlayerDiagnostics();
   }
 
-  get invulnerable() { return this.dashT > 0; }
-
-  restoreMana(amount) {
-    const restored = Math.max(0, Math.min(Number(amount) || 0, this.maxMana - this.mana));
-    if (restored <= 0) return 0;
-    this.mana += restored;
-    return restored;
+  normalizeWeaponScale(weapon, hand) {
+    this.root.updateMatrixWorld(true);
+    hand.updateMatrixWorld(true);
+    const handScale = new THREE.Vector3();
+    hand.getWorldScale(handScale);
+    const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
+    weapon.scale.set(1 / safe(handScale.x), 1 / safe(handScale.y), 1 / safe(handScale.z));
+    weapon.updateMatrixWorld(true);
+    const worldScale = new THREE.Vector3();
+    weapon.getWorldScale(worldScale);
+    console.log('[ARENA] PLAYER WEAPON SCALE', {
+      playerId: this.id,
+      weapon: weapon.userData.arenaPlayerWeapon,
+      hand: hand.name || '(unnamed)',
+      handWorldScale: handScale.toArray().map((v) => Number(v.toFixed(5))),
+      weaponWorldScale: worldScale.toArray().map((v) => Number(v.toFixed(5))),
+      parent: weapon.parent?.name || '(unnamed)',
+    });
   }
 
-  swapToGltfRig(nextRig, look) {
-    // Keep the original root: the camera, collision, this.pos and other systems
-    // already hold references to it. Only replace the visual rig underneath it.
-    const root = this.root;
-    const oldBody = this.rig.body;
-    const wasDead = this.dead;
-    const oldAttack = this.anim?.attackState;
-    const attackRemaining = oldAttack
-      ? Math.max(0.05, oldAttack.dur - oldAttack.t)
-      : 0;
-
-    if (oldBody && oldBody.parent === root) oldBody.removeFromParent();
-
-    // The GLTF rig's model is its complete visual hierarchy. Do not detach
-    // nextRig.body (a bone) from that hierarchy, or the skinned mesh breaks.
-    const gltfVisual = nextRig.model;
-    if (!gltfVisual) throw new Error('GLTF rig has no model visual.');
-    gltfVisual.removeFromParent();
-    root.add(gltfVisual);
-    root.visible = true;
-    root.updateMatrixWorld(true);
-
-    // The logical player root remains the original scene node.
-    nextRig.root = root;
-    this.rig = nextRig;
-    this.root = root;
-    this.pos = root.position;
-    this.mats = uniqueMaterials(root);
-    this.anim = nextRig.makeAnimator ? nextRig.makeAnimator() : new HumanoidAnimator(nextRig);
-
-    // Temporary GLTF render diagnostic: keep a world-space Box3Helper around
-    // the model so we can distinguish "not rendered" from "not present".
-    if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
-    if (this.gltfRuler) this.game.scene.remove(this.gltfRuler);
-    for (const entry of this.gltfProbeMaterials || []) entry.probe.dispose();
-    this.gltfProbeMaterials = [];
-    const debugBox = new THREE.Box3().setFromObject(gltfVisual);
-    this.gltfDebugBox = new THREE.Box3Helper(debugBox, 0xff00ff);
-    this.game.scene.add(this.gltfDebugBox);
-
+  logPlayerDiagnostics() {
+    this.root.updateMatrixWorld(true);
+    let skinned = [];
+    const weapons = [];
+    this.game.scene.traverse((o) => {
+      if (o.isSkinnedMesh) {
+        const p = new THREE.Vector3();
+        o.getWorldPosition(p);
+        skinned.push({ name: o.name || '(unnamed)', world: p.toArray().map((v) => Number(v.toFixed(5))) });
+      }
+      if (o.userData?.arenaPlayerWeapon) {
+        const p = new THREE.Vector3();
+        const s = new THREE.Vector3();
+        o.getWorldPosition(p);
+        o.getWorldScale(s);
+        weapons.push({
+          name: o.userData.arenaPlayerWeapon,
+          playerId: this.id,
+          world: p.toArray().map((v) => Number(v.toFixed(5))),
+          worldScale: s.toArray().map((v) => Number(v.toFixed(5))),
+          parent: o.parent?.name || '(unnamed)',
+        });
+      }
+    });
+    const playersInScene = [];
+    this.game.scene.traverse((o) => {
+      if (o.userData?.arenaPlayerRoot) playersInScene.push(o.userData.arenaPlayerRoot);
+    });
+    console.log('[ARENA] PLAYER INSTANCE', {
+      id: this.id,
+      activePlayers: ACTIVE_PLAYERS.size,
+      playerRootsInScene: playersInScene.length,
+      proceduralFallback: !!this.rig.isProceduralFallback,
+      rootParent: this.root.parent?.type || null,
+      animator: this.anim.constructor.name,
+      oldProceduralParentNull: !!this.rig.isProceduralFallback,
+      oldHumanoidAnimatorUpdated: false,
+    });
+    console.log('[ARENA] SCENE SKINNED MESHES', {
+      playerId: this.id,
+      count: skinned.length,
+      meshes: skinned,
+    });
+    console.log('[ARENA] SCENE PLAYER WEAPONS', { playerId: this.id, count: weapons.length, weapons });
     this.anim.diagnostic?.();
-
-    // Temporary 5-second render probe: replace only GLTF mesh materials with an
-    // unmistakable unlit magenta material. Original materials are restored after
-    // the probe so this cannot alter the player's final appearance.
-    this.gltfProbeMaterials = [];
-    gltfVisual.traverse((o) => {
-      if (!o.isMesh) return;
-      const original = Array.isArray(o.material) ? o.material : [o.material];
-      const probe = new THREE.MeshBasicMaterial({
-        color: 0xff00ff,
-        depthTest: false,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        toneMapped: false,
-      });
-      this.gltfProbeMaterials.push({ mesh: o, original: o.material, probe });
-      o.material = probe;
-      o.visible = true;
-      o.frustumCulled = false;
-    });
-
-    // Temporary 0.4 x 1.9 x 0.4 world-space ruler beside the player.
-    const ruler = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 1.9, 0.4),
-      new THREE.MeshBasicMaterial({
-        color: 0xff2020,
-        depthTest: false,
-        depthWrite: false,
-        toneMapped: false,
-      }),
-    );
-    ruler.position.set(root.position.x + 1.0, 0.95, root.position.z);
-    this.game.scene.add(ruler);
-    this.gltfRuler = ruler;
-    this.gltfProbeT = 5;
-    console.log('[ARENA] GLTF probe started: magenta MeshBasicMaterial for 5s + red 0.4x1.9x0.4 ruler.');
-
-
-    // Force every GLTF mesh/material into a diagnostic-safe render state.
-    gltfVisual.traverse((o) => {
-      o.visible = true;
-      if (!o.isMesh) return;
-      o.frustumCulled = false;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      for (const material of mats) {
-        if (!material) continue;
-        material.side = THREE.DoubleSide;
-        material.visible = true;
-        material.colorWrite = true;
-        material.depthWrite = true;
-        if (material.opacity !== undefined && material.opacity <= 0) material.opacity = 1;
-        material.needsUpdate = true;
-      }
-    });
-
-    root.updateMatrixWorld(true);
-
-
-    // Reattach weapons to the GLTF hand groups. Those groups are attached to
-    // the animated hand bones, so weapons follow the GLTF animation.
-    if (this.weapon) {
-      this.weapon.removeFromParent();
-      (look.weapon === 'bow' ? nextRig.handL : nextRig.handR).add(this.weapon);
-    }
-    if (this.offhandWeapon) {
-      this.offhandWeapon.removeFromParent();
-      nextRig.handL.add(this.offhandWeapon);
-    }
-
-    // ring/light stay on the original root; no position/rotation transfer is needed.
-    if (this.ring && this.ring.parent !== root) root.add(this.ring);
-    if (this.light && this.light.parent !== root) root.add(this.light);
-
-    // Preserve an in-progress death/attack animation across the visual swap.
-    if (wasDead) this.anim.die();
-    else if (oldAttack) this.anim.attack('punch', attackRemaining);
-
-    let inScene = false;
-    for (let node = root; node; node = node.parent) {
-      if (node === this.game.scene) {
-        inScene = true;
-        break;
-      }
-    }
-
-    const gltfBox = new THREE.Box3().setFromObject(gltfVisual);
-    const gltfSize = gltfBox.getSize(new THREE.Vector3());
-    console.log('[ARENA] swapToGltfRig:', {
-      inScene,
-      visible: root.visible,
-      scale: root.scale.toArray(),
-      height: Number(gltfSize.y.toFixed(4)),
-      position: root.position.toArray(),
-      rotationY: Number(root.rotation.y.toFixed(4)),
-      facing: Number(this.facing.toFixed(4)),
-      visualParentIsRoot: gltfVisual.parent === root,
-    });
   }
+
   dispose() {
-    this.game.scene.remove(this.root);
+    const wasInScene = !!this.root.parent;
+    const root = this.root;
+    this.game.scene.remove(root);
     this.game.scene.remove(this.lightSpell);
+    ACTIVE_PLAYERS.delete(this);
+    console.log('[ARENA] PLAYER DISPOSE', { id: this.id, wasInScene, rootParentAfter: root.parent?.type || null, activePlayers: ACTIVE_PLAYERS.size });
     if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
   }
 
@@ -305,33 +235,6 @@ export class Player {
 
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 5); applyFlash(this.mats, this.flash, RED); }
     this.ring.material.opacity = 0.4 + Math.sin(g.time * 3) * 0.12;
-
-    if (this.gltfDebugBox && this.rig?.model) {
-      this.rig.model.updateMatrixWorld(true);
-      this.gltfDebugBox.box.setFromObject(this.rig.model);
-      this.gltfDebugBox.updateMatrixWorld(true);
-    }
-
-    if (this.gltfProbeT > 0) {
-      this.gltfProbeT -= dt;
-      if (this.gltfRuler) {
-        this.gltfRuler.position.set(this.pos.x + 1.0, 0.95, this.pos.z);
-      }
-      if (this.gltfProbeT <= 0) {
-        for (const entry of this.gltfProbeMaterials || []) {
-          entry.mesh.material = entry.original;
-          entry.probe.dispose();
-        }
-        this.gltfProbeMaterials = [];
-        if (this.gltfRuler) {
-          this.game.scene.remove(this.gltfRuler);
-          this.gltfRuler.geometry.dispose();
-          this.gltfRuler.material.dispose();
-          this.gltfRuler = null;
-        }
-        console.log('[ARENA] GLTF probe ended: original materials restored; ruler removed.');
-      }
-    }
 
     if (this.lightSpellT > 0) {
       // The spell light is intentionally detached from the player rig so it illuminates
