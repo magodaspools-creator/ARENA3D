@@ -319,7 +319,7 @@ export function createArea1(game) {
   }
   deadTree(scene, -19.5, 9, 1.2, r); collision.addCircle(-19.5, 9, 0.45);
   deadTree(scene, 19, -4, 1.0, r); collision.addCircle(19, -4, 0.4);
-  deadTree(scene, -2, 9.5, 0.8, r); collision.addCircle(-2 + 0, 9.5, 0.35);
+  deadTree(scene, -2, 9.5, 0.8, r);
   // corridor walls
   decor.wall(-3.9, -21, -3.9, -30.5, 5.5, r, { minH: 0.85 });
   decor.wall(3.9, -21, 3.9, -30.5, 5.5, r, { minH: 0.85 });
@@ -1707,9 +1707,9 @@ const leaveMine = () => {
     { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
   ], 'area1');
 
-  // ---------- forgotten corpse + lore book ----------
-  // A dead explorer lies between the arena pillars. The book beside him
-  // gives the player a piece of Morvhal's history before the fight.
+  // ---------- forgotten prisoner + lore book ----------
+  // A prisoner died chained in the middle of the ruined courtyard.
+  // His diary was written shortly before his death and remains beside him.
   const corpse = new THREE.Group();
   corpse.name = 'forgotten-explorer-corpse';
 
@@ -1752,12 +1752,62 @@ const leaveMine = () => {
   tornCloak.rotation.y = -0.18;
   corpse.add(tornCloak);
 
-  // Outside the boss arena: the player can stop here and read before entering.
-  corpse.position.set(0, 0, -27.0);
+  // The prisoner died in the middle of the courtyard, close to the upper pillars.
+  // Keep the body and diary away from the boss corridor so this reads as an
+  // environmental story beat, not as a second boss-entrance landmark.
+  const prisonerPos = new THREE.Vector3(0, 0, 4.8);
+  corpse.position.copy(prisonerPos);
   corpse.rotation.y = -0.35;
   scene.add(corpse);
 
-  // The journal is deliberately separate so the interaction remains readable.
+  // Rusted floor anchors and chains make it immediately readable that this
+  // skeleton was restrained here rather than simply dying in battle.
+  const chainMat = new THREE.MeshStandardMaterial({
+    color: 0x3b3d3f, roughness: 0.82, metalness: 0.72, flatShading: true,
+  });
+  const chainLink = (a, b) => {
+    const start = new THREE.Vector3(a.x, a.y, a.z);
+    const end = new THREE.Vector3(b.x, b.y, b.z);
+    const mid = start.clone().add(end).multiplyScalar(0.5);
+    const dir = end.clone().sub(start);
+    const length = dir.length();
+    const link = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 10), chainMat);
+    link.position.copy(mid);
+    link.rotation.x = Math.PI / 2;
+    link.rotation.y = Math.atan2(dir.x, dir.z);
+    link.scale.set(1, Math.max(0.7, length / 0.22), 1);
+    return link;
+  };
+
+  const prisonerChains = new THREE.Group();
+  prisonerChains.name = 'prisoner-chains';
+
+  for (const [x, z] of [[-0.78, 4.48], [0.72, 4.42]]) {
+    const anchor = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.22, 0.12, 8),
+      chainMat
+    );
+    anchor.position.set(x, 0.08, z);
+    anchor.rotation.x = Math.PI / 2;
+    prisonerChains.add(anchor);
+  }
+
+  const chainSegments = [
+    [[-0.52, 0.34, 4.52], [-0.78, 0.20, 4.48]],
+    [[-0.26, 0.30, 4.46], [-0.52, 0.34, 4.52]],
+    [[0.46, 0.34, 4.44], [0.72, 0.20, 4.42]],
+    [[0.20, 0.30, 4.42], [0.46, 0.34, 4.44]],
+  ];
+  for (const [[ax, ay, az], [bx, by, bz]] of chainSegments) {
+    prisonerChains.add(chainLink(
+      { x: ax, y: ay, z: az },
+      { x: bx, y: by, z: bz }
+    ));
+  }
+  scene.add(prisonerChains);
+
+  // The journal is placed directly beside the corpse, as if it was the last
+  // thing he managed to write before dying.
   const loreBook = new THREE.Group();
   loreBook.name = 'morvhal-journal';
   const coverMat = new THREE.MeshStandardMaterial({ color: 0x3a2118, roughness: 0.9, metalness: 0 });
@@ -1767,12 +1817,12 @@ const leaveMine = () => {
   const pages = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.07, 0.88), pageMat);
   pages.position.y = 0.2;
   loreBook.add(cover, pages);
-  loreBook.position.set(2.0, 0.08, -27.2);
+  loreBook.position.set(1.35, 0.08, 4.15);
   loreBook.rotation.set(-0.08, -0.35, 0.12);
   scene.add(loreBook);
 
   const loreBookAnchor = new THREE.Object3D();
-  loreBookAnchor.position.set(2.0, 0.75, -27.2);
+  loreBookAnchor.position.set(1.35, 0.75, 4.15);
   scene.add(loreBookAnchor);
 
   // ---------- exploration points of interest ----------
@@ -2119,13 +2169,13 @@ const leaveMine = () => {
   });
 
   game.interaction.add({
-    pos: loreBookAnchor.position, radius: 2.4, height: 2.2, label: 'Ler diário abandonado',
-    onInteract: () => game.dialogue.open('Diário do Explorador', [
-      '"Morvhal não foi criado para guardar esta cripta. Ele foi escolhido para impedir que algo saísse dela."',
-      '"Vi os antigos sacerdotes alimentarem o selo com memórias humanas. Cada memória esquecida tornava o guardião mais vazio."',
-      '"Quando tentei quebrar o ritual, Morvhal me reconheceu... e pediu que eu corresse."',
-      '"Ele ainda luta contra alguma coisa dentro dele. Se seus olhos ficarem vermelhos, já não sei dizer quem está segurando a espada."',
-      '"Se alguém encontrar estas páginas, não desperte o Guardião por curiosidade. A porta existe por um motivo."',
+    pos: loreBookAnchor.position, radius: 2.4, height: 2.2, label: 'Ler diário do prisioneiro',
+    onInteract: () => game.dialogue.open('Diário do Prisioneiro', [
+      '"Não sei há quanto tempo estou preso neste pátio. As correntes já feriram meus pulsos até o osso."',
+      '"Eles disseram que eu deveria vigiar a passagem e nunca tocar no selo. Eu deveria ter fugido quando tive a chance."',
+      '"Ouço alguma coisa chamando debaixo das pedras. Morvhal não é o único que está preso aqui."',
+      '"Escrevo estas últimas linhas porque talvez alguém encontre este diário quando eu já não puder falar."',
+      '"Se você chegou até aqui, não repita meu erro. Não acorde o que está enterrado sob o santuário."',
     ], loreBookAnchor),
   });
 
