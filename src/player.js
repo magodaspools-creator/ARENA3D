@@ -31,7 +31,7 @@ export class Player {
     this.mats = uniqueMaterials(this.root);
     this.anim = this.rig.makeAnimator ? this.rig.makeAnimator() : new HumanoidAnimator(this.rig);
     this.rig.ready?.then((nextRig) => {
-      if (!nextRig || this.dead) return;
+      if (!nextRig) return;
       this.swapToGltfRig(nextRig, look);
     });
 
@@ -90,45 +90,75 @@ export class Player {
   }
 
   swapToGltfRig(nextRig, look) {
-    const oldRoot = this.root;
-    const oldPosition = oldRoot.position.clone();
-    const oldRotation = oldRoot.rotation.clone();
+    // Keep the original root: the camera, collision, this.pos and other systems
+    // already hold references to it. Only replace the visual rig underneath it.
+    const root = this.root;
+    const oldBody = this.rig.body;
+    const wasDead = this.dead;
+    const oldAttack = this.anim?.attackState;
+    const attackRemaining = oldAttack
+      ? Math.max(0.05, oldAttack.dur - oldAttack.t)
+      : 0;
 
-    if (this.weapon) this.weapon.removeFromParent();
-    if (this.offhandWeapon) this.offhandWeapon.removeFromParent();
-    this.game.scene.remove(oldRoot);
+    if (oldBody && oldBody.parent === root) oldBody.removeFromParent();
 
+    // The GLTF rig's model is its complete visual hierarchy. Do not detach
+    // nextRig.body (a bone) from that hierarchy, or the skinned mesh breaks.
+    const gltfVisual = nextRig.model;
+    if (!gltfVisual) throw new Error('GLTF rig has no model visual.');
+    gltfVisual.removeFromParent();
+    root.add(gltfVisual);
+    root.visible = true;
+    root.updateMatrixWorld(true);
+
+    // The logical player root remains the original scene node.
+    nextRig.root = root;
     this.rig = nextRig;
-    this.root = nextRig.root;
-    this.root.position.copy(oldPosition);
-    this.root.rotation.copy(oldRotation);
-    this.facing = oldRotation.y;
-    this.pos = this.root.position;
+    this.root = root;
+    this.pos = root.position;
+    this.mats = uniqueMaterials(root);
     this.anim = nextRig.makeAnimator ? nextRig.makeAnimator() : new HumanoidAnimator(nextRig);
-    this.root.visible = true;
-    this.root.updateMatrixWorld(true);
 
-    const gltfBox = new THREE.Box3().setFromObject(nextRig.model);
+    // Reattach weapons to the GLTF hand groups. Those groups are attached to
+    // the animated hand bones, so weapons follow the GLTF animation.
+    if (this.weapon) {
+      this.weapon.removeFromParent();
+      (look.weapon === 'bow' ? nextRig.handL : nextRig.handR).add(this.weapon);
+    }
+    if (this.offhandWeapon) {
+      this.offhandWeapon.removeFromParent();
+      nextRig.handL.add(this.offhandWeapon);
+    }
+
+    // ring/light stay on the original root; no position/rotation transfer is needed.
+    if (this.ring && this.ring.parent !== root) root.add(this.ring);
+    if (this.light && this.light.parent !== root) root.add(this.light);
+
+    // Preserve an in-progress death/attack animation across the visual swap.
+    if (wasDead) this.anim.die();
+    else if (oldAttack) this.anim.attack('punch', attackRemaining);
+
+    let inScene = false;
+    for (let node = root; node; node = node.parent) {
+      if (node === this.game.scene) {
+        inScene = true;
+        break;
+      }
+    }
+
+    const gltfBox = new THREE.Box3().setFromObject(gltfVisual);
     const gltfSize = gltfBox.getSize(new THREE.Vector3());
     console.log('[ARENA] swapToGltfRig:', {
-      inScene: this.game.scene.children.includes(this.root),
-      visible: this.root.visible,
-      scale: this.root.scale.toArray(),
+      inScene,
+      visible: root.visible,
+      scale: root.scale.toArray(),
       height: Number(gltfSize.y.toFixed(4)),
-      position: this.root.position.toArray(),
-      rotationY: Number(this.root.rotation.y.toFixed(4)),
+      position: root.position.toArray(),
+      rotationY: Number(root.rotation.y.toFixed(4)),
       facing: Number(this.facing.toFixed(4)),
+      visualParentIsRoot: gltfVisual.parent === root,
     });
-
-    if (this.weapon) (look.weapon === 'bow' ? nextRig.handL : nextRig.handR).add(this.weapon);
-    if (this.offhandWeapon) nextRig.handL.add(this.offhandWeapon);
-
-    if (this.ring) this.root.add(this.ring);
-    if (this.light) this.root.add(this.light);
-    this.mats = uniqueMaterials(this.root);
-    this.game.scene.add(this.root);
   }
-
   dispose() {
     this.game.scene.remove(this.root);
     this.game.scene.remove(this.lightSpell);
