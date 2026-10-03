@@ -122,9 +122,49 @@ export class Player {
     // Temporary GLTF render diagnostic: keep a world-space Box3Helper around
     // the model so we can distinguish "not rendered" from "not present".
     if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
+    if (this.gltfRuler) this.game.scene.remove(this.gltfRuler);
+    for (const entry of this.gltfProbeMaterials || []) entry.probe.dispose();
+    this.gltfProbeMaterials = [];
     const debugBox = new THREE.Box3().setFromObject(gltfVisual);
     this.gltfDebugBox = new THREE.Box3Helper(debugBox, 0xff00ff);
     this.game.scene.add(this.gltfDebugBox);
+
+    // Temporary 5-second render probe: replace only GLTF mesh materials with an
+    // unmistakable unlit magenta material. Original materials are restored after
+    // the probe so this cannot alter the player's final appearance.
+    this.gltfProbeMaterials = [];
+    gltfVisual.traverse((o) => {
+      if (!o.isMesh) return;
+      const original = Array.isArray(o.material) ? o.material : [o.material];
+      const probe = new THREE.MeshBasicMaterial({
+        color: 0xff00ff,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      });
+      this.gltfProbeMaterials.push({ mesh: o, original: o.material, probe });
+      o.material = probe;
+      o.visible = true;
+      o.frustumCulled = false;
+    });
+
+    // Temporary 0.4 x 1.9 x 0.4 world-space ruler beside the player.
+    const ruler = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 1.9, 0.4),
+      new THREE.MeshBasicMaterial({
+        color: 0xff2020,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    ruler.position.set(root.position.x + 1.0, 0.95, root.position.z);
+    this.game.scene.add(ruler);
+    this.gltfRuler = ruler;
+    this.gltfProbeT = 5;
+    console.log('[ARENA] GLTF probe started: magenta MeshBasicMaterial for 5s + red 0.4x1.9x0.4 ruler.');
+
 
     // Force every GLTF mesh/material into a diagnostic-safe render state.
     gltfVisual.traverse((o) => {
@@ -268,6 +308,27 @@ export class Player {
       this.rig.model.updateMatrixWorld(true);
       this.gltfDebugBox.box.setFromObject(this.rig.model);
       this.gltfDebugBox.updateMatrixWorld(true);
+    }
+
+    if (this.gltfProbeT > 0) {
+      this.gltfProbeT -= dt;
+      if (this.gltfRuler) {
+        this.gltfRuler.position.set(this.pos.x + 1.0, 0.95, this.pos.z);
+      }
+      if (this.gltfProbeT <= 0) {
+        for (const entry of this.gltfProbeMaterials || []) {
+          entry.mesh.material = entry.original;
+          entry.probe.dispose();
+        }
+        this.gltfProbeMaterials = [];
+        if (this.gltfRuler) {
+          this.game.scene.remove(this.gltfRuler);
+          this.gltfRuler.geometry.dispose();
+          this.gltfRuler.material.dispose();
+          this.gltfRuler = null;
+        }
+        console.log('[ARENA] GLTF probe ended: original materials restored; ruler removed.');
+      }
     }
 
     if (this.lightSpellT > 0) {
