@@ -102,8 +102,23 @@ export class Player {
     this.root = nextRig.root;
     this.root.position.copy(oldPosition);
     this.root.rotation.copy(oldRotation);
+    this.facing = oldRotation.y;
     this.pos = this.root.position;
     this.anim = nextRig.makeAnimator ? nextRig.makeAnimator() : new HumanoidAnimator(nextRig);
+    this.root.visible = true;
+    this.root.updateMatrixWorld(true);
+
+    const gltfBox = new THREE.Box3().setFromObject(nextRig.model);
+    const gltfSize = gltfBox.getSize(new THREE.Vector3());
+    console.log('[ARENA] swapToGltfRig:', {
+      inScene: this.game.scene.children.includes(this.root),
+      visible: this.root.visible,
+      scale: this.root.scale.toArray(),
+      height: Number(gltfSize.y.toFixed(4)),
+      position: this.root.position.toArray(),
+      rotationY: Number(this.root.rotation.y.toFixed(4)),
+      facing: Number(this.facing.toFixed(4)),
+    });
 
     if (this.weapon) (look.weapon === 'bow' ? nextRig.handL : nextRig.handR).add(this.weapon);
     if (this.offhandWeapon) nextRig.handL.add(this.offhandWeapon);
