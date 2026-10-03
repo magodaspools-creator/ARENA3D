@@ -238,6 +238,8 @@ export class GltfAnimator {
       for (const material of mats) {
         if (!material) continue;
         material.side = THREE.DoubleSide;
+        material.colorWrite = true;
+        material.depthWrite = true;
         material.needsUpdate = true;
         materials.push({
           type: material.type,
