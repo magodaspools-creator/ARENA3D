@@ -704,13 +704,15 @@ export class UI {
         const inventorySource = event.dataTransfer?.getData('application/x-arena-inventory') === '1';
         const sourceIndexRaw = event.dataTransfer?.getData('application/x-arena-action-slot');
         const sourceIndex = Number(sourceIndexRaw);
-        const hasActionSource = Number.isInteger(sourceIndex) && sourceIndex >= 0 && sourceIndex < 6;
+        const hasActionSource = !inventorySource && Number.isInteger(sourceIndex) && sourceIndex >= 0 && sourceIndex < 6;
 
         if (hasActionSource) {
-          // Dragging directly between action slots: move the item without opening the inventory.
+          // Only an actual action-bar drag may clear another action slot.
+          // Inventory drags must never carry over a stale action-slot source.
           character.setActionBarSlot(sourceIndex, null);
         } else {
-          // Dragging from the inventory keeps the existing duplicate-prevention behavior.
+          // Inventory drags keep other slots intact unless the same item is
+          // already assigned there; in that case the old assignment is moved.
           const previousIndex = character.actionBar.findIndex((assignedId, index) => assignedId === itemIdFromDrag && index !== i);
           if (previousIndex >= 0) character.setActionBarSlot(previousIndex, null);
         }
