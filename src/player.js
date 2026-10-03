@@ -136,6 +136,8 @@ export class Player {
         if (!material) continue;
         material.side = THREE.DoubleSide;
         material.visible = true;
+        material.colorWrite = true;
+        material.depthWrite = true;
         if (material.opacity !== undefined && material.opacity <= 0) material.opacity = 1;
         material.needsUpdate = true;
       }
