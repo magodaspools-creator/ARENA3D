@@ -12,6 +12,8 @@ import { UI } from './ui.js';
 import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js';
 import { Player } from './player.js';
+import { loadPlayerRig } from './gltf-humanoid.js';
+import { createHumanoid } from './models.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
@@ -214,18 +216,23 @@ class Game {
 
   // ---------- flow ----------
   preview(id) {
-    this.player?.dispose();
-    this.character = new CharacterState(id);
-    this.player = new Player(this, id);
-    const s = this.area.spawn;
-    this.player.place(s.x, s.z, 0);
-    this.rig.mode = 'preview';
-    this.rig.snap(this.player.pos);
-    this.player.anim.attack(this.player.voc.attack.style, 0.8);
+    // Character selection no longer instantiates a Player. The gameplay Player
+    // is created exactly once, after the final rig has finished loading.
+    this.previewVocation = id;
   }
 
-  start(id) {
-    if (!this.player || this.player.voc.id !== id) this.preview(id);
+  async start(id) {
+    if (!id || this.player) return;
+
+    this.inputLocked = true;
+    this.ui.toast('Preparando personagem...', 2.5);
+
+    const look = VOCATIONS[id]?.look || {};
+    const finalRig = await loadPlayerRig(look, createHumanoid);
+
+    // The player is instantiated only after the GLTF/procedural final rig exists.
+    this.character = new CharacterState(id);
+    this.player = new Player(this, id, finalRig);
 
     const saved = this.loadWorldState();
     if (saved?.area === 'area2') {
@@ -252,6 +259,55 @@ class Game {
     this.area.onStart();
     this.saveWorldState();
     this.spawnPendingDeathBackpacks();
+
+    console.log('[ARENA] START PLAYER FINALIZED', {
+      playerId: this.player.id,
+      totalPlayers: 1,
+      playerCreatedAfterRigLoad: true,
+      rigType: this.player.rig.isProceduralFallback ? 'procedural-fallback' : 'gltf',
+    });
+
+    this.logScenePlayerDiagnostics();
+    this.inputLocked = false;
+  }
+
+  logScenePlayerDiagnostics() {
+    const skinned = [];
+    const weapons = [];
+    let playerRoots = 0;
+    this.scene.traverse((o) => {
+      if (o.userData?.arenaPlayerRoot) playerRoots++;
+      if (o.isSkinnedMesh) {
+        const p = new THREE.Vector3();
+        o.getWorldPosition(p);
+        skinned.push({
+          name: o.name || '(unnamed)',
+          world: p.toArray().map((v) => Number(v.toFixed(5))),
+        });
+      }
+      if (o.userData?.arenaPlayerWeapon) {
+        const p = new THREE.Vector3();
+        const s = new THREE.Vector3();
+        o.getWorldPosition(p);
+        o.getWorldScale(s);
+        weapons.push({
+          weapon: o.userData.arenaPlayerWeapon,
+          playerId: this.player?.id ?? null,
+          world: p.toArray().map((v) => Number(v.toFixed(5))),
+          worldScale: s.toArray().map((v) => Number(v.toFixed(5))),
+          parent: o.parent?.name || '(unnamed)',
+        });
+      }
+    });
+    console.log('[ARENA] FINAL SCENE DIAGNOSTIC', {
+      players: playerRoots,
+      skinnedMeshes: skinned.length,
+      skinned,
+      weapons: weapons.length,
+      weaponInstances: weapons,
+      playerExists: !!this.player,
+      playerRootParent: this.player?.root?.parent?.type || null,
+    });
   }
 
   enterArea2() {
