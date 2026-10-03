@@ -32,8 +32,23 @@ function buildGltfRig(asset, look = {}) {
   const model = SkeletonUtils.clone(asset.scene);
   normalizeModel(model);
   model.traverse((o) => {
-    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    o.visible = true;
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+      const materials = Array.isArray(o.material) ? o.material : [o.material];
+      for (const material of materials) {
+        if (!material) continue;
+        // RobotExpressive is opaque in the GLB. Keep the imported material visible
+        // even if a later player-effect path touched a shared material instance.
+        material.visible = true;
+        if (material.opacity !== undefined && material.opacity <= 0) material.opacity = 1;
+        if (material.transparent && material.opacity >= 1) material.transparent = false;
+        material.needsUpdate = true;
+      }
+    }
   });
+  model.updateMatrixWorld(true);
 
   const root = new THREE.Group();
   root.add(model);
