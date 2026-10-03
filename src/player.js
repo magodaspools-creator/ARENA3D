@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { VOCATIONS } from './vocations.js';
-import { createHumanoid, createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
 
 const V = new THREE.Vector3();
 const F = new THREE.Vector3();
@@ -45,9 +45,6 @@ export class Player {
     this.root.updateMatrixWorld(true);
     game.scene.add(this.root);
 
-    this.gltfDebugBox = null;
-    this.gltfRuler = null;
-    this.gltfProbeMaterials = [];
     this.lightSpellT = 0;
     this.lightSpell = new THREE.PointLight(0x9ec8ff, 0, 32, 1.15);
     this.lightSpell.position.set(0, 3.5, 0);
@@ -144,6 +141,9 @@ export class Player {
       animator: this.anim.constructor.name,
       oldProceduralParentNull: !!this.rig.isProceduralFallback,
       oldHumanoidAnimatorUpdated: false,
+      swapToGltfRigCalls: 0,
+      createdDuringClassSelection: false,
+      oldProceduralRigExists: false,
     });
     console.log('[ARENA] SCENE SKINNED MESHES', {
       playerId: this.id,
@@ -161,7 +161,6 @@ export class Player {
     this.game.scene.remove(this.lightSpell);
     ACTIVE_PLAYERS.delete(this);
     console.log('[ARENA] PLAYER DISPOSE', { id: this.id, wasInScene, rootParentAfter: root.parent?.type || null, activePlayers: ACTIVE_PLAYERS.size });
-    if (this.gltfDebugBox) this.game.scene.remove(this.gltfDebugBox);
   }
 
   place(x, z, facing) {
