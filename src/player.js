@@ -299,7 +299,7 @@ export class Player {
     if (!['sorcerer', 'knight', 'druid', 'paladin', 'monk'].includes(this.voc.id) || this.ultimateCharge < 100 || this.dead) return;
     const ultimateManaCost = this.voc.ultimate?.manaCost ?? 60;
     if (this.mana < ultimateManaCost) {
-      this.game.ui.toast(`Mana insuficiente. (${Math.ceil(this.mana)}/${ultimateManaCost})`);
+      this.game.ui.floatText(V.copy(this.pos).setY(2.75), '- MANA INSUFICIENTE', 'mana insufficient', 1.25);
       return;
     }
     this.mana -= ultimateManaCost;
