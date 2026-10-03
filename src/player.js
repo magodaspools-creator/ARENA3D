@@ -69,6 +69,7 @@ export class Player {
     this.lastHurt = -99;
     this.flash = 0;
     this.dead = false;
+    this.passiveRegenT = 0;
   }
 
   get invulnerable() { return this.dashT > 0; }
@@ -134,6 +135,15 @@ export class Player {
       this.mana = Math.min(this.mana, this.maxMana);
     }
     this.attackCd -= dt; this.abilityCd -= dt; this.dashCd -= dt; this.aimFaceT -= dt; this.slowT -= dt;
+
+    // Regeneração passiva leve: ajuda a recuperar entre trocas sem substituir poções.
+    this.passiveRegenT += dt;
+    if (this.passiveRegenT >= 1) {
+      const regenDt = this.passiveRegenT;
+      this.passiveRegenT = 0;
+      if (this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.005 * regenDt);
+      if (this.mana < this.maxMana) this.mana = Math.min(this.maxMana, this.mana + this.maxMana * 0.01 * regenDt);
+    }
     if (this.poisonT > 0) {
       this.poisonT = Math.max(0, this.poisonT - dt);
       this.poisonTickT -= dt;
@@ -913,6 +923,7 @@ export class Player {
     this.poisonDamage = 0;
     this.poisonSource = null;
     this.lastHurt = this.game.time;
+    this.passiveRegenT = 0;
     this.lightSpellT = 0;
     this.lightSpell.intensity = 0;
     this.vel.set(0, 0, 0);
