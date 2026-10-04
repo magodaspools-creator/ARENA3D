@@ -216,6 +216,27 @@ export class GltfAnimator {
 
     const meshes = [];
     this.r.root.updateMatrixWorld(true);
+
+    // Decisive rendering test: only enabled with ?modelo=3d&teste=1.
+    // Replace every player mesh material with a conspicuous, depth-independent
+    // basic material. This deliberately bypasses lighting, textures and depth
+    // writes so we can separate material problems from scene/transform problems.
+    const params = new URLSearchParams(location.search);
+    const renderTest = params.get('modelo') === '3d' && params.get('teste') === '1';
+    if (renderTest) {
+      this.r.root.traverse((o) => {
+        if (!o.isMesh) return;
+        o.material = new THREE.MeshBasicMaterial({
+          color: 0xff00ff,
+          depthTest: false,
+          depthWrite: false,
+        });
+        o.renderOrder = 9999;
+      });
+      this.r.root.updateMatrixWorld(true);
+      console.log('[ARENA] GLTF RENDER TEST ENABLED: all player meshes = MAGENTA, depthTest=false, depthWrite=false, renderOrder=9999');
+    }
+
     this.r.root.traverse((o) => {
       if (!o.isMesh) return;
 
@@ -224,43 +245,26 @@ export class GltfAnimator {
       o.getWorldPosition(worldPosition);
       o.getWorldScale(worldScale);
 
-      const ancestors = [];
-      let parent = o;
+      let ancestorsVisible = true;
+      let parent = o.parent;
       while (parent) {
-        ancestors.push({
-          name: parent.name || parent.type || '(unnamed)',
-          visible: parent.visible,
-          isScene: !!parent.isScene,
-        });
+        if (!parent.visible) {
+          ancestorsVisible = false;
+          break;
+        }
         parent = parent.parent;
       }
 
-      const materials = Array.isArray(o.material) ? o.material : [o.material];
-      const material = materials[0] || null;
-      const materialInfo = material ? {
-        type: material.type,
-        color: material.color ? '#' + material.color.getHexString() : null,
-        opacity: material.opacity ?? null,
-        transparent: material.transparent ?? null,
-        colorWrite: material.colorWrite ?? null,
-        depthWrite: material.depthWrite ?? null,
-        depthTest: material.depthTest ?? null,
-        side: material.side ?? null,
-        visible: material.visible ?? null,
-      } : null;
+      const material = Array.isArray(o.material) ? (o.material[0] || null) : o.material;
+      const materialText = material
+        ? `tipo=${material.type} cor=${material.color ? '#' + material.color.getHexString() : 'none'} opacity=${material.opacity ?? 'null'} transparent=${material.transparent ?? 'null'} colorWrite=${material.colorWrite ?? 'null'} depthWrite=${material.depthWrite ?? 'null'} depthTest=${material.depthTest ?? 'null'} visible=${material.visible ?? 'null'}`
+        : 'tipo=null cor=none opacity=null transparent=null colorWrite=null depthWrite=null depthTest=null visible=null';
 
-      meshes.push({
-        name: o.name || '(unnamed)',
-        isSkinnedMesh: !!o.isSkinnedMesh,
-        visible: o.visible,
-        ancestors,
-        worldPosition: worldPosition.toArray().map((v) => Number(v.toFixed(5))),
-        worldScale: worldScale.toArray().map((v) => Number(v.toFixed(5))),
-        layersMask: o.layers.mask,
-        frustumCulled: o.frustumCulled,
-        renderOrder: o.renderOrder,
-        material: materialInfo,
-      });
+      const p = worldPosition.toArray().map((v) => Number(v.toFixed(3))).join(',');
+      const s = worldScale.toArray().map((v) => Number(v.toFixed(3))).join(',');
+      const line = `${o.name || '(unnamed)'} | skinned=${!!o.isSkinnedMesh} | visible=${o.visible} | ancestraisVisiveis=${ancestorsVisible} | posMundo=${p} | escalaMundo=${s} | layers=${o.layers.mask} | frustumCulled=${o.frustumCulled} | ${materialText} renderOrder=${o.renderOrder}`;
+      console.log('[ARENA] ' + line);
+      meshes.push(line);
     });
 
     // The camera is not an ancestor of the player; Player supplies it explicitly.
@@ -271,12 +275,7 @@ export class GltfAnimator {
       if (action.isRunning() && action.getEffectiveWeight() > 0.0001) activeActions++;
     }
 
-    console.log('[ARENA] GLTF PLAYER MESH DIAGNOSTIC', {
-      cameraLayersMask,
-      activeActions,
-      actions: mixerActions,
-      meshes,
-    });
+    console.log(`[ARENA] GLTF PLAYER MESH DIAGNOSTIC END | cameraLayers=${cameraLayersMask} | activeActions=${activeActions} | meshCount=${meshes.length}`);
     return { meshes, mixerActions, activeActions };
   }
 
