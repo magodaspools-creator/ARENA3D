@@ -20,6 +20,8 @@ import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
+
+const USE_GLTF_PLAYER = new URLSearchParams(location.search).get('modelo') === '3d';
 import { MapEditor } from './map-editor.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
@@ -234,19 +236,21 @@ class Game {
 
       // Never create a Player while the final rig is still loading. If the GLTF
       // takes too long, use the procedural rig immediately so the game can start.
-      try {
-        finalRig = await Promise.race([
-          loadPlayerRig(look, createHumanoid),
-          new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
-        ]);
-      } catch (error) {
-        console.warn('[ARENA] Player rig load failed; using procedural fallback.', error);
+      if (USE_GLTF_PLAYER) {
+        try {
+          finalRig = await Promise.race([
+            loadPlayerRig(look, createHumanoid),
+            new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
+        } catch (error) {
+          console.warn('[ARENA] Player rig load failed; using procedural fallback.', error);
+        }
       }
 
       if (!finalRig) {
         finalRig = createHumanoid(look);
         finalRig.isProceduralFallback = true;
-        console.warn('[ARENA] Player rig timeout/failure after 5s; using PROCEDURAL FALLBACK.');
+        if (USE_GLTF_PLAYER) console.warn('[ARENA] Player rig timeout/failure after 5s; using PROCEDURAL FALLBACK.');
       }
 
       // The player is instantiated exactly once, after the final rig exists.
@@ -288,6 +292,15 @@ class Game {
 
       this.logScenePlayerDiagnostics();
       this.inputLocked = false;
+    } catch (error) {
+      console.error('[ARENA] Failed to start game.', error);
+      this.player?.dispose?.();
+      this.player = null;
+      this.character = null;
+      this.state = 'select';
+      this.inputLocked = false;
+      this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+      this.ui.toast('Não foi possível iniciar o jogo. Tente novamente.');
     } finally {
       this.ui.setStartLoading?.(false);
       this.startingPlayer = false;
