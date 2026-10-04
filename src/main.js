@@ -226,14 +226,32 @@ class Game {
 
     this.startingPlayer = true;
     this.inputLocked = true;
-    this.ui.toast('Preparando personagem...', 2.5);
+    this.ui.setStartLoading?.(true);
 
-    const look = VOCATIONS[id]?.look || {};
-    const finalRig = await loadPlayerRig(look, createHumanoid);
+    try {
+      const look = VOCATIONS[id]?.look || {};
+      let finalRig = null;
 
-    // The player is instantiated only after the GLTF/procedural final rig exists.
-    this.character = new CharacterState(id);
-    this.player = new Player(this, id, finalRig);
+      // Never create a Player while the final rig is still loading. If the GLTF
+      // takes too long, use the procedural rig immediately so the game can start.
+      try {
+        finalRig = await Promise.race([
+          loadPlayerRig(look, createHumanoid),
+          new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
+      } catch (error) {
+        console.warn('[ARENA] Player rig load failed; using procedural fallback.', error);
+      }
+
+      if (!finalRig) {
+        finalRig = createHumanoid(look);
+        finalRig.isProceduralFallback = true;
+        console.warn('[ARENA] Player rig timeout/failure after 5s; using PROCEDURAL FALLBACK.');
+      }
+
+      // The player is instantiated exactly once, after the final rig exists.
+      this.character = new CharacterState(id);
+      this.player = new Player(this, id, finalRig);
 
     const saved = this.loadWorldState();
     if (saved?.area === 'area2') {
@@ -268,9 +286,12 @@ class Game {
       rigType: this.player.rig.isProceduralFallback ? 'procedural-fallback' : 'gltf',
     });
 
-    this.logScenePlayerDiagnostics();
-    this.inputLocked = false;
-    this.startingPlayer = false;
+      this.logScenePlayerDiagnostics();
+      this.inputLocked = false;
+    } finally {
+      this.ui.setStartLoading?.(false);
+      this.startingPlayer = false;
+    }
   }
 
   logScenePlayerDiagnostics() {
@@ -804,7 +825,9 @@ class Game {
   aimPoint() {
     this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.ndcX, this.input.mouse.ndcY), this.camera);
     const out = new THREE.Vector3();
-    return this.raycaster.ray.intersectPlane(this.ground, out) ?? this.player.pos.clone();
+    const hit = this.raycaster.ray.intersectPlane(this.ground, out);
+    if (hit) return hit;
+    return this.player?.pos?.clone() || new THREE.Vector3();
   }
 
   /** Keep bodies from overlapping: player vs enemies and enemies vs each other. */
@@ -870,8 +893,11 @@ class Game {
     // The map editor is a frozen authoring mode. Gameplay/world animation
     // must not continue changing underneath the working copy.
     if (this.state !== 'map-editor') {
+      // The menu and loading screen still render the existing world normally,
+      // but no area/world update that depends on a player may run before the
+      // final Player has been created.
       for (const n of this.npcs) n.update(dt);
-      this.area.update(dt, this.time);
+      if (p) this.area?.update(dt, this.time);
       this.fx.update(dt);
     }
 
