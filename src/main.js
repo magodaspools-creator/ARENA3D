@@ -279,6 +279,7 @@ class Game {
     this.stats.start = this.time;
     this.player.character = this.character;
     this.ui.showHud(this.player.voc, this.character);
+    this.ui.hideSelect();
     this.area.onStart();
     this.saveWorldState();
     this.spawnPendingDeathBackpacks();
