@@ -887,7 +887,20 @@ export class UI {
     }
     const kills = +(localStorage.getItem('arena.proto.bossKills') || 0);
     if (kills) $('record').textContent = `Registro: Morvhal já foi derrotado ${kills}x neste navegador.`;
-    $('start-btn').onclick = () => { $('select').classList.add('hidden'); onStart(current); };
+    const startBtn = $('start-btn');
+    startBtn.onclick = async () => {
+      if (!current || startBtn.disabled) return;
+      this.setStartLoading(true);
+      await onStart(current);
+    };
     pick('knight');
+  }
+
+  setStartLoading(loading) {
+    const button = $('start-btn');
+    if (!button) return;
+    button.disabled = !!loading;
+    button.textContent = loading ? 'Carregando personagem...' : 'Entrar na floresta';
+    button.setAttribute('aria-busy', loading ? 'true' : 'false');
   }
 }
