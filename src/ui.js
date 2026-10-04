@@ -896,6 +896,10 @@ export class UI {
     pick('knight');
   }
 
+  hideSelect() {
+    $('select')?.classList.add('hidden');
+  }
+
   setStartLoading(loading) {
     const button = $('start-btn');
     if (!button) return;
