@@ -4,10 +4,17 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 const MODEL_URL = './assets/models/RobotExpressive.glb';
 const loader = new GLTFLoader();
-const PLAYER_GLTF_PROMISE = loader.loadAsync(MODEL_URL).catch((error) => {
-  console.warn('[ARENA] RobotExpressive.glb unavailable; using procedural player.', error);
-  return null;
-});
+let PLAYER_GLTF_PROMISE = null;
+
+function getPlayerGltf() {
+  if (!PLAYER_GLTF_PROMISE) {
+    PLAYER_GLTF_PROMISE = loader.loadAsync(MODEL_URL).catch((error) => {
+      console.warn('[ARENA] RobotExpressive.glb unavailable; using procedural player.', error);
+      return null;
+    });
+  }
+  return PLAYER_GLTF_PROMISE;
+}
 
 const findBone = (root, patterns) => {
   const bones = [];
@@ -95,7 +102,7 @@ function buildGltfRig(asset, look = {}) {
 }
 
 export async function loadPlayerRig(look = {}, createHumanoid) {
-  const asset = await PLAYER_GLTF_PROMISE;
+  const asset = await getPlayerGltf();
   if (asset) {
     try {
       const rig = buildGltfRig(asset, look);
@@ -268,10 +275,8 @@ export class GltfAnimator {
       });
     });
 
-    const camera = this.r.root.parent?.parent?.isCamera ? this.r.root.parent.parent : null;
-    // The actual camera is not structurally required to be an ancestor of the rig.
-    // Player diagnostics receive it from main.js through this field when available.
-    const cameraLayersMask = this.camera?.layers?.mask ?? null;
+    // The camera is not an ancestor of the player; Player supplies it explicitly.
+    const cameraLayersMask = this.r.camera?.layers?.mask ?? null;
 
     let activeActions = 0;
     for (const action of Object.values(this.actions)) {
