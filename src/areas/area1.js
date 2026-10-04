@@ -2442,6 +2442,9 @@ const leaveMine = () => {
       secretGate.update(dt, t);
       secretLever.update(t);
       const p = game.player;
+      // Area updates are normally gated by Game.loop, but keep Area 1 safe
+      // against accidental calls while the menu/loading screen has no Player.
+      if (!p) return;
       const insideSecret = p.pos.x > 24.2 && p.pos.x < 39.6 && p.pos.z > 2.4 && p.pos.z < 17.6;
       secretRoof.visible = !insideSecret;
       secretMist.visible = insideSecret;
