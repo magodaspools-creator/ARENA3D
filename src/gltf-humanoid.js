@@ -135,6 +135,19 @@ export class GltfAnimator {
     this.dead = false;
     this.hurt = 0;
     this._diagnosticLogged = false;
+    this._diagnosticTimer = 0;
+    this._diagnosticCount = 0;
+
+    // Start the neutral animation immediately. This guarantees Idle has weight
+    // 1 before the first gameplay frame; Walking/Running remain at weight 0.
+    for (const name of ['Idle', 'Walking', 'Running']) {
+      const action = this.actions[name];
+      if (!action) continue;
+      action.enabled = true;
+      action.setEffectiveWeight(name === 'Idle' ? 1 : 0);
+      action.setEffectiveTimeScale(1);
+      action.reset().play();
+    }
   }
 
   setBaseWeights(speedNorm) {
@@ -198,103 +211,80 @@ export class GltfAnimator {
     const mixerActions = {};
     for (const name of ['Idle', 'Walking', 'Running', 'Punch', 'Death']) {
       const action = this.actions[name];
-      if (!action) {
-        mixerActions[name.toLowerCase()] = null;
-        continue;
-      }
-      mixerActions[name.toLowerCase()] = {
+      mixerActions[name.toLowerCase()] = action ? {
         running: action.isRunning(),
         enabled: action.enabled,
         weight: Number(action.getEffectiveWeight().toFixed(4)),
         time: Number(action.time.toFixed(4)),
-      };
+      } : null;
     }
 
     const meshes = [];
-    const bonesByName = new Map();
+    this.r.root.updateMatrixWorld(true);
     this.r.root.traverse((o) => {
-      if (o.isBone) bonesByName.set(o.name, o);
       if (!o.isMesh) return;
-      o.visible = true;
-      o.frustumCulled = false;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      const material = mats[0] || null;
-      const sphere = o.geometry?.boundingSphere;
-      if (o.geometry && !sphere) o.geometry.computeBoundingSphere();
+
+      const worldPosition = new THREE.Vector3();
       const worldScale = new THREE.Vector3();
+      o.getWorldPosition(worldPosition);
       o.getWorldScale(worldScale);
+
+      const ancestors = [];
+      let parent = o;
+      while (parent) {
+        ancestors.push({
+          name: parent.name || parent.type || '(unnamed)',
+          visible: parent.visible,
+          isScene: !!parent.isScene,
+        });
+        parent = parent.parent;
+      }
+
+      const materials = Array.isArray(o.material) ? o.material : [o.material];
+      const material = materials[0] || null;
+      const materialInfo = material ? {
+        type: material.type,
+        color: material.color ? '#' + material.color.getHexString() : null,
+        opacity: material.opacity ?? null,
+        transparent: material.transparent ?? null,
+        colorWrite: material.colorWrite ?? null,
+        depthWrite: material.depthWrite ?? null,
+        depthTest: material.depthTest ?? null,
+        side: material.side ?? null,
+        visible: material.visible ?? null,
+      } : null;
+
       meshes.push({
         name: o.name || '(unnamed)',
+        isSkinnedMesh: !!o.isSkinnedMesh,
         visible: o.visible,
-        skinned: !!o.isSkinnedMesh,
-        materialType: material?.type ?? null,
-        opacity: material?.opacity ?? null,
-        transparent: material?.transparent ?? null,
+        ancestors,
+        worldPosition: worldPosition.toArray().map((v) => Number(v.toFixed(5))),
         worldScale: worldScale.toArray().map((v) => Number(v.toFixed(5))),
-        boundingSphereRadius: Number((o.geometry?.boundingSphere?.radius ?? NaN).toFixed(5)),
-        skeletonBones: o.isSkinnedMesh ? o.skeleton.bones.length : 0,
+        layersMask: o.layers.mask,
+        frustumCulled: o.frustumCulled,
+        renderOrder: o.renderOrder,
+        material: materialInfo,
       });
-      for (const m of mats) {
-        if (!m) continue;
-        m.side = THREE.DoubleSide;
-        m.visible = true;
-        m.colorWrite = true;
-        m.depthWrite = true;
-        if (m.opacity !== undefined && m.opacity <= 0) m.opacity = 1;
-        if (m.transparent && m.opacity >= 1) m.transparent = false;
-        m.needsUpdate = true;
-      }
     });
 
-    const boneNames = ['Hips', 'Head', 'Palm2R', 'Foot'];
-    const bones = {};
-    for (const requested of boneNames) {
-      let bone = bonesByName.get(requested);
-      if (!bone) {
-        bone = [...bonesByName.entries()].find(([name]) => {
-          const n = name.replace(/[^a-z0-9]/gi, '').toLowerCase();
-          const r = requested.replace(/[^a-z0-9]/gi, '').toLowerCase();
-          return n === r || n.endsWith(r);
-        })?.[1] || null;
-      }
-      if (bone) {
-        bone.updateMatrixWorld(true);
-        const wp = new THREE.Vector3();
-        bone.getWorldPosition(wp);
-        bones[requested] = {
-          actualName: bone.name,
-          world: wp.toArray().map((v) => Number(v.toFixed(5))),
-          finite: wp.toArray().every(Number.isFinite),
-        };
-      } else {
-        bones[requested] = null;
-      }
-    }
-
-    this.r.model.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(this.r.model);
-    const rootWorld = new THREE.Vector3();
-    this.r.root.getWorldPosition(rootWorld);
+    const camera = this.r.root.parent?.parent?.isCamera ? this.r.root.parent.parent : null;
+    // The actual camera is not structurally required to be an ancestor of the rig.
+    // Player diagnostics receive it from main.js through this field when available.
+    const cameraLayersMask = this.camera?.layers?.mask ?? null;
 
     let activeActions = 0;
     for (const action of Object.values(this.actions)) {
       if (action.isRunning() && action.getEffectiveWeight() > 0.0001) activeActions++;
     }
 
-    console.log('[ARENA] GLTF PLAYER DIAGNOSTIC', {
-      mixerTargetIsModel: this.mixerTarget === this.r.model,
-      mixerTargetIsSourceScene: this.mixerTarget === this.r.sourceScene,
-      mixerTargetName: this.mixerTarget?.name || '(unnamed)',
+    console.log('[ARENA] GLTF PLAYER MESH DIAGNOSTIC', {
+      cameraLayersMask,
       activeActions,
-      mixerActions,
-      skinnedMeshes: meshes,
-      bones,
-      rootWorld: rootWorld.toArray().map((v) => Number(v.toFixed(5))),
-      boxMin: box.min.toArray().map((v) => Number(v.toFixed(5))),
-      boxMax: box.max.toArray().map((v) => Number(v.toFixed(5))),
-      boxSize: box.getSize(new THREE.Vector3()).toArray().map((v) => Number(v.toFixed(5))),
+      actions: mixerActions,
+      meshes,
     });
-    return { box, bones, meshes };
+    return { meshes, mixerActions, activeActions };
   }
 
   update(dt, speedNorm) {
@@ -315,5 +305,31 @@ export class GltfAnimator {
     }
     this.hurt = Math.max(0, this.hurt - dt);
     this.mixer.update(dt);
+
+    // Log the actual post-update action state once per second for the first
+    // five seconds, so the diagnostic reflects the running mixer rather than
+    // constructor-time zeroed actions.
+    if (this._diagnosticCount < 5) {
+      this._diagnosticTimer += dt;
+      if (this._diagnosticTimer >= 1) {
+        this._diagnosticTimer -= 1;
+        this._diagnosticCount++;
+        const actions = {};
+        for (const name of ['Idle', 'Walking', 'Running']) {
+          const action = this.actions[name];
+          if (!action) continue;
+          actions[name] = {
+            running: action.isRunning(),
+            weight: Number(action.getEffectiveWeight().toFixed(4)),
+            time: Number(action.time.toFixed(4)),
+          };
+        }
+        console.log('[ARENA] GLTF ACTIONS', {
+          second: this._diagnosticCount,
+          activeActions: Object.values(this.actions).filter((a) => a.isRunning() && a.getEffectiveWeight() > 0.0001).length,
+          actions,
+        });
+      }
+    }
   }
 }
