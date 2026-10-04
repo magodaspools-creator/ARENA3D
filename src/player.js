@@ -22,6 +22,7 @@ export class Player {
 
     if (!finalRig) throw new Error('[ARENA] Player requires a final rig before construction.');
     this.rig = finalRig;
+    this.rig.camera = game.camera;
     this.root = this.rig.root;
     this.root.userData.arenaPlayerRoot = this.id;
     this.pos = this.root.position;
@@ -139,7 +140,8 @@ export class Player {
       proceduralFallback: !!this.rig.isProceduralFallback,
       rootParent: this.root.parent?.type || null,
       animator: this.anim.constructor.name,
-      oldProceduralParentNull: !!this.rig.isProceduralFallback,
+      oldProceduralRigCreated: false,
+      oldProceduralRigParent: null,
       oldHumanoidAnimatorUpdated: false,
       swapToGltfRigCalls: 0,
       createdDuringClassSelection: false,
