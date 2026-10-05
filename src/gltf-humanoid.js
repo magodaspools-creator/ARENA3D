@@ -90,20 +90,22 @@ function buildGltfRig(asset, look = {}) {
 
   root.add(body, torso, head, legL, legR, armL, armR);
 
-  // GLTFLoader normalizes bone names by removing dots (e.g. Palm2.R -> Palm2R).
-  // Hand groups remain attached to the actual hand bones because weapons need
-  // to follow the animated skeleton.
-  const handBoneL = findBone(model, [/LeftHand$/i, /HandL$/i, /LeftPalm$/i, /Palm2L$/i, /PalmL$/i]);
-  const handBoneR = findBone(model, [/RightHand$/i, /HandR$/i, /RightPalm$/i, /Palm2R$/i, /PalmR$/i]);
+  // RobotExpressive.glb: GLTFLoader removes dots from bone names.
+  // The actual hand bones are Palm2L and Palm2R (source names Palm2.L/Palm2.R).
+  // Keep the gameplay anchors DIRECTLY under those animated bones so every
+  // weapon follows the hand translation/rotation/scale produced by the mixer.
+  const handBoneL = findBone(model, [/^Palm2L$/i, /LeftHand$/i, /HandL$/i, /LeftPalm$/i, /PalmL$/i]);
+  const handBoneR = findBone(model, [/^Palm2R$/i, /RightHand$/i, /HandR$/i, /RightPalm$/i, /PalmR$/i]);
 
-  const handL = new THREE.Group();
-  const handR = new THREE.Group();
-  handL.name = 'PlayerHandL';
-  handR.name = 'PlayerHandR';
+  const handL = armL;
+  const handR = armR;
+  handL.name = 'PlayerRigArmLAnchor';
+  handR.name = 'PlayerRigArmRAnchor';
   handL.userData.sourceHandBone = handBoneL?.name || null;
   handR.userData.sourceHandBone = handBoneR?.name || null;
-  (handBoneL || root).add(handL);
-  (handBoneR || root).add(handR);
+
+  if (handBoneL) handBoneL.add(handL);
+  if (handBoneR) handBoneR.add(handR);
 
   if (!handBoneL || !handBoneR) {
     console.warn('[ARENA] GLTF hand bone lookup incomplete.', {
