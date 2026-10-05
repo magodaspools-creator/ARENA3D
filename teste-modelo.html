@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste isolado do modelo</title>
+<style>html,body{margin:0;height:100%;background:#222;overflow:hidden}#i{position:fixed;left:8px;top:8px;color:#fff;font:14px monospace;white-space:pre}</style>
+<div id="i">carregando...</div>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const info = document.getElementById('i');
+try {
+  const r = new THREE.WebGLRenderer({ antialias: true });
+  r.setSize(innerWidth, innerHeight);
+  document.body.appendChild(r.domElement);
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(0x333844);
+  s.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2.5));
+  const d = new THREE.DirectionalLight(0xffffff, 2);
+  d.position.set(3, 6, 4);
+  s.add(d);
+  s.add(new THREE.GridHelper(10, 10));
+  const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+  cam.position.set(0, 2.5, 6);
+  cam.lookAt(0, 1, 0);
+  const g = await new GLTFLoader().loadAsync('./assets/models/RobotExpressive.glb');
+  const m = g.scene;
+  m.scale.setScalar(0.4);
+  s.add(m);
+  const mix = new THREE.AnimationMixer(m);
+  mix.clipAction(THREE.AnimationClip.findByName(g.animations, 'Idle')).play();
+  let meshes = 0; m.traverse((o) => { if (o.isMesh) meshes++; });
+  info.textContent = 'OK: modelo carregado. Meshes: ' + meshes + '. Se voce ve um robo laranja no centro, o modelo esta bom.';
+  const clock = new THREE.Clock();
+  r.setAnimationLoop(() => { mix.update(clock.getDelta()); r.render(s, cam); });
+} catch (e) {
+  info.textContent = 'ERRO: ' + e;
+  console.error(e);
+}
+</script>
