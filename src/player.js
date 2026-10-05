@@ -196,9 +196,7 @@ export class Player {
     return weaponMesh;
   }
 
-  applyWeaponOffset(mesh, type) {
-    console.log("[ARENA Offset] Tipo recebido:", type);
-
+  applyWeaponOffset(weaponMesh, type) {
     const normalizedType = String(type ?? '').toLowerCase();
     const key = normalizedType && (
       normalizedType.includes('staff') ||
@@ -206,18 +204,16 @@ export class Player {
       normalizedType.includes('sorcerer') ||
       normalizedType.includes('druid')
     ) ? 'staff' : normalizedType;
-
     const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.default;
-    console.log("[ARENA Offset] Chave aplicada:", key, offset);
 
-    if (!offset) return;
-
-    if (offset.position) {
-      mesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
+    if (offset && offset.rotation) {
+      // Ordem YXZ: aplica a orientação vertical no X antes de inverter a frente no Y.
+      weaponMesh.rotation.order = 'YXZ';
+      weaponMesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
     }
 
-    if (offset.rotation) {
-      mesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
+    if (offset && offset.position) {
+      weaponMesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
     }
   }
 
