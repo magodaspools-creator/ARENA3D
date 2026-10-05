@@ -127,7 +127,7 @@ function buildGltfRig(asset, look = {}) {
   return {
     root,
     body, torso, head, legL, legR, armL, armR,
-    handL, handR, eyes, cape: null, model,
+    handL, handR, handBone: handBoneR, eyes, cape: null, model,
     animations: asset.animations || [],
     // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
     // not the loader cache's original scene.
@@ -161,8 +161,11 @@ export async function loadPlayerRig(look = {}, createHumanoid) {
 export class GltfAnimator {
   constructor(rig) {
     this.r = rig;
+    this.mesh = rig.model;
+    this.handBone = rig.handBone || null;
     this.isStaffEquipped = !!rig.isStaffEquipped;
     this.equippedWeaponPivot = rig.equippedWeaponPivot || null;
+    this.staffBaseQuaternion = null;
     this.mixer = new THREE.AnimationMixer(rig.model);
     this.mixerTarget = rig.model;
     this.actions = {};
@@ -327,19 +330,30 @@ export class GltfAnimator {
     this.hurt = Math.max(0, this.hurt - dt);
     this.mixer.update(dt);
 
-    // O mixer anima os ossos do robô, inclusive o braço/mão que segura o cajado.
-    // Depois do mixer, estabilizamos apenas o pivot da arma para reduzir o
-    // balanço visual excessivo sem alterar o skeleton ou a animação do jogador.
-    if (this.equippedWeaponPivot && this.isStaffEquipped) {
-      const pivot = this.equippedWeaponPivot;
-      const targetX = 0;
-      const targetY = Math.PI / 2;
-      const targetZ = Math.PI / 2;
-      const k = 1 - Math.exp(-dt * 14);
+    // Sway damping do cajado: mistura a orientação estável do corpo com
+    // apenas 25% do movimento natural da mão. O cálculo acontece DEPOIS do
+    // mixer, então não interfere nos ossos nem na animação GLTF.
+    if (this.equippedWeaponPivot && this.isStaffEquipped && this.handBone) {
+      this.handBone.updateMatrixWorld(true);
+      this.mesh.updateMatrixWorld(true);
 
-      pivot.rotation.x += Math.atan2(Math.sin(targetX - pivot.rotation.x), Math.cos(targetX - pivot.rotation.x)) * k;
-      pivot.rotation.y += Math.atan2(Math.sin(targetY - pivot.rotation.y), Math.cos(targetY - pivot.rotation.y)) * k;
-      pivot.rotation.z += Math.atan2(Math.sin(targetZ - pivot.rotation.z), Math.cos(targetZ - pivot.rotation.z)) * k;
+      const bodyQuat = this.mesh.quaternion.clone();
+      const handQuat = new THREE.Quaternion();
+      this.handBone.getWorldQuaternion(handQuat);
+
+      const stableQuat = bodyQuat.clone().slerp(handQuat, 0.25);
+
+      // Mantém o offset base que já encaixava o cajado corretamente parado.
+      if (!this.staffBaseQuaternion) {
+        this.staffBaseQuaternion = this.equippedWeaponPivot.quaternion.clone();
+      }
+      stableQuat.multiply(this.staffBaseQuaternion);
+
+      const parentQuat = new THREE.Quaternion();
+      this.equippedWeaponPivot.parent.getWorldQuaternion(parentQuat);
+
+      const localStableQuat = parentQuat.clone().invert().multiply(stableQuat);
+      this.equippedWeaponPivot.quaternion.slerp(localStableQuat, 0.2);
     }
 
     // Log the actual post-update action state once per second for the first
