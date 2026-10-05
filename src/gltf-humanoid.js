@@ -48,18 +48,33 @@ function buildGltfRig(asset, look = {}) {
   const root = new THREE.Group();
   root.add(model);
 
-  const pelvis = findBone(root, [/Hips$/i, /Hip$/i, /Pelvis$/i]);
-  const torso = findBone(root, [/Spine2$/i, /Spine1$/i, /Spine$/i]);
-  const head = findBone(root, [/Head$/i]);
-  const legL = findBone(root, [/LeftUpLeg$/i, /LeftLeg$/i, /ThighL$/i, /LegL$/i]);
-  const legR = findBone(root, [/RightUpLeg$/i, /RightLeg$/i, /ThighR$/i, /LegR$/i]);
-  const armL = findBone(root, [/LeftArm$/i, /LeftForeArm$/i, /UpperArmL$/i, /ArmL$/i]);
-  const armR = findBone(root, [/RightArm$/i, /RightForeArm$/i, /UpperArmR$/i, /ArmR$/i]);
+  // These seven nodes are compatibility anchors for the old procedural rig API.
+  // They MUST stay outside the GLTF model/skeleton: gameplay code may rotate or
+  // scale these references for procedural actors, but GLTF animation must own all
+  // actual bones/meshes exclusively through GltfAnimator's AnimationMixer.
+  const body = new THREE.Group();
+  const torso = new THREE.Group();
+  const head = new THREE.Group();
+  const legL = new THREE.Group();
+  const legR = new THREE.Group();
+  const armL = new THREE.Group();
+  const armR = new THREE.Group();
+
+  body.name = 'PlayerRigBodyAnchor';
+  torso.name = 'PlayerRigTorsoAnchor';
+  head.name = 'PlayerRigHeadAnchor';
+  legL.name = 'PlayerRigLegLAnchor';
+  legR.name = 'PlayerRigLegRAnchor';
+  armL.name = 'PlayerRigArmLAnchor';
+  armR.name = 'PlayerRigArmRAnchor';
+
+  root.add(body, torso, head, legL, legR, armL, armR);
+
   // GLTFLoader normalizes bone names by removing dots (e.g. Palm2.R -> Palm2R).
-  // Keep both semantic hand names and the normalized Palm2 names so weapon groups
-  // remain attached even when a model uses the latter convention.
-  const handBoneL = findBone(root, [/LeftHand$/i, /HandL$/i, /LeftPalm$/i, /Palm2L$/i, /PalmL$/i]);
-  const handBoneR = findBone(root, [/RightHand$/i, /HandR$/i, /RightPalm$/i, /Palm2R$/i, /PalmR$/i]);
+  // Hand groups remain attached to the actual hand bones because weapons need
+  // to follow the animated skeleton.
+  const handBoneL = findBone(model, [/LeftHand$/i, /HandL$/i, /LeftPalm$/i, /Palm2L$/i, /PalmL$/i]);
+  const handBoneR = findBone(model, [/RightHand$/i, /HandR$/i, /RightPalm$/i, /Palm2R$/i, /PalmR$/i]);
 
   const handL = new THREE.Group();
   const handR = new THREE.Group();
@@ -73,13 +88,7 @@ function buildGltfRig(asset, look = {}) {
 
   return {
     root,
-    body: pelvis || root,
-    torso: torso || pelvis || root,
-    head: head || torso || pelvis || root,
-    legL: legL || pelvis || root,
-    legR: legR || pelvis || root,
-    armL: armL || torso || root,
-    armR: armR || torso || root,
+    body, torso, head, legL, legR, armL, armR,
     handL, handR, eyes, cape: null, model,
     animations: asset.animations || [],
     // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
@@ -216,26 +225,6 @@ export class GltfAnimator {
 
     const meshes = [];
     this.r.root.updateMatrixWorld(true);
-
-    // Decisive rendering test: only enabled with ?modelo=3d&teste=1.
-    // Replace every player mesh material with a conspicuous, depth-independent
-    // basic material. This deliberately bypasses lighting, textures and depth
-    // writes so we can separate material problems from scene/transform problems.
-    const params = new URLSearchParams(location.search);
-    const renderTest = params.get('modelo') === '3d' && params.get('teste') === '1';
-    if (renderTest) {
-      this.r.root.traverse((o) => {
-        if (!o.isMesh) return;
-        o.material = new THREE.MeshBasicMaterial({
-          color: 0xff00ff,
-          depthTest: false,
-          depthWrite: false,
-        });
-        o.renderOrder = 9999;
-      });
-      this.r.root.updateMatrixWorld(true);
-      console.log('[ARENA] GLTF RENDER TEST ENABLED: all player meshes = MAGENTA, depthTest=false, depthWrite=false, renderOrder=9999');
-    }
 
     this.r.root.traverse((o) => {
       if (!o.isMesh) return;
