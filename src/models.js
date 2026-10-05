@@ -367,6 +367,17 @@ export function createWeapon(type, look = {}) {
       g.userData.tip = g;
       break;
     }
+    case 'crossbow': {
+      // Corpo longitudinal no eixo X; o WEAPON_OFFSETS gira 90° em Y
+      // para apontar a balestra na direção frontal do personagem.
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.08, 0.12), wood, 0, 0.0, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), mat(0x5a3a22), -0.18, -0.16, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.12, 0.34, 0.05), steel, 0, 0.14, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.72, 0.045, 0.045), mat(0x8a6a3a), 0, 0.23, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.025), glow(0xffe6a0, 0.35), 0, 0.25, 0));
+      g.userData.tip = g;
+      break;
+    }
     case 'staff': {
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.8, 6), wood, 0, 0.45, 0));
       const orb = mesh(new THREE.IcosahedronGeometry(0.13, 1), glow(look.orb ?? 0xffffff, 0.95), 0, 1.47, 0);
