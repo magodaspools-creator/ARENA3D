@@ -28,17 +28,15 @@ const WEAPON_OFFSETS = {
   },
 
   crossbow: {
-    // Empunhadura centralizada na mão esquerda; corpo apontado para frente.
-    // A escala é normalizada no espaço isolado da arma; não usar scale aqui.
     position: [0, 0, 0],
-    rotation: [0, Math.PI / 2, 0],
+    rotation: [-Math.PI / 2, Math.PI, 0],
+    targetSize: 1.4,
   },
 
   staff: {
-    // Orientação definitiva aplicada uma única vez no anexo.
-    // A escala é normalizada no espaço isolado da arma; não usar scale aqui.
     position: [0, 0, 0],
-    rotation: [Math.PI, Math.PI, 0],
+    rotation: [0, Math.PI, 0],
+    targetSize: 2.0,
   },
 
   blade: {
@@ -199,7 +197,13 @@ export class Player {
   }
 
   applyWeaponOffset(weapon, type) {
-    const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
+    // Algumas vocações podem fornecer o cajado com nomes específicos.
+    // Todas devem usar a orientação canônica definida em WEAPON_OFFSETS.staff.
+    const normalizedType = String(type ?? '').toLowerCase();
+    const key = normalizedType.includes('staff') || normalizedType.includes('cajado')
+      ? 'staff'
+      : type;
+    const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.sword;
     weapon.position.set(...offset.position);
     weapon.rotation.set(...offset.rotation);
   }
