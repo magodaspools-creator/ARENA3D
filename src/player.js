@@ -29,17 +29,18 @@ const WEAPON_OFFSETS = {
 
   crossbow: {
     // Empunhadura centralizada na mão esquerda; corpo apontado para frente.
-    // Escala local 1:1 para não deformar a mesh.
+    // Escala visual pequena para ficar proporcional ao robô.
     position: [0, 0, 0],
     rotation: [0, Math.PI / 2, 0],
-    scale: [1, 1, 1],
+    scale: [0.1, 0.1, 0.1],
   },
 
   staff: {
     // A orientação definitiva é reforçada por updateWeapons() a cada frame.
+    // Escala visual pequena para ficar proporcional ao robô.
     position: [0, 0, 0],
     rotation: [Math.PI, 0, 0],
-    scale: [1, 1, 1],
+    scale: [0.1, 0.1, 0.1],
   },
 
   blade: {
@@ -150,15 +151,14 @@ export class Player {
     const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
     weapon.position.set(...offset.position);
     weapon.rotation.set(...offset.rotation);
-    if (offset.scale) weapon.scale.set(...offset.scale);
   }
 
   updateWeapons() {
     const weapon = this.weapon;
     if (!weapon) return;
 
-    // A animação/mixer pode reescrever transformações da arma durante o frame.
-    // Reforçamos a orientação do cajado depois da animação, sem acumular += PI.
+    // A animação/mixer roda antes deste método. Reforçamos somente as armas
+    // que precisam de orientação fixa, sem acumular rotação a cada frame.
     if (weapon.userData.arenaPlayerWeapon === 'staff') {
       const offset = WEAPON_OFFSETS.staff;
       weapon.rotation.set(
@@ -167,33 +167,37 @@ export class Player {
         offset.rotation[2],
       );
       weapon.position.set(...offset.position);
-      weapon.scale.set(...(offset.scale || [1, 1, 1]));
+      this.normalizeWeaponScale(weapon, this.rig.armR);
     }
 
-    // A crossbow é sempre mantida na escala definida pelo offset, sem
-    // esticar nenhum eixo; ela permanece no anchor esquerdo do Paladin.
+    // A crossbow permanece no anchor esquerdo, apontada para frente e com
+    // escala uniforme. A compensação da escala do osso é reaplicada aqui.
     if (weapon.userData.arenaPlayerWeapon === 'crossbow') {
       const offset = WEAPON_OFFSETS.crossbow;
       weapon.position.set(...offset.position);
       weapon.rotation.set(...offset.rotation);
-      weapon.scale.set(...(offset.scale || [1, 1, 1]));
+      this.normalizeWeaponScale(weapon, this.rig.armL);
     }
   }
 
   normalizeWeaponScale(weapon, hand) {
     this.root.updateMatrixWorld(true);
     hand.updateMatrixWorld(true);
+    const type = weapon.userData.arenaPlayerWeapon;
+    const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
+    const baseScale = offset.scale || [1, 1, 1];
     const handScale = new THREE.Vector3();
     hand.getWorldScale(handScale);
     const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
-    const sx = 1 / safe(handScale.x);
-    const sy = 1 / safe(handScale.y);
-    const sz = 1 / safe(handScale.z);
-    // Nunca permitir escala zero, NaN ou infinita no grupo da arma.
+    const sx = baseScale[0] / safe(handScale.x);
+    const sy = baseScale[1] / safe(handScale.y);
+    const sz = baseScale[2] / safe(handScale.z);
+    // A escala definida no offset é a escala visual final. A divisão pela
+    // escala do osso impede que a escala global/animada do robô seja herdada.
     weapon.scale.set(
-      Number.isFinite(sx) && Math.abs(sx) > 0.00001 ? sx : 1,
-      Number.isFinite(sy) && Math.abs(sy) > 0.00001 ? sy : 1,
-      Number.isFinite(sz) && Math.abs(sz) > 0.00001 ? sz : 1,
+      Number.isFinite(sx) && Math.abs(sx) > 0.00001 ? sx : baseScale[0],
+      Number.isFinite(sy) && Math.abs(sy) > 0.00001 ? sy : baseScale[1],
+      Number.isFinite(sz) && Math.abs(sz) > 0.00001 ? sz : baseScale[2],
     );
     weapon.updateMatrixWorld(true);
     const worldScale = new THREE.Vector3();
