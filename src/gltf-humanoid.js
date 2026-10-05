@@ -161,6 +161,8 @@ export async function loadPlayerRig(look = {}, createHumanoid) {
 export class GltfAnimator {
   constructor(rig) {
     this.r = rig;
+    this.isStaffEquipped = !!rig.isStaffEquipped;
+    this.equippedWeaponPivot = rig.equippedWeaponPivot || null;
     this.mixer = new THREE.AnimationMixer(rig.model);
     this.mixerTarget = rig.model;
     this.actions = {};
@@ -324,6 +326,21 @@ export class GltfAnimator {
     }
     this.hurt = Math.max(0, this.hurt - dt);
     this.mixer.update(dt);
+
+    // O mixer anima os ossos do robô, inclusive o braço/mão que segura o cajado.
+    // Depois do mixer, estabilizamos apenas o pivot da arma para reduzir o
+    // balanço visual excessivo sem alterar o skeleton ou a animação do jogador.
+    if (this.equippedWeaponPivot && this.isStaffEquipped) {
+      const pivot = this.equippedWeaponPivot;
+      const targetX = 0;
+      const targetY = Math.PI / 2;
+      const targetZ = Math.PI / 2;
+      const k = 1 - Math.exp(-dt * 14);
+
+      pivot.rotation.x += Math.atan2(Math.sin(targetX - pivot.rotation.x), Math.cos(targetX - pivot.rotation.x)) * k;
+      pivot.rotation.y += Math.atan2(Math.sin(targetY - pivot.rotation.y), Math.cos(targetY - pivot.rotation.y)) * k;
+      pivot.rotation.z += Math.atan2(Math.sin(targetZ - pivot.rotation.z), Math.cos(targetZ - pivot.rotation.z)) * k;
+    }
 
     // Log the actual post-update action state once per second for the first
     // five seconds, so the diagnostic reflects the running mixer rather than
