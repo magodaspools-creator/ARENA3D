@@ -34,10 +34,10 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    // Cajado é criado apontando para +Y. Mantém a ponta para cima
-    // e corrige a orientação frontal com 180° no eixo Y local.
+    // O cajado é criado vertical; a inversão frontal de 180° é aplicada
+    // no momento do attach ao anchor da mão, depois deste offset base.
     position: [0, 0, 0],
-    rotation: [Math.PI, Math.PI, 0],
+    rotation: [Math.PI, 0, 0],
   },
 
   blade: {
@@ -77,10 +77,10 @@ export class Player {
       this.weapon = createWeapon(look.weapon, look);
       this.weapon.userData.arenaPlayerWeapon = look.weapon;
       const weaponHand = isGltfRig
-        ? (look.weapon === 'bow' ? this.rig.armL : this.rig.armR)
-        : (look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
-      if (look.weapon === 'bow' && isGltfRig) {
-        console.log('[ARENA] PALADIN BOW ATTACH', {
+        ? ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.armL : this.rig.armR)
+        : ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.handL : this.rig.handR);
+      if ((look.weapon === 'bow' || look.weapon === 'crossbow') && isGltfRig) {
+        console.log('[ARENA] PALADIN RANGED WEAPON ATTACH', {
           playerId: this.id,
           anchor: weaponHand.name,
           parentBone: weaponHand.parent?.name || null,
@@ -89,6 +89,11 @@ export class Player {
       weaponHand.add(this.weapon);
 
       this.applyWeaponOffset(this.weapon, look.weapon);
+      if (look.weapon === 'staff') {
+        // O modelo do cajado nasce no sentido oposto ao frontal do personagem.
+        // A correção é aplicada no próprio anchor da mão, depois do offset base.
+        this.weapon.rotation.y += Math.PI;
+      }
       this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
