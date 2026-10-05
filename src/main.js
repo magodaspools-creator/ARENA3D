@@ -13,8 +13,6 @@ import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js';
 import { Player } from './player.js';
 import { loadPlayerRig } from './gltf-humanoid.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createHumanoid } from './models.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
@@ -23,7 +21,6 @@ import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 
-const TEST_2 = new URLSearchParams(location.search).get('modelo') === '3d' && new URLSearchParams(location.search).get('teste') === '2';
 const USE_GLTF_PLAYER = new URLSearchParams(location.search).get('modelo') === '3d';
 import { MapEditor } from './map-editor.js';
 
@@ -81,8 +78,6 @@ class Game {
     this.startArea = this.area;
     this.player = null;
     this.character = null;
-    this.test2Robots = null;
-    this.test2Logged = false;
 
     this.raycaster = new THREE.Raycaster();
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -279,8 +274,6 @@ class Game {
       this.player.place(s.x, s.z, s.facing);
     }
 
-    if (TEST_2) await this.setupTest2Robots();
-
     this.rig.mode = 'follow';
     this.state = 'play';
     this.stats.start = this.time;
@@ -352,54 +345,6 @@ class Game {
       playerExists: !!this.player,
       playerRootParent: this.player?.root?.parent?.type || null,
     });
-  }
-
-  async setupTest2Robots() {
-    if (!TEST_2 || this.test2Robots || !this.player) return;
-
-    const gltf = await new GLTFLoader().loadAsync('./assets/models/RobotExpressive.glb');
-    const a = gltf.scene;
-    const b = SkeletonUtils.clone(gltf.scene);
-    a.scale.setScalar(0.4);
-    b.scale.setScalar(0.4);
-
-    const origin = this.player.pos.clone();
-    a.position.copy(origin).add(new THREE.Vector3(2, 0, 0));
-    b.position.copy(origin).add(new THREE.Vector3(-2, 0, 0));
-    this.scene.add(a, b);
-
-    const mixerA = new THREE.AnimationMixer(a);
-    const mixerB = new THREE.AnimationMixer(b);
-    const idle = gltf.animations.find((clip) => clip.name === 'Idle');
-    if (idle) {
-      mixerA.clipAction(idle).play();
-      mixerB.clipAction(idle).play();
-    }
-
-    this.test2Robots = { a, b, mixerA, mixerB };
-  }
-
-  logTest2Diagnostics() {
-    if (!TEST_2 || !this.test2Robots || this.test2Logged) return;
-
-    const { a, b } = this.test2Robots;
-    const playerWorld = new THREE.Vector3();
-    const aWorld = new THREE.Vector3();
-    const bWorld = new THREE.Vector3();
-    this.player.root.getWorldPosition(playerWorld);
-    a.getWorldPosition(aWorld);
-    b.getWorldPosition(bWorld);
-
-    const passes = this.composer?.passes?.map((pass) => pass?.constructor?.name || '(anonymous)').join(', ') || '(none)';
-    const logarithmicDepthBuffer = this.renderer.logarithmicDepthBuffer ?? this.renderer.capabilities?.logarithmicDepthBuffer ?? false;
-    console.log('[ARENA TEST 2] renderer.logarithmicDepthBuffer=' + logarithmicDepthBuffer);
-    console.log('[ARENA TEST 2] renderer.outputColorSpace=' + this.renderer.outputColorSpace);
-    console.log('[ARENA TEST 2] camera.near=' + this.camera.near + ' camera.far=' + this.camera.far + ' camera.layers.mask=' + this.camera.layers.mask);
-    console.log('[ARENA TEST 2] composer=' + (!!this.composer) + ' passes=' + passes);
-    console.log('[ARENA TEST 2] scene.overrideMaterial=' + (this.scene.overrideMaterial ? this.scene.overrideMaterial.type : 'null'));
-    console.log('[ARENA TEST 2] renderer.info.render.triangles=' + this.renderer.info.render.triangles);
-    console.log('[ARENA TEST 2] robotA.world=' + aWorld.toArray().map((v) => Number(v.toFixed(3))).join(',') + ' robotB.world=' + bWorld.toArray().map((v) => Number(v.toFixed(3))).join(',') + ' player.world=' + playerWorld.toArray().map((v) => Number(v.toFixed(3))).join(','));
-    this.test2Logged = true;
   }
 
   enterArea2() {
@@ -980,14 +925,9 @@ class Game {
       this.moon.target.position.copy(p.pos);
       this.moon.position.copy(p.pos).add(this.moonOffset);
     }
-    if (this.test2Robots) {
-      this.test2Robots.mixerA.update(dt);
-      this.test2Robots.mixerB.update(dt);
-    }
     this.ui.update(dt);
     this.input.endFrame();
     this.composer.render();
-    this.logTest2Diagnostics();
   }
 }
 
