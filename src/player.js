@@ -32,19 +32,23 @@ export class Player {
     if (look.weapon !== 'fists') {
       this.weapon = createWeapon(look.weapon, look);
       this.weapon.userData.arenaPlayerWeapon = look.weapon;
-      const weaponHand = look.weapon === 'bow' ? this.rig.handL : this.rig.handR;
+      const weaponHand = look.weapon === 'bow' ? this.rig.armL : this.rig.armR;
       weaponHand.add(this.weapon);
+
+      // The weapon pivot starts exactly at the palm anchor. Do not overwrite
+      // createWeapon()'s intentional local rotation (sword/blade/greatsword).
       this.weapon.position.set(0, 0, 0);
-      this.weapon.rotation.set(0, 0, 0);
+      this.applyHandWeaponRotation(this.weapon, look.weapon);
       this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
       this.offhandWeapon = createWeapon(look.offhand, look);
       this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
-      const offhand = this.rig.handL;
+      const offhand = this.rig.armL;
       offhand.add(this.offhandWeapon);
+
       this.offhandWeapon.position.set(0, 0, 0);
-      this.offhandWeapon.rotation.set(0, 0, 0);
+      this.applyHandWeaponRotation(this.offhandWeapon, look.offhand);
       this.normalizeWeaponScale(this.offhandWeapon, offhand);
     }
 
@@ -89,6 +93,27 @@ export class Player {
     this.passiveRegenT = 0;
 
     this.logPlayerDiagnostics();
+  }
+
+  applyHandWeaponRotation(weapon, type) {
+    // Keep weapon geometry authored in createWeapon() upright relative to the
+    // hand. The old code reset this to zero, which broke the sword grip.
+    // Shield geometry is already oriented inside its own group.
+    switch (type) {
+      case 'sword':
+        weapon.rotation.set(Math.PI / 2 - 0.25, 0, 0);
+        break;
+      case 'blade':
+      case 'greatsword':
+        weapon.rotation.set(Math.PI / 2 - 0.3, 0, 0);
+        break;
+      case 'shield':
+        weapon.rotation.set(0, 0, 0);
+        break;
+      default:
+        // Preserve the model's authored local orientation for bows/staves.
+        break;
+    }
   }
 
   normalizeWeaponScale(weapon, hand) {
