@@ -26,6 +26,31 @@ const findBone = (root, patterns) => {
   return null;
 };
 
+function repairClonedSkeletons(model) {
+  const bonesByName = new Map();
+  model.traverse((o) => {
+    if (o.isBone) bonesByName.set(o.name, o);
+  });
+
+  let repaired = 0;
+  model.traverse((o) => {
+    if (!o.isSkinnedMesh || !o.skeleton) return;
+
+    const original = o.skeleton;
+    const mappedBones = original.bones.map((bone) => bonesByName.get(bone.name) || bone);
+    const valid = mappedBones.every((bone) => bone === original.bones[mappedBones.indexOf(bone)] || bone.parent);
+    const changed = mappedBones.some((bone, i) => bone !== original.bones[i]);
+
+    if (changed && valid) {
+      const skeleton = new THREE.Skeleton(mappedBones, original.boneInverses);
+      o.bind(skeleton, o.bindMatrix);
+      repaired++;
+    }
+  });
+
+  return repaired;
+}
+
 function normalizeModel(model) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
@@ -38,6 +63,7 @@ function normalizeModel(model) {
 function buildGltfRig(asset, look = {}) {
   const model = SkeletonUtils.clone(asset.scene);
   normalizeModel(model);
+  const repairedSkeletons = repairClonedSkeletons(model);
   model.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true;
@@ -94,6 +120,7 @@ function buildGltfRig(asset, look = {}) {
     // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
     // not the loader cache's original scene.
     sourceScene: asset.scene,
+    repairedSkeletons,
     makeAnimator() { return new GltfAnimator(this); },
   };
 }
@@ -107,6 +134,7 @@ export async function loadPlayerRig(look = {}, createHumanoid) {
         clonedScene: rig.model !== asset.scene,
         modelName: rig.model.name || '(unnamed)',
         sourceName: asset.scene.name || '(unnamed)',
+        repairedSkeletons: rig.repairedSkeletons,
       });
       return rig;
     } catch (error) {
