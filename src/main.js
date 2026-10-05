@@ -279,6 +279,8 @@ class Game {
       this.player.place(s.x, s.z, s.facing);
     }
 
+    if (TEST_2) await this.setupTest2Robots();
+
     this.rig.mode = 'follow';
     this.state = 'play';
     this.stats.start = this.time;
@@ -978,9 +980,14 @@ class Game {
       this.moon.target.position.copy(p.pos);
       this.moon.position.copy(p.pos).add(this.moonOffset);
     }
+    if (this.test2Robots) {
+      this.test2Robots.mixerA.update(dt);
+      this.test2Robots.mixerB.update(dt);
+    }
     this.ui.update(dt);
     this.input.endFrame();
     this.composer.render();
+    this.logTest2Diagnostics();
   }
 }
 
