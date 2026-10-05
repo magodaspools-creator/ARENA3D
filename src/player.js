@@ -32,7 +32,10 @@ export class Player {
     if (look.weapon !== 'fists') {
       this.weapon = createWeapon(look.weapon, look);
       this.weapon.userData.arenaPlayerWeapon = look.weapon;
-      const weaponHand = look.weapon === 'bow' ? this.rig.armL : this.rig.armR;
+      const isGltfRig = !!this.rig.model && typeof this.rig.makeAnimator === 'function';
+      const weaponHand = isGltfRig
+        ? (look.weapon === 'bow' ? this.rig.armL : this.rig.armR)
+        : (look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
       weaponHand.add(this.weapon);
 
       // The weapon pivot starts exactly at the palm anchor. Do not overwrite
@@ -44,7 +47,9 @@ export class Player {
     if (look.offhand) {
       this.offhandWeapon = createWeapon(look.offhand, look);
       this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
-      const offhand = this.rig.armL;
+      const offhand = isGltfRig
+        ? this.rig.armL
+        : this.rig.handL;
       offhand.add(this.offhandWeapon);
 
       this.offhandWeapon.position.set(0, 0, 0);
