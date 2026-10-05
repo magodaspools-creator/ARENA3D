@@ -32,14 +32,20 @@ export class Player {
     if (look.weapon !== 'fists') {
       this.weapon = createWeapon(look.weapon, look);
       this.weapon.userData.arenaPlayerWeapon = look.weapon;
-      (look.weapon === 'bow' ? this.rig.handL : this.rig.handR).add(this.weapon);
-      this.normalizeWeaponScale(this.weapon, look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
+      const weaponHand = look.weapon === 'bow' ? this.rig.handL : this.rig.handR;
+      weaponHand.add(this.weapon);
+      this.weapon.position.set(0, 0, 0);
+      this.weapon.rotation.set(0, 0, 0);
+      this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
       this.offhandWeapon = createWeapon(look.offhand, look);
       this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
-      this.rig.handL.add(this.offhandWeapon);
-      this.normalizeWeaponScale(this.offhandWeapon, this.rig.handL);
+      const offhand = this.rig.handL;
+      offhand.add(this.offhandWeapon);
+      this.offhandWeapon.position.set(0, 0, 0);
+      this.offhandWeapon.rotation.set(0, 0, 0);
+      this.normalizeWeaponScale(this.offhandWeapon, offhand);
     }
 
     this.root.visible = true;
