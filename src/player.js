@@ -9,6 +9,35 @@ const RED = new THREE.Color(0xff2020);
 let NEXT_PLAYER_ID = 1;
 const ACTIVE_PLAYERS = new Set();
 
+const WEAPON_OFFSETS = {
+  sword: {
+    position: [0, 0, 0],
+    rotation: [Math.PI / 2 - 0.25, 0, 0],
+  },
+  shield: {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+  },
+  bow: {
+    // Grip centered in the left palm; keep the bow vertical and facing forward.
+    position: [0, -0.08, 0.14],
+    rotation: [0, 0, 0],
+  },
+  staff: {
+    // createWeapon() builds the staff along +Y; flip it at the hand so the tip points up.
+    position: [0, 0, 0],
+    rotation: [Math.PI, 0, 0],
+  },
+  blade: {
+    position: [0, 0, 0],
+    rotation: [Math.PI / 2 - 0.3, 0, 0],
+  },
+  greatsword: {
+    position: [0, 0, 0],
+    rotation: [Math.PI / 2 - 0.3, 0, 0],
+  },
+};
+
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
 
 export class Player {
@@ -29,31 +58,26 @@ export class Player {
     this.mats = uniqueMaterials(this.root);
     this.anim = this.rig.makeAnimator ? this.rig.makeAnimator() : new HumanoidAnimator(this.rig);
 
+    const isGltfRig = !!this.rig.model && typeof this.rig.makeAnimator === 'function';
+
     if (look.weapon !== 'fists') {
       this.weapon = createWeapon(look.weapon, look);
       this.weapon.userData.arenaPlayerWeapon = look.weapon;
-      const isGltfRig = !!this.rig.model && typeof this.rig.makeAnimator === 'function';
       const weaponHand = isGltfRig
         ? (look.weapon === 'bow' ? this.rig.armL : this.rig.armR)
         : (look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
       weaponHand.add(this.weapon);
 
-      // The weapon pivot starts exactly at the palm anchor. Do not overwrite
-      // createWeapon()'s intentional local rotation (sword/blade/greatsword).
-      this.weapon.position.set(0, 0, 0);
-      this.applyHandWeaponRotation(this.weapon, look.weapon);
+      this.applyWeaponOffset(this.weapon, look.weapon);
       this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
       this.offhandWeapon = createWeapon(look.offhand, look);
       this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
-      const offhand = isGltfRig
-        ? this.rig.armL
-        : this.rig.handL;
+      const offhand = isGltfRig ? this.rig.armL : this.rig.handL;
       offhand.add(this.offhandWeapon);
 
-      this.offhandWeapon.position.set(0, 0, 0);
-      this.applyHandWeaponRotation(this.offhandWeapon, look.offhand);
+      this.applyWeaponOffset(this.offhandWeapon, look.offhand);
       this.normalizeWeaponScale(this.offhandWeapon, offhand);
     }
 
@@ -100,25 +124,10 @@ export class Player {
     this.logPlayerDiagnostics();
   }
 
-  applyHandWeaponRotation(weapon, type) {
-    // Keep weapon geometry authored in createWeapon() upright relative to the
-    // hand. The old code reset this to zero, which broke the sword grip.
-    // Shield geometry is already oriented inside its own group.
-    switch (type) {
-      case 'sword':
-        weapon.rotation.set(Math.PI / 2 - 0.25, 0, 0);
-        break;
-      case 'blade':
-      case 'greatsword':
-        weapon.rotation.set(Math.PI / 2 - 0.3, 0, 0);
-        break;
-      case 'shield':
-        weapon.rotation.set(0, 0, 0);
-        break;
-      default:
-        // Preserve the model's authored local orientation for bows/staves.
-        break;
-    }
+  applyWeaponOffset(weapon, type) {
+    const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
+    weapon.position.set(...offset.position);
+    weapon.rotation.set(...offset.rotation);
   }
 
   normalizeWeaponScale(weapon, hand) {
