@@ -34,8 +34,8 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    position: [0, 0.3, 0], // Eleva o cajado na mão para não raspar no chão
-    rotation: [Math.PI / 6, Math.PI, 0], // Inverte a inclinação para erguer a ponta mágica
+    position: [0, 0.8, 0], // Eleva o ponto de empunhadura na mão do robô
+    rotation: [Math.PI, Math.PI, 0], // Inverte 180° no X e 180° no Y
     targetSize: 2.0,
   },
 
