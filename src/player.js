@@ -196,16 +196,29 @@ export class Player {
     return weaponMesh;
   }
 
-  applyWeaponOffset(weapon, type) {
-    // Algumas vocações podem fornecer o cajado com nomes específicos.
-    // Todas devem usar a orientação canônica definida em WEAPON_OFFSETS.staff.
+  applyWeaponOffset(mesh, type) {
+    console.log("[ARENA Offset] Tipo recebido:", type);
+
     const normalizedType = String(type ?? '').toLowerCase();
-    const key = normalizedType.includes('staff') || normalizedType.includes('cajado')
-      ? 'staff'
-      : type;
-    const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.sword;
-    weapon.position.set(...offset.position);
-    weapon.rotation.set(...offset.rotation);
+    const key = normalizedType && (
+      normalizedType.includes('staff') ||
+      normalizedType.includes('cajado') ||
+      normalizedType.includes('sorcerer') ||
+      normalizedType.includes('druid')
+    ) ? 'staff' : normalizedType;
+
+    const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.default;
+    console.log("[ARENA Offset] Chave aplicada:", key, offset);
+
+    if (!offset) return;
+
+    if (offset.position) {
+      mesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
+    }
+
+    if (offset.rotation) {
+      mesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
+    }
   }
 
   // As armas GLTF não precisam de correção por frame. O mixer anima apenas o
