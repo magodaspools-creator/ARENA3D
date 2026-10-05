@@ -13,6 +13,8 @@ import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js';
 import { Player } from './player.js';
 import { loadPlayerRig } from './gltf-humanoid.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { createHumanoid } from './models.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
@@ -21,7 +23,7 @@ import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 
-const TEST_2 = false;
+const TEST_2 = new URLSearchParams(location.search).get('modelo') === '3d' && new URLSearchParams(location.search).get('teste') === '2';
 const USE_GLTF_PLAYER = new URLSearchParams(location.search).get('modelo') === '3d';
 import { MapEditor } from './map-editor.js';
 
@@ -79,6 +81,8 @@ class Game {
     this.startArea = this.area;
     this.player = null;
     this.character = null;
+    this.test2Robots = null;
+    this.test2Logged = false;
 
     this.raycaster = new THREE.Raycaster();
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
