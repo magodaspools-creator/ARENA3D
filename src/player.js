@@ -197,23 +197,31 @@ export class Player {
   }
 
   applyWeaponOffset(weaponMesh, type) {
+    if (!weaponMesh) return;
+
     const normalizedType = String(type ?? '').toLowerCase();
-    const key = normalizedType && (
+    const isStaff = normalizedType && (
       normalizedType.includes('staff') ||
       normalizedType.includes('cajado') ||
       normalizedType.includes('sorcerer') ||
       normalizedType.includes('druid')
-    ) ? 'staff' : normalizedType;
+    );
+    const key = isStaff ? 'staff' : type;
     const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.default;
 
-    if (offset && offset.rotation) {
-      // Ordem YXZ: aplica a orientação vertical no X antes de inverter a frente no Y.
-      weaponMesh.rotation.order = 'YXZ';
-      weaponMesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
+    console.log(\`[ARENA Offset] Aplicando para tipo: \${type} -> chave usada: \${key}\`);
+
+    if (offset) {
+      if (offset.position) {
+        weaponMesh.position.set(...offset.position);
+      }
+      if (offset.rotation) {
+        weaponMesh.rotation.set(...offset.rotation);
+      }
     }
 
-    if (offset && offset.position) {
-      weaponMesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
+    if (isStaff) {
+      weaponMesh.rotateY(Math.PI);
     }
   }
 
