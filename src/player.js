@@ -34,8 +34,8 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    position: [0, 0.5, 0],
-    rotation: [Math.PI, 0, 0],
+    position: [0, 0, 0],
+    rotation: [0, Math.PI / 2, Math.PI / 2],
     targetSize: 2.0,
   },
 
@@ -148,6 +148,30 @@ export class Player {
       const typeStr = String(type || '');
       const isStaff = typeStr.includes('staff') || typeStr.includes('cajado') || typeStr.includes('sorcerer') || typeStr.includes('druid');
       const targetSize = isStaff ? 2.0 : (WEAPON_OFFSETS[type] && WEAPON_OFFSETS[type].targetSize) || 1.5;
+
+      // O cajado nasce como Group e seu ponto (0,0,0) não coincide com a
+      // empunhadura. Rebaseamos o conjunto UMA vez antes do scale/rotação:
+      // a origem passa para o centro da base do cajado, onde a mão segura.
+      // Não usamos geometry.center() porque weaponMesh é um Group composto
+      // por várias geometrias, e centralizar cada Geometry separadamente
+      // destruiria as posições relativas entre haste, orbe e adornos.
+      if (isStaff) {
+        weaponMesh.updateMatrixWorld(true);
+        const gripBox = new THREE.Box3().setFromObject(weaponMesh);
+        const gripCenter = new THREE.Vector3(
+          (gripBox.min.x + gripBox.max.x) * 0.5,
+          gripBox.min.y,
+          (gripBox.min.z + gripBox.max.z) * 0.5
+        );
+
+        weaponMesh.children.forEach((child) => {
+          child.position.x -= gripCenter.x;
+          child.position.y -= gripCenter.y;
+          child.position.z -= gripCenter.z;
+        });
+
+        weaponMesh.updateMatrixWorld(true);
+      }
 
       const box = new THREE.Box3().setFromObject(weaponMesh);
       const size = box.getSize(new THREE.Vector3());
