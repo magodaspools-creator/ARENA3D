@@ -27,18 +27,13 @@ const findBone = (root, patterns) => {
 };
 
 function normalizeModel(model) {
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  if (!Number.isFinite(size.y) || size.y <= 0.001) throw new Error('RobotExpressive has invalid height.');
-  model.scale.multiplyScalar(1.9 / size.y);
-  const scaledBox = new THREE.Box3().setFromObject(model);
-  model.position.y -= scaledBox.min.y;
+  const SCALE = 0.019;
+  model.scale.set(SCALE, SCALE, SCALE);
 }
 
 function buildGltfRig(asset, look = {}) {
   const model = SkeletonUtils.clone(asset.scene);
-  // TESTE: normalizeModel desativado temporariamente para isolar a causa do corpo invisível.
-  // normalizeModel(model);
+  normalizeModel(model);
   model.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true;
@@ -96,8 +91,24 @@ function buildGltfRig(asset, look = {}) {
 
   const handL = new THREE.Group();
   const handR = new THREE.Group();
+  handL.name = 'PlayerHandL';
+  handR.name = 'PlayerHandR';
+  handL.userData.sourceHandBone = handBoneL?.name || null;
+  handR.userData.sourceHandBone = handBoneR?.name || null;
   (handBoneL || root).add(handL);
   (handBoneR || root).add(handR);
+
+  if (!handBoneL || !handBoneR) {
+    console.warn('[ARENA] GLTF hand bone lookup incomplete.', {
+      left: handBoneL?.name || null,
+      right: handBoneR?.name || null,
+    });
+  } else {
+    console.log('[ARENA] GLTF HAND BONES', {
+      left: handBoneL.name,
+      right: handBoneR.name,
+    });
+  }
 
   const eyes = [];
   root.traverse((o) => {
