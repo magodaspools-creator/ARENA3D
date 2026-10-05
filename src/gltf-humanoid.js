@@ -27,8 +27,15 @@ const findBone = (root, patterns) => {
 };
 
 function normalizeModel(model) {
-  const SCALE = 0.019;
-  model.scale.set(SCALE, SCALE, SCALE);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  if (!Number.isFinite(size.y) || size.y <= 0.001) return;
+
+  // Define a altura exata do robô na arena (~1.9m).
+  const targetHeight = 1.9;
+  const scale = targetHeight / size.y;
+  model.scale.set(scale, scale, scale);
+  // NUNCA alterar model.position.y aqui.
 }
 
 function buildGltfRig(asset, look = {}) {
