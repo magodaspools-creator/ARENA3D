@@ -23,8 +23,12 @@ const WEAPON_OFFSETS = {
   },
 
   bow: {
-    // Ponto inicial seguro: centro do arco na mão esquerda.
-    // Y=90° gira o arco para a orientação de empunhadura do Paladin.
+    position: [0, 0, 0],
+    rotation: [0, Math.PI / 2, 0],
+  },
+
+  crossbow: {
+    // Empunhadura centralizada na mão esquerda; corpo apontado para frente.
     position: [0, 0, 0],
     rotation: [0, Math.PI / 2, 0],
   },
