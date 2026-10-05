@@ -29,15 +29,17 @@ const WEAPON_OFFSETS = {
 
   crossbow: {
     // Empunhadura centralizada na mão esquerda; corpo apontado para frente.
+    // Escala local 1:1 para não deformar a mesh.
     position: [0, 0, 0],
     rotation: [0, Math.PI / 2, 0],
+    scale: [1, 1, 1],
   },
 
   staff: {
-    // O cajado é criado vertical; a inversão frontal de 180° é aplicada
-    // no momento do attach ao anchor da mão, depois deste offset base.
+    // A orientação definitiva é reforçada por updateWeapons() a cada frame.
     position: [0, 0, 0],
     rotation: [Math.PI, 0, 0],
+    scale: [1, 1, 1],
   },
 
   blade: {
@@ -89,11 +91,6 @@ export class Player {
       weaponHand.add(this.weapon);
 
       this.applyWeaponOffset(this.weapon, look.weapon);
-      if (look.weapon === 'staff') {
-        // O modelo do cajado nasce no sentido oposto ao frontal do personagem.
-        // A correção é aplicada no próprio anchor da mão, depois do offset base.
-        this.weapon.rotation.y += Math.PI;
-      }
       this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
@@ -153,6 +150,34 @@ export class Player {
     const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
     weapon.position.set(...offset.position);
     weapon.rotation.set(...offset.rotation);
+    if (offset.scale) weapon.scale.set(...offset.scale);
+  }
+
+  updateWeapons() {
+    const weapon = this.weapon;
+    if (!weapon) return;
+
+    // A animação/mixer pode reescrever transformações da arma durante o frame.
+    // Reforçamos a orientação do cajado depois da animação, sem acumular += PI.
+    if (weapon.userData.arenaPlayerWeapon === 'staff') {
+      const offset = WEAPON_OFFSETS.staff;
+      weapon.rotation.set(
+        offset.rotation[0],
+        offset.rotation[1] + Math.PI,
+        offset.rotation[2],
+      );
+      weapon.position.set(...offset.position);
+      weapon.scale.set(...(offset.scale || [1, 1, 1]));
+    }
+
+    // A crossbow é sempre mantida na escala definida pelo offset, sem
+    // esticar nenhum eixo; ela permanece no anchor esquerdo do Paladin.
+    if (weapon.userData.arenaPlayerWeapon === 'crossbow') {
+      const offset = WEAPON_OFFSETS.crossbow;
+      weapon.position.set(...offset.position);
+      weapon.rotation.set(...offset.rotation);
+      weapon.scale.set(...(offset.scale || [1, 1, 1]));
+    }
   }
 
   normalizeWeaponScale(weapon, hand) {
@@ -387,6 +412,7 @@ export class Player {
     }
 
     this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
+    this.updateWeapons();
     g.ui.setHP(this.hp, this.maxHp);
     g.ui.setMana?.(this.mana, this.maxMana);
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
