@@ -34,8 +34,8 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    position: [0, 0.8, 0], // Eleva o ponto de empunhadura na mão do robô
-    rotation: [Math.PI, Math.PI, 0], // Inverte 180° no X e 180° no Y
+    position: [0, 0.5, 0], // Eleva o ponto de empunhadura na mão do robô
+    rotation: [Math.PI, 0, 0], // Mantém a vertical e vira a ponta para a frente
     targetSize: 2.0,
   },
 
