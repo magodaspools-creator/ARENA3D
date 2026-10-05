@@ -199,6 +199,13 @@ export class Player {
 
       this.weaponPivot = type === 'crossbow' || type === 'staff' ? weaponPivot : this.weaponPivot;
 
+      if (isStaff) {
+        this.rig.isStaffEquipped = true;
+        this.rig.equippedWeaponPivot = weaponPivot;
+        this.anim.isStaffEquipped = true;
+        this.anim.equippedWeaponPivot = weaponPivot;
+      }
+
       return weaponMesh;
     }
 
