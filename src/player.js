@@ -37,7 +37,7 @@ const WEAPON_OFFSETS = {
     position: [0, 0.5, 0],
     rotation: [Math.PI, 0, 0],
     targetSize: 2.0,
-  }
+  },
 
   blade: {
     position: [0, 0, 0],
