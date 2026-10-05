@@ -14,24 +14,33 @@ const WEAPON_OFFSETS = {
     position: [0, 0, 0],
     rotation: [Math.PI / 2 - 0.25, 0, 0],
   },
+
   shield: {
-    position: [0, 0, 0],
+    // Ponto inicial para assentar o escudo no antebraço/mão esquerda.
+    // Ajuste estes 3 valores sem mexer na lógica de equipar.
+    position: [-0.02, 0.02, 0.06],
     rotation: [0, 0, 0],
   },
+
   bow: {
-    // Grip centered in the left palm; keep the bow vertical and facing forward.
-    position: [0, -0.08, 0.14],
-    rotation: [0, 0, 0],
-  },
-  staff: {
-    // createWeapon() builds the staff along +Y; flip it at the hand so the tip points up.
+    // Ponto inicial seguro: centro do arco na mão esquerda.
+    // Y=90° gira o arco para a orientação de empunhadura do Paladin.
     position: [0, 0, 0],
-    rotation: [Math.PI, 0, 0],
+    rotation: [0, Math.PI / 2, 0],
   },
+
+  staff: {
+    // Cajado é criado apontando para +Y. Mantém a ponta para cima
+    // e corrige a orientação frontal com 180° no eixo Y local.
+    position: [0, 0, 0],
+    rotation: [Math.PI, Math.PI, 0],
+  },
+
   blade: {
     position: [0, 0, 0],
     rotation: [Math.PI / 2 - 0.3, 0, 0],
   },
+
   greatsword: {
     position: [0, 0, 0],
     rotation: [Math.PI / 2 - 0.3, 0, 0],
@@ -66,6 +75,13 @@ export class Player {
       const weaponHand = isGltfRig
         ? (look.weapon === 'bow' ? this.rig.armL : this.rig.armR)
         : (look.weapon === 'bow' ? this.rig.handL : this.rig.handR);
+      if (look.weapon === 'bow' && isGltfRig) {
+        console.log('[ARENA] PALADIN BOW ATTACH', {
+          playerId: this.id,
+          anchor: weaponHand.name,
+          parentBone: weaponHand.parent?.name || null,
+        });
+      }
       weaponHand.add(this.weapon);
 
       this.applyWeaponOffset(this.weapon, look.weapon);
@@ -136,7 +152,15 @@ export class Player {
     const handScale = new THREE.Vector3();
     hand.getWorldScale(handScale);
     const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
-    weapon.scale.set(1 / safe(handScale.x), 1 / safe(handScale.y), 1 / safe(handScale.z));
+    const sx = 1 / safe(handScale.x);
+    const sy = 1 / safe(handScale.y);
+    const sz = 1 / safe(handScale.z);
+    // Nunca permitir escala zero, NaN ou infinita no grupo da arma.
+    weapon.scale.set(
+      Number.isFinite(sx) && Math.abs(sx) > 0.00001 ? sx : 1,
+      Number.isFinite(sy) && Math.abs(sy) > 0.00001 ? sy : 1,
+      Number.isFinite(sz) && Math.abs(sz) > 0.00001 ? sz : 1,
+    );
     weapon.updateMatrixWorld(true);
     const worldScale = new THREE.Vector3();
     weapon.getWorldScale(worldScale);
