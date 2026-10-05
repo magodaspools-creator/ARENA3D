@@ -106,7 +106,7 @@ export class Combat {
       homingLife: p.homingLife ?? Infinity, homingT: 0,
       trailT: 0,
       onExplode: p.onExplode,
-      pos: new THREE.Vector3(p.pos.x, PROJ_Y, p.pos.z),
+      pos: new THREE.Vector3(p.pos.x, Number.isFinite(p.pos.y) ? p.pos.y : PROJ_Y, p.pos.z),
       vel: new THREE.Vector3(p.dir.x, 0, p.dir.z).normalize().multiplyScalar(p.speed),
       life: p.range / p.speed,
       mesh: makeVisual(p.visual, p.color),
