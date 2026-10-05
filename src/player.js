@@ -29,18 +29,16 @@ const WEAPON_OFFSETS = {
 
   crossbow: {
     // Empunhadura centralizada na mão esquerda; corpo apontado para frente.
-    // Escala visual pequena para ficar proporcional ao robô.
+    // A escala é normalizada no espaço isolado da arma; não usar scale aqui.
     position: [0, 0, 0],
     rotation: [0, Math.PI / 2, 0],
-    scale: [0.1, 0.1, 0.1],
   },
 
   staff: {
-    // A orientação definitiva é reforçada por updateWeapons() a cada frame.
-    // Escala visual pequena para ficar proporcional ao robô.
+    // Orientação definitiva aplicada uma única vez no anexo.
+    // A escala é normalizada no espaço isolado da arma; não usar scale aqui.
     position: [0, 0, 0],
-    rotation: [Math.PI, 0, 0],
-    scale: [0.1, 0.1, 0.1],
+    rotation: [Math.PI, Math.PI, 0],
   },
 
   blade: {
@@ -77,31 +75,25 @@ export class Player {
     const isGltfRig = !!this.rig.model && typeof this.rig.makeAnimator === 'function';
 
     if (look.weapon !== 'fists') {
-      this.weapon = createWeapon(look.weapon, look);
-      this.weapon.userData.arenaPlayerWeapon = look.weapon;
       const weaponHand = isGltfRig
         ? ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.armL : this.rig.armR)
         : ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.handL : this.rig.handR);
+
+      this.weapon = this.attachWeapon(look.weapon, look, weaponHand, isGltfRig);
+
       if ((look.weapon === 'bow' || look.weapon === 'crossbow') && isGltfRig) {
         console.log('[ARENA] PALADIN RANGED WEAPON ATTACH', {
           playerId: this.id,
           anchor: weaponHand.name,
           parentBone: weaponHand.parent?.name || null,
+          pivot: this.weaponPivot?.name || null,
+          normalizedSize: this.weapon?.userData?.arenaNormalizedSize || null,
         });
       }
-      weaponHand.add(this.weapon);
-
-      this.applyWeaponOffset(this.weapon, look.weapon);
-      this.normalizeWeaponScale(this.weapon, weaponHand);
     }
     if (look.offhand) {
-      this.offhandWeapon = createWeapon(look.offhand, look);
-      this.offhandWeapon.userData.arenaPlayerWeapon = look.offhand;
       const offhand = isGltfRig ? this.rig.armL : this.rig.handL;
-      offhand.add(this.offhandWeapon);
-
-      this.applyWeaponOffset(this.offhandWeapon, look.offhand);
-      this.normalizeWeaponScale(this.offhandWeapon, offhand);
+      this.offhandWeapon = this.attachWeapon(look.offhand, look, offhand, isGltfRig);
     }
 
     this.root.visible = true;
@@ -147,70 +139,75 @@ export class Player {
     this.logPlayerDiagnostics();
   }
 
+  attachWeapon(type, look, hand, isGltfRig) {
+    const weaponMesh = createWeapon(type, look);
+    weaponMesh.userData.arenaPlayerWeapon = type;
+
+    // GLTF: a arma é medida antes de receber qualquer parent. Assim o Box3
+    // representa somente o tamanho real da própria arma, nunca o robô 76x.
+    if (isGltfRig) {
+      const targetSize = 1.5;
+      weaponMesh.updateMatrixWorld(true);
+
+      const box = new THREE.Box3().setFromObject(weaponMesh);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const baseScale = targetSize / (maxDim || 1);
+
+      weaponMesh.scale.set(baseScale, baseScale, baseScale);
+      weaponMesh.userData.arenaNormalizedSize = targetSize;
+
+      // O pivot absorve a escala do skeleton. A arma em si continua em
+      // escala 1.5 no próprio espaço e nunca precisa ser reescalada por frame.
+      const weaponPivot = new THREE.Group();
+      weaponPivot.name = 'PlayerWeaponPivot';
+      weaponPivot.userData.arenaPlayerWeaponPivot = type;
+
+      const handScale = new THREE.Vector3();
+      hand.getWorldScale(handScale);
+      const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
+      weaponPivot.scale.set(
+        1 / safe(handScale.x),
+        1 / safe(handScale.y),
+        1 / safe(handScale.z),
+      );
+
+      this.applyWeaponOffset(weaponMesh, type);
+      weaponPivot.add(weaponMesh);
+      hand.add(weaponPivot);
+
+      this.weaponPivot = type === 'crossbow' || type === 'staff' ? weaponPivot : this.weaponPivot;
+
+      console.log('[ARENA] PLAYER WEAPON ATTACHED', {
+        playerId: this.id,
+        weapon: type,
+        targetSize,
+        measuredSize: size.toArray().map((v) => Number(v.toFixed(5))),
+        isolatedScale: Number(baseScale.toFixed(6)),
+        handWorldScale: handScale.toArray().map((v) => Number(v.toFixed(5))),
+        pivotScale: weaponPivot.scale.toArray().map((v) => Number(v.toFixed(5))),
+      });
+
+      return weaponMesh;
+    }
+
+    // Rig procedural antigo: mantém o comportamento original, sem introduzir
+    // a normalização do GLTF nesse caminho.
+    hand.add(weaponMesh);
+    this.applyWeaponOffset(weaponMesh, type);
+    return weaponMesh;
+  }
+
   applyWeaponOffset(weapon, type) {
     const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
     weapon.position.set(...offset.position);
     weapon.rotation.set(...offset.rotation);
   }
 
-  updateWeapons() {
-    const weapon = this.weapon;
-    if (!weapon) return;
-
-    // A animação/mixer roda antes deste método. Reforçamos somente as armas
-    // que precisam de orientação fixa, sem acumular rotação a cada frame.
-    if (weapon.userData.arenaPlayerWeapon === 'staff') {
-      const offset = WEAPON_OFFSETS.staff;
-      weapon.rotation.set(
-        offset.rotation[0],
-        offset.rotation[1] + Math.PI,
-        offset.rotation[2],
-      );
-      weapon.position.set(...offset.position);
-      this.normalizeWeaponScale(weapon, this.rig.armR);
-    }
-
-    // A crossbow permanece no anchor esquerdo, apontada para frente e com
-    // escala uniforme. A compensação da escala do osso é reaplicada aqui.
-    if (weapon.userData.arenaPlayerWeapon === 'crossbow') {
-      const offset = WEAPON_OFFSETS.crossbow;
-      weapon.position.set(...offset.position);
-      weapon.rotation.set(...offset.rotation);
-      this.normalizeWeaponScale(weapon, this.rig.armL);
-    }
-  }
-
-  normalizeWeaponScale(weapon, hand) {
-    this.root.updateMatrixWorld(true);
-    hand.updateMatrixWorld(true);
-    const type = weapon.userData.arenaPlayerWeapon;
-    const offset = WEAPON_OFFSETS[type] || WEAPON_OFFSETS.sword;
-    const baseScale = offset.scale || [1, 1, 1];
-    const handScale = new THREE.Vector3();
-    hand.getWorldScale(handScale);
-    const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
-    const sx = baseScale[0] / safe(handScale.x);
-    const sy = baseScale[1] / safe(handScale.y);
-    const sz = baseScale[2] / safe(handScale.z);
-    // A escala definida no offset é a escala visual final. A divisão pela
-    // escala do osso impede que a escala global/animada do robô seja herdada.
-    weapon.scale.set(
-      Number.isFinite(sx) && Math.abs(sx) > 0.00001 ? sx : baseScale[0],
-      Number.isFinite(sy) && Math.abs(sy) > 0.00001 ? sy : baseScale[1],
-      Number.isFinite(sz) && Math.abs(sz) > 0.00001 ? sz : baseScale[2],
-    );
-    weapon.updateMatrixWorld(true);
-    const worldScale = new THREE.Vector3();
-    weapon.getWorldScale(worldScale);
-    console.log('[ARENA] PLAYER WEAPON SCALE', {
-      playerId: this.id,
-      weapon: weapon.userData.arenaPlayerWeapon,
-      hand: hand.name || '(unnamed)',
-      handWorldScale: handScale.toArray().map((v) => Number(v.toFixed(5))),
-      weaponWorldScale: worldScale.toArray().map((v) => Number(v.toFixed(5))),
-      parent: weapon.parent?.name || '(unnamed)',
-    });
-  }
+  // As armas GLTF não precisam de correção por frame. O mixer anima apenas o
+  // skeleton; posição, rotação e escala da arma ficam no espaço local definido
+  // durante attachWeapon().
+  updateWeapons() {}
 
   logPlayerDiagnostics() {
     this.root.updateMatrixWorld(true);
@@ -416,7 +413,6 @@ export class Player {
     }
 
     this.anim.update(dt, Math.hypot(this.vel.x, this.vel.z) / (characterStats?.speed ?? this.voc.speed));
-    this.updateWeapons();
     g.ui.setHP(this.hp, this.maxHp);
     g.ui.setMana?.(this.mana, this.maxMana);
     g.ui.setCooldown('attack', this.attackCd / (characterStats?.attackCooldown ?? this.voc.attack.cooldown));
