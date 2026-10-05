@@ -2,18 +2,37 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const MODEL_URL = './assets/models/RobotExpressive.glb';
-const loader = new GLTFLoader();
-let PLAYER_GLTF_PROMISE = null;
+const VOCATION_MODELS = {
+  sorcerer: './assets/models/mage.glb',
+  druid: './assets/models/druid.glb',
+  paladin: './assets/models/paladin.glb',
+  knight: './assets/models/knight.glb',
+  default: './assets/models/RobotExpressive.glb',
+};
 
-function getPlayerGltf() {
-  if (!PLAYER_GLTF_PROMISE) {
-    PLAYER_GLTF_PROMISE = loader.loadAsync(MODEL_URL).catch((error) => {
-      console.warn('[ARENA] RobotExpressive.glb unavailable; using procedural player.', error);
-      return null;
-    });
+const loader = new GLTFLoader();
+const PLAYER_GLTF_PROMISES = new Map();
+
+function getModelPathForVocation(vocation) {
+  return VOCATION_MODELS[String(vocation || '').toLowerCase()] || VOCATION_MODELS.default;
+}
+
+function getPlayerGltf(vocation) {
+  const modelPath = getModelPathForVocation(vocation);
+  if (!PLAYER_GLTF_PROMISES.has(modelPath)) {
+    PLAYER_GLTF_PROMISES.set(
+      modelPath,
+      loader.loadAsync(modelPath).catch((error) => {
+        console.warn('[ARENA] GLTF unavailable; using procedural player.', {
+          vocation,
+          modelPath,
+          error,
+        });
+        return null;
+      }),
+    );
   }
-  return PLAYER_GLTF_PROMISE;
+  return PLAYER_GLTF_PROMISES.get(modelPath);
 }
 
 const findBone = (root, patterns) => {
@@ -127,7 +146,7 @@ function buildGltfRig(asset, look = {}) {
   return {
     root,
     body, torso, head, legL, legR, armL, armR,
-    handL, handR, handBone: handBoneR, eyes, cape: null, model,
+    handL, handR, eyes, cape: null, model,
     animations: asset.animations || [],
     // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
     // not the loader cache's original scene.
@@ -142,6 +161,8 @@ export async function loadPlayerRig(look = {}, createHumanoid) {
     try {
       const rig = buildGltfRig(asset, look);
       console.log('[ARENA] Player rig ready: GLTF final rig.', {
+        vocation,
+        modelPath: getModelPathForVocation(vocation),
         clonedScene: rig.model !== asset.scene,
         modelName: rig.model.name || '(unnamed)',
         sourceName: asset.scene.name || '(unnamed)',
@@ -161,11 +182,8 @@ export async function loadPlayerRig(look = {}, createHumanoid) {
 export class GltfAnimator {
   constructor(rig) {
     this.r = rig;
-    this.mesh = rig.model;
-    this.handBone = rig.handBone || null;
     this.isStaffEquipped = !!rig.isStaffEquipped;
     this.equippedWeaponPivot = rig.equippedWeaponPivot || null;
-    this.staffBaseQuaternion = null;
     this.mixer = new THREE.AnimationMixer(rig.model);
     this.mixerTarget = rig.model;
     this.actions = {};
@@ -330,31 +348,7 @@ export class GltfAnimator {
     this.hurt = Math.max(0, this.hurt - dt);
     this.mixer.update(dt);
 
-    // Sway damping do cajado: mistura a orientação estável do corpo com
-    // apenas 25% do movimento natural da mão. O cálculo acontece DEPOIS do
-    // mixer, então não interfere nos ossos nem na animação GLTF.
-    if (this.equippedWeaponPivot && this.isStaffEquipped && this.handBone) {
-      this.handBone.updateMatrixWorld(true);
-      this.mesh.updateMatrixWorld(true);
 
-      const bodyQuat = this.mesh.quaternion.clone();
-      const handQuat = new THREE.Quaternion();
-      this.handBone.getWorldQuaternion(handQuat);
-
-      const stableQuat = bodyQuat.clone().slerp(handQuat, 0.25);
-
-      // Mantém o offset base que já encaixava o cajado corretamente parado.
-      if (!this.staffBaseQuaternion) {
-        this.staffBaseQuaternion = this.equippedWeaponPivot.quaternion.clone();
-      }
-      stableQuat.multiply(this.staffBaseQuaternion);
-
-      const parentQuat = new THREE.Quaternion();
-      this.equippedWeaponPivot.parent.getWorldQuaternion(parentQuat);
-
-      const localStableQuat = parentQuat.clone().invert().multiply(stableQuat);
-      this.equippedWeaponPivot.quaternion.slerp(localStableQuat, 0.2);
-    }
 
     // Log the actual post-update action state once per second for the first
     // five seconds, so the diagnostic reflects the running mixer rather than
