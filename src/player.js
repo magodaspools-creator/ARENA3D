@@ -34,8 +34,8 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    position: [0, 0, 0],
-    rotation: [0, Math.PI, 0],
+    position: [0, 0.3, 0], // Eleva o cajado na mão para não raspar no chão
+    rotation: [-Math.PI / 6, Math.PI, 0], // Inclina a ponta para cima/frente
     targetSize: 2.0,
   },
 
@@ -445,8 +445,32 @@ export class Player {
     this.facing = lerpAngle(this.facing, this.aimAngle, 0.6);
   }
 
+  getWeaponWorldPosition() {
+    const weapon = this.weapon;
+    const pivot = this.weaponPivot;
+
+    if (weapon?.updateMatrixWorld) weapon.updateMatrixWorld(true);
+    if (pivot?.updateMatrixWorld) pivot.updateMatrixWorld(true);
+    if (this.root?.updateMatrixWorld) this.root.updateMatrixWorld(true);
+
+    const source = weapon || pivot;
+    if (source?.getWorldPosition) {
+      const world = new THREE.Vector3();
+      source.getWorldPosition(world);
+      if (Number.isFinite(world.x) && Number.isFinite(world.y) && Number.isFinite(world.z)) {
+        return world;
+      }
+    }
+
+    return this.pos.clone().setY(PROJ_Y);
+  }
+
   muzzle(dir) {
-    return this.pos.clone().addScaledVector(dir, 0.7);
+    const origin = this.getWeaponWorldPosition();
+
+    // A origem fica na própria arma e avança um pouco na direção do disparo,
+    // evitando nascer dentro da crossbow/mão ou exatamente no centro do player.
+    return origin.addScaledVector(dir, 0.65);
   }
 
   damageContext(damageType, stats) {
