@@ -368,14 +368,114 @@ export function createWeapon(type, look = {}) {
       break;
     }
     case 'crossbow': {
-      // Corpo longitudinal no eixo X; o WEAPON_OFFSETS gira 90° em Y
-      // para apontar a balestra na direção frontal do personagem.
-      g.add(mesh(new THREE.BoxGeometry(0.95, 0.08, 0.12), wood, 0, 0.0, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), mat(0x5a3a22), -0.18, -0.16, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.12, 0.34, 0.05), steel, 0, 0.14, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.72, 0.045, 0.045), mat(0x8a6a3a), 0, 0.23, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.025), glow(0xffe6a0, 0.35), 0, 0.25, 0));
+      // Balestra low-poly: cada peça nasce no espaço local da arma para que
+      // Player possa normalizá-la uma única vez antes de anexá-la ao skeleton.
+      const crossbowWood = mat(0x3b2416, { rough: 0.62 });
+      const crossbowWoodLight = mat(0x6a4225, { rough: 0.58 });
+      const crossbowMetal = mat(0x3e4650, { metal: 0.9, rough: 0.28 });
+      const crossbowMetalDark = mat(0x20262d, { metal: 0.82, rough: 0.34 });
+      const crossbowString = mat(0xc6b58f, { rough: 0.72 });
+
+      // Helper para barras entre dois pontos, mantendo tudo low-poly.
+      const beamBetween = (a, b, radius, material, segments = 5) => {
+        const start = new THREE.Vector3(...a);
+        const end = new THREE.Vector3(...b);
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        const part = mesh(new THREE.CylinderGeometry(radius, radius, length, segments), material);
+        part.position.copy(start).add(end).multiplyScalar(0.5);
+        part.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+        return part;
+      };
+
+      // 1. Coronha / stock: corpo alongado com acabamento chanfrado.
+      const stockShape = new THREE.Shape();
+      stockShape.moveTo(-0.54, -0.085);
+      stockShape.lineTo(0.42, -0.085);
+      stockShape.lineTo(0.48, -0.045);
+      stockShape.lineTo(0.48, 0.045);
+      stockShape.lineTo(0.42, 0.085);
+      stockShape.lineTo(-0.54, 0.085);
+      stockShape.closePath();
+
+      const stockGeo = new THREE.ExtrudeGeometry(stockShape, {
+        depth: 0.14,
+        bevelEnabled: true,
+        bevelSegments: 1,
+        bevelSize: 0.018,
+        bevelThickness: 0.018,
+        curveSegments: 1,
+      });
+      stockGeo.translate(0, 0, -0.07);
+      g.add(mesh(stockGeo, crossbowWood));
+
+      // Soleira traseira e pequena peça de acabamento da coronha.
+      g.add(mesh(new THREE.BoxGeometry(0.18, 0.12, 0.18), crossbowWoodLight, -0.48, 0, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.38, 0.035, 0.17), crossbowMetalDark, 0.16, 0.055, 0));
+
+      // Empunhadura inclinada, encaixada sob a coronha.
+      const grip = mesh(new THREE.BoxGeometry(0.18, 0.40, 0.15), crossbowWoodLight, -0.28, -0.19, 0);
+      grip.rotation.z = -0.22;
+      g.add(grip);
+
+      // Base metálica da empunhadura e pomo.
+      const gripCollar = mesh(new THREE.BoxGeometry(0.22, 0.055, 0.17), crossbowMetal, -0.29, 0.015, 0);
+      gripCollar.rotation.z = -0.22;
+      g.add(gripCollar);
+      const pommel = mesh(new THREE.BoxGeometry(0.20, 0.075, 0.16), crossbowMetalDark, -0.36, -0.385, 0);
+      pommel.rotation.z = -0.22;
+      g.add(pommel);
+
+      // 2. Arco / limbs: hastes metálicas curvadas para a frente.
+      const upperLimb = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.28, 0.035, 0),
+        new THREE.Vector3(0.45, 0.12, 0),
+        new THREE.Vector3(0.62, 0.27, 0),
+        new THREE.Vector3(0.72, 0.40, 0),
+      ]);
+      const lowerLimb = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.28, -0.035, 0),
+        new THREE.Vector3(0.45, -0.12, 0),
+        new THREE.Vector3(0.62, -0.27, 0),
+        new THREE.Vector3(0.72, -0.40, 0),
+      ]);
+      g.add(mesh(new THREE.TubeGeometry(upperLimb, 7, 0.035, 5, false), crossbowMetal));
+      g.add(mesh(new THREE.TubeGeometry(lowerLimb, 7, 0.035, 5, false), crossbowMetal));
+
+      // Reforços nos encaixes do arco.
+      g.add(mesh(new THREE.BoxGeometry(0.16, 0.13, 0.17), crossbowMetalDark, 0.30, 0, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.08, 0.10, 0.16), crossbowMetal, 0.70, 0.40, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.08, 0.10, 0.16), crossbowMetal, 0.70, -0.40, 0));
+
+      // Corda do arco, ligando as duas pontas.
+      g.add(beamBetween([0.72, 0.40, 0], [0.72, -0.40, 0], 0.009, crossbowString, 4));
+
+      // 3. Calha central onde a flecha repousa.
+      g.add(mesh(new THREE.BoxGeometry(0.72, 0.035, 0.055), crossbowMetalDark, 0.08, 0.105, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.50, 0.018, 0.025), crossbowMetal, 0.16, 0.13, 0));
+
+      // Apoio dianteiro da flecha.
+      g.add(mesh(new THREE.BoxGeometry(0.12, 0.10, 0.09), crossbowMetal, 0.42, 0.075, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 5), crossbowMetalDark, 0.42, 0.14, 0));
+
+      // 4. Caixa do gatilho + gatilho curvado/angulado.
+      const triggerBox = mesh(new THREE.BoxGeometry(0.16, 0.19, 0.13), crossbowMetalDark, -0.08, -0.105, 0);
+      g.add(triggerBox);
+      const trigger = mesh(new THREE.BoxGeometry(0.045, 0.16, 0.05), crossbowMetal, -0.08, -0.20, 0);
+      trigger.rotation.z = -0.18;
+      g.add(trigger);
+
+      // Detalhes superiores para dar leitura de mecanismo sem exagerar no volume.
+      g.add(mesh(new THREE.BoxGeometry(0.18, 0.045, 0.10), crossbowMetal, -0.18, 0.13, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 6), crossbowMetal, -0.18, 0.17, 0).rotateX(Math.PI / 2));
+
       g.userData.tip = g;
+
+      // Garante que o conjunto seja retornado centralizado no próprio espaço.
+      g.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(g);
+      const center = bounds.getCenter(new THREE.Vector3());
+      g.children.forEach((child) => child.position.sub(center));
       break;
     }
     case 'staff': {
