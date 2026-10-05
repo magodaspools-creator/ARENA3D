@@ -38,7 +38,14 @@ function repairClonedSkeletons(model) {
 
     const original = o.skeleton;
     const mappedBones = original.bones.map((bone) => bonesByName.get(bone.name) || bone);
-    const valid = mappedBones.every((bone) => bone === original.bones[mappedBones.indexOf(bone)] || bone.parent);
+    const valid = mappedBones.every((bone) => {
+      let parent = bone;
+      while (parent) {
+        if (parent === model) return true;
+        parent = parent.parent;
+      }
+      return false;
+    });
     const changed = mappedBones.some((bone, i) => bone !== original.bones[i]);
 
     if (changed && valid) {
