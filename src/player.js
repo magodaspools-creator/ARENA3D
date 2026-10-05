@@ -462,7 +462,7 @@ export class Player {
       }
     }
 
-    return this.pos.clone().setY(PROJ_Y);
+    return this.pos.clone().setY(1.25);
   }
 
   muzzle(dir) {
