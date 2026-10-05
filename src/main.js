@@ -352,6 +352,54 @@ class Game {
     });
   }
 
+  async setupTest2Robots() {
+    if (!TEST_2 || this.test2Robots || !this.player) return;
+
+    const gltf = await new GLTFLoader().loadAsync('./assets/models/RobotExpressive.glb');
+    const a = gltf.scene;
+    const b = SkeletonUtils.clone(gltf.scene);
+    a.scale.setScalar(0.4);
+    b.scale.setScalar(0.4);
+
+    const origin = this.player.pos.clone();
+    a.position.copy(origin).add(new THREE.Vector3(2, 0, 0));
+    b.position.copy(origin).add(new THREE.Vector3(-2, 0, 0));
+    this.scene.add(a, b);
+
+    const mixerA = new THREE.AnimationMixer(a);
+    const mixerB = new THREE.AnimationMixer(b);
+    const idle = gltf.animations.find((clip) => clip.name === 'Idle');
+    if (idle) {
+      mixerA.clipAction(idle).play();
+      mixerB.clipAction(idle).play();
+    }
+
+    this.test2Robots = { a, b, mixerA, mixerB };
+  }
+
+  logTest2Diagnostics() {
+    if (!TEST_2 || !this.test2Robots || this.test2Logged) return;
+
+    const { a, b } = this.test2Robots;
+    const playerWorld = new THREE.Vector3();
+    const aWorld = new THREE.Vector3();
+    const bWorld = new THREE.Vector3();
+    this.player.root.getWorldPosition(playerWorld);
+    a.getWorldPosition(aWorld);
+    b.getWorldPosition(bWorld);
+
+    const passes = this.composer?.passes?.map((pass) => pass?.constructor?.name || '(anonymous)').join(', ') || '(none)';
+    const logarithmicDepthBuffer = this.renderer.logarithmicDepthBuffer ?? this.renderer.capabilities?.logarithmicDepthBuffer ?? false;
+    console.log('[ARENA TEST 2] renderer.logarithmicDepthBuffer=' + logarithmicDepthBuffer);
+    console.log('[ARENA TEST 2] renderer.outputColorSpace=' + this.renderer.outputColorSpace);
+    console.log('[ARENA TEST 2] camera.near=' + this.camera.near + ' camera.far=' + this.camera.far + ' camera.layers.mask=' + this.camera.layers.mask);
+    console.log('[ARENA TEST 2] composer=' + (!!this.composer) + ' passes=' + passes);
+    console.log('[ARENA TEST 2] scene.overrideMaterial=' + (this.scene.overrideMaterial ? this.scene.overrideMaterial.type : 'null'));
+    console.log('[ARENA TEST 2] renderer.info.render.triangles=' + this.renderer.info.render.triangles);
+    console.log('[ARENA TEST 2] robotA.world=' + aWorld.toArray().map((v) => Number(v.toFixed(3))).join(',') + ' robotB.world=' + bWorld.toArray().map((v) => Number(v.toFixed(3))).join(',') + ' player.world=' + playerWorld.toArray().map((v) => Number(v.toFixed(3))).join(','));
+    this.test2Logged = true;
+  }
+
   enterArea2() {
     if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
 
