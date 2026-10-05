@@ -3,7 +3,7 @@ export const VOCATIONS = {
   knight: {
     id: 'knight', name: 'Knight', title: 'Guardião de Aço', color: '#8fb4ff', hp: 230, speed: 6.0, armor: 0.8,
     desc: 'Combate corpo a corpo e muita resistência. Golpes em arco acertam vários inimigos de uma vez.',
-    look: { skin: 0xe0b08c, body: 0x3d5078, legs: 0x2a3244, accent: 0xbfc7d5, head: 'helm', shoulder: true, metal: 0.18, metalRough: 0.78, cape: 0x1f3a78, weapon: 'sword', offhand: 'shield', glow: 0x8fb4ff },
+    look: { skin: 0xe0b08c, body: 0x3d5078, legs: 0x2a3244, accent: 0xbfc7d5, head: 'helm', shoulder: true, metal: 0.18, metalRough: 0.78, cape: 0x1f3a78, weapon: 'sword', glow: 0x8fb4ff },
     attack: { kind: 'melee', name: 'Golpe', range: 2.9, arc: 2.2, damage: [26, 34], cooldown: 0.6, style: 'slash', color: 0xcfe0ff },
     ability: { kind: 'whirl', name: 'Redemoinho', radius: 4.2, damage: [48, 62], cooldown: 6, manaCost: 18, color: 0x8fb4ff },
     ultimate: { kind: 'colossalStrike', name: 'Golpe Colossal', radius: 4.6, arc: 2.6, damage: [150, 190], manaCost: 60, color: 0x9fc4ff },
