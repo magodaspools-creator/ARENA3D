@@ -32,7 +32,7 @@ function normalizeModel(model) {
   if (!Number.isFinite(size.y) || size.y <= 0.001) return;
 
   // Mantém o robô proporcional ao cenário e ao Player antigo (~3.8m na escala atual).
-  const targetHeight = 38.0;
+  const targetHeight = 76.0;
   const scale = targetHeight / size.y;
   model.scale.set(scale, scale, scale);
   // NUNCA alterar model.position.y aqui.
