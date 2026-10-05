@@ -37,7 +37,8 @@ function normalizeModel(model) {
 
 function buildGltfRig(asset, look = {}) {
   const model = SkeletonUtils.clone(asset.scene);
-  normalizeModel(model);
+  // TESTE: normalizeModel desativado temporariamente para isolar a causa do corpo invisível.
+  // normalizeModel(model);
   model.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true;
