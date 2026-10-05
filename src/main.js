@@ -239,7 +239,7 @@ class Game {
       if (USE_GLTF_PLAYER) {
         try {
           finalRig = await Promise.race([
-            loadPlayerRig(look, createHumanoid),
+            loadPlayerRig(look, createHumanoid, id),
             new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
           ]);
         } catch (error) {
