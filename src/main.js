@@ -21,6 +21,7 @@ import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 
+const TEST_2 = false;
 const USE_GLTF_PLAYER = new URLSearchParams(location.search).get('modelo') === '3d';
 import { MapEditor } from './map-editor.js';
 
