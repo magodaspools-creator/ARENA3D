@@ -31,8 +31,8 @@ function normalizeModel(model) {
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.y) || size.y <= 0.001) return;
 
-  // Define a altura exata do robô na arena (~1.9m).
-  const targetHeight = 1.9;
+  // Mantém o robô proporcional ao cenário e ao Player antigo (~3.8m na escala atual).
+  const targetHeight = 3.8;
   const scale = targetHeight / size.y;
   model.scale.set(scale, scale, scale);
   // NUNCA alterar model.position.y aqui.
