@@ -34,10 +34,10 @@ const WEAPON_OFFSETS = {
   },
 
   staff: {
-    position: [0, 0.5, 0], // Eleva o ponto de empunhadura na mão do robô
-    rotation: [0, 0, Math.PI], // Inverte a direção no eixo Z mantendo a posição vertical
+    position: [0, 0.5, 0],
+    rotation: [Math.PI, 0, 0],
     targetSize: 2.0,
-  },
+  }
 
   blade: {
     position: [0, 0, 0],
@@ -141,61 +141,47 @@ export class Player {
     const weaponMesh = createWeapon(type, look);
     weaponMesh.userData.arenaPlayerWeapon = type;
 
-    // GLTF: a arma é medida antes de receber qualquer parent. Assim o Box3
-    // representa somente o tamanho real da própria arma, nunca o robô 76x.
     if (isGltfRig) {
-      const targetSize = 1.5;
+      hand.updateMatrixWorld(true);
       weaponMesh.updateMatrixWorld(true);
+
+      const typeStr = String(type || '');
+      const isStaff = typeStr.includes('staff') || typeStr.includes('cajado') || typeStr.includes('sorcerer') || typeStr.includes('druid');
+      const targetSize = isStaff ? 2.0 : (WEAPON_OFFSETS[type] && WEAPON_OFFSETS[type].targetSize) || 1.5;
 
       const box = new THREE.Box3().setFromObject(weaponMesh);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
       const baseScale = targetSize / (maxDim || 1);
-
       weaponMesh.scale.set(baseScale, baseScale, baseScale);
-      weaponMesh.userData.arenaNormalizedSize = targetSize;
 
-      // O pivot absorve a escala do skeleton. A arma em si continua em
-      // escala 1.5 no próprio espaço e nunca precisa ser reescalada por frame.
       const weaponPivot = new THREE.Group();
       weaponPivot.name = 'PlayerWeaponPivot';
-      weaponPivot.userData.arenaPlayerWeaponPivot = type;
 
       const handScale = new THREE.Vector3();
       hand.getWorldScale(handScale);
-      const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
+
+      const safe = (v) => (Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1);
       weaponPivot.scale.set(
         1 / safe(handScale.x),
         1 / safe(handScale.y),
-        1 / safe(handScale.z),
+        1 / safe(handScale.z)
       );
 
       this.applyWeaponOffset(weaponMesh, type);
+
       weaponPivot.add(weaponMesh);
       hand.add(weaponPivot);
 
       this.weaponPivot = type === 'crossbow' || type === 'staff' ? weaponPivot : this.weaponPivot;
 
-      console.log('[ARENA] PLAYER WEAPON ATTACHED', {
-        playerId: this.id,
-        weapon: type,
-        targetSize,
-        measuredSize: size.toArray().map((v) => Number(v.toFixed(5))),
-        isolatedScale: Number(baseScale.toFixed(6)),
-        handWorldScale: handScale.toArray().map((v) => Number(v.toFixed(5))),
-        pivotScale: weaponPivot.scale.toArray().map((v) => Number(v.toFixed(5))),
-      });
-
       return weaponMesh;
     }
 
-    // Rig procedural antigo: mantém o comportamento original, sem introduzir
-    // a normalização do GLTF nesse caminho.
     hand.add(weaponMesh);
     this.applyWeaponOffset(weaponMesh, type);
     return weaponMesh;
   }
-
   applyWeaponOffset(weaponMesh, type) {
     if (!weaponMesh) return;
 
@@ -204,19 +190,15 @@ export class Player {
     const key = isStaff ? 'staff' : type;
     const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.default;
 
-    console.log('[ARENA Offset] Tipo recebido:', type, '| Chave usada:', key);
+    console.log('[ARENA Offset] Chave aplicada:', key, offset);
 
     if (offset) {
-      if (offset.position && Array.isArray(offset.position)) {
+      if (offset.position) {
         weaponMesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
       }
-      if (offset.rotation && Array.isArray(offset.rotation)) {
+      if (offset.rotation) {
         weaponMesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
       }
-    }
-
-    if (isStaff) {
-      weaponMesh.rotateY(Math.PI);
     }
   }
 
