@@ -291,40 +291,6 @@ class Game {
       rigType: this.player.rig.isProceduralFallback ? 'procedural-fallback' : 'gltf',
     });
 
-      if (USE_GLTF_PLAYER && new URLSearchParams(location.search).get('teste') === '3') {
-        const model = this.player.rig?.model;
-        if (model) {
-          const logModelChain = (label) => {
-            let node = model;
-            while (node) {
-              console.log('[ARENA] TESTE=3 ' + label + ' | ' + (node.name || '(unnamed)') + ' | ' + node.type + ' | visible=' + node.visible + ' | scale=(' + node.scale.x + ',' + node.scale.y + ',' + node.scale.z + ') | position=(' + node.position.x + ',' + node.position.y + ',' + node.position.z + ') | matrixAutoUpdate=' + node.matrixAutoUpdate + ' | layers.mask=' + node.layers.mask);
-              node = node.parent;
-            }
-          };
-
-          model.updateMatrixWorld(true);
-          const beforePosition = new THREE.Vector3();
-          const beforeScale = new THREE.Vector3();
-          model.getWorldPosition(beforePosition);
-          model.getWorldScale(beforeScale);
-          console.log('[ARENA] TESTE=3 BEFORE WORLD | pos=(' + beforePosition.x + ',' + beforePosition.y + ',' + beforePosition.z + ') | scale=(' + beforeScale.x + ',' + beforeScale.y + ',' + beforeScale.z + ')');
-          logModelChain('BEFORE');
-
-          this.scene.attach(model);
-          model.position.set(this.player.pos.x + 2, 0, this.player.pos.z);
-          model.updateMatrixWorld(true);
-
-          const afterPosition = new THREE.Vector3();
-          const afterScale = new THREE.Vector3();
-          model.getWorldPosition(afterPosition);
-          model.getWorldScale(afterScale);
-          console.log('[ARENA] TESTE=3 AFTER WORLD | pos=(' + afterPosition.x + ',' + afterPosition.y + ',' + afterPosition.z + ') | scale=(' + afterScale.x + ',' + afterScale.y + ',' + afterScale.z + ')');
-          logModelChain('AFTER');
-        } else {
-          console.log('[ARENA] TESTE=3 | model node not found');
-        }
-      }
-
       this.logScenePlayerDiagnostics();
       this.inputLocked = false;
     } catch (error) {
