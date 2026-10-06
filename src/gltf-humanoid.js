@@ -256,10 +256,13 @@ function isWeaponOrShieldNode(name) {
     n.includes('shield') ||
     n.includes('staff') ||
     n.includes('bow') ||
-    n.includes('dagger') ||
-    n.includes('knife') ||
     n.includes('1h') ||
     n.includes('2h');
+}
+
+function isNativeDaggerNode(name) {
+  const n = normalizedNodeName(name);
+  return n.includes('dagger') || n.includes('knife');
 }
 
 function findNativeNode(model, patterns) {
@@ -322,6 +325,15 @@ function configureNativeKayKitWeapons(model, vocation) {
   // Then enable only the complete native loadout selected for this vocation.
   if (weapon) setSubtreeVisible(weapon, true);
   if (shield) setSubtreeVisible(shield, true);
+
+  // Rogue/KayKit may carry two native daggers as part of the default loadout.
+  // Hide those explicitly AFTER enabling the selected bow/crossbow subtree, so
+  // dagger nodes cannot accidentally disable parts of the ranged weapon itself.
+  if (v === 'paladin') {
+    model.traverse((child) => {
+      if (isNativeDaggerNode(child.name)) child.visible = false;
+    });
+  }
 
   return { usesNativeWeapons: true, weapon, shield };
 }
