@@ -46,7 +46,7 @@ export class Minimap {
     if (!opts.canvas) this._style();
   }
 
-  _makeGroundMinimapTexture(w, h, bounds, S, buildKey) {
+  _makeGroundMinimapTexture(w, h, bounds, S, buildKey, offX = 0, offZ = 0) {
     // A textura agora é calculada em coordenadas do MUNDO, não em pixels.
     // Assim, quando render() desloca o mapCanvas, o mesmo ponto do terreno
     // mantém a mesma cor/altura visual.
@@ -360,7 +360,7 @@ export class Minimap {
     return false;
   }
 
-  _buildTerrainMask(zones, wx, wz, S, W, bounds) {
+  _buildTerrainMask(zones, wx, wz, S, W, bounds, offX = 0, offZ = 0) {
     // A máscara continua sendo uma união raster da área caminhável real.
     // Nenhuma zona é desenhada como path e nenhuma fronteira interna é criada.
     if (!this.terrainMask || this.terrainMask.width !== W || this.terrainMask.height !== W) {
@@ -427,7 +427,7 @@ export class Minimap {
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
-    if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds)) return;
+    if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds, offX, offZ)) return;
 
     // Textura e curvas vêm do mesmo campo escalar. As curvas são desenhadas
     // antes da máscara para que jamais apareçam fora da área caminhável.
@@ -586,7 +586,7 @@ export class Minimap {
     const buildKey = [bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ].join('|');
 
     c.clearRect(0, 0, W, W);
-    this._drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey);
+    this._drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey, offX, offZ);
     this._drawObstacleBlobs(c, obstacles, wx, wz, S);
 
     for (const p of pois) {
