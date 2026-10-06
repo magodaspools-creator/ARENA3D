@@ -163,7 +163,7 @@ export class UI {
     if (force || this.minimapAreaKey !== areaKey) {
       this.minimap.buildFromArea({
         bounds: b,
-        zones: area.minimap.zones || [],
+        zones: this.game.collision?.zones || [],
         obstacles: this.game.collision?.obstacles || [],
         pois: this._minimapPois(area),
       });
