@@ -333,10 +333,10 @@ function configureNativeKayKitWeapons(model, vocation) {
   if (weapon) setSubtreeVisible(weapon, true);
   if (shield) setSubtreeVisible(shield, true);
 
-  // The native crossbow needs its third Euler axis adjusted; Y/X are left
-  // untouched because those orientations were tested and are incorrect.
+  // Use KayKit's authored 1H_Crossbow grip orientation directly.
+  // Do not compose another Euler rotation on top of the character hand pose.
   if (v === 'paladin' && weapon) {
-    weapon.rotation.z += Math.PI / 2;
+    weapon.quaternion.set(0, Math.SQRT1_2, 0, Math.SQRT1_2);
   }
 
   // Rogue/KayKit carries knives as separate native accessories.
