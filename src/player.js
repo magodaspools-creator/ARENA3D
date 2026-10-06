@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { VOCATIONS } from './vocations.js';
 import { createWeapon, uniqueMaterials, applyFlash, HumanoidAnimator } from './models.js';
+import { attachGltfWeapon } from './gltf-humanoid.js';
 
 const V = new THREE.Vector3();
 const F = new THREE.Vector3();
@@ -8,47 +9,6 @@ const R = new THREE.Vector3();
 const RED = new THREE.Color(0xff2020);
 let NEXT_PLAYER_ID = 1;
 const ACTIVE_PLAYERS = new Set();
-
-const WEAPON_OFFSETS = {
-  sword: {
-    position: [0, 0, 0],
-    rotation: [Math.PI / 2 - 0.25, 0, 0],
-  },
-
-  shield: {
-    // Ponto inicial para assentar o escudo no antebraço/mão esquerda.
-    // Ajuste estes 3 valores sem mexer na lógica de equipar.
-    position: [-0.02, 0.02, 0.06],
-    rotation: [0, 0, 0],
-  },
-
-  bow: {
-    position: [0, 0, 0],
-    rotation: [0, Math.PI / 2, 0],
-  },
-
-  crossbow: {
-    position: [0, 0, 0],
-    rotation: [-Math.PI / 2, Math.PI, 0],
-    targetSize: 1.4,
-  },
-
-  staff: {
-    position: [0, 0, 0],
-    rotation: [0, Math.PI / 2, Math.PI / 2],
-    targetSize: 2.0,
-  },
-
-  blade: {
-    position: [0, 0, 0],
-    rotation: [Math.PI / 2 - 0.3, 0, 0],
-  },
-
-  greatsword: {
-    position: [0, 0, 0],
-    rotation: [Math.PI / 2 - 0.3, 0, 0],
-  },
-};
 
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
 
@@ -77,7 +37,13 @@ export class Player {
         ? ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.armL : this.rig.armR)
         : ((look.weapon === 'bow' || look.weapon === 'crossbow') ? this.rig.handL : this.rig.handR);
 
-      this.weapon = this.attachWeapon(look.weapon, look, weaponHand, isGltfRig);
+      if (isGltfRig) {
+        const equipped = attachGltfWeapon(this.rig, this.anim, look.weapon, look, weaponHand);
+        this.weapon = equipped?.weapon || null;
+        this.weaponPivot = equipped?.pivot || this.weaponPivot;
+      } else {
+        this.weapon = this.attachProceduralWeapon(look.weapon, look, weaponHand);
+      }
 
       if ((look.weapon === 'bow' || look.weapon === 'crossbow') && isGltfRig) {
         console.log('[ARENA] PALADIN RANGED WEAPON ATTACH', {
@@ -91,7 +57,12 @@ export class Player {
     }
     if (look.offhand) {
       const offhand = isGltfRig ? this.rig.armL : this.rig.handL;
-      this.offhandWeapon = this.attachWeapon(look.offhand, look, offhand, isGltfRig);
+      if (isGltfRig) {
+        const equipped = attachGltfWeapon(this.rig, this.anim, look.offhand, look, offhand);
+        this.offhandWeapon = equipped?.weapon || null;
+      } else {
+        this.offhandWeapon = this.attachProceduralWeapon(look.offhand, look, offhand);
+      }
     }
 
     this.root.visible = true;
@@ -137,106 +108,12 @@ export class Player {
     this.logPlayerDiagnostics();
   }
 
-  attachWeapon(type, look, hand, isGltfRig) {
+  attachProceduralWeapon(type, look, hand) {
     const weaponMesh = createWeapon(type, look);
     weaponMesh.userData.arenaPlayerWeapon = type;
-
-    if (isGltfRig) {
-      hand.updateMatrixWorld(true);
-      weaponMesh.updateMatrixWorld(true);
-
-      const typeStr = String(type || '');
-      const isStaff = typeStr.includes('staff') || typeStr.includes('cajado') || typeStr.includes('sorcerer') || typeStr.includes('druid');
-      const targetSize = isStaff ? 2.0 : (WEAPON_OFFSETS[type] && WEAPON_OFFSETS[type].targetSize) || 1.5;
-
-      // O cajado nasce como Group e seu ponto (0,0,0) não coincide com a
-      // empunhadura. Rebaseamos o conjunto UMA vez antes do scale/rotação:
-      // a origem passa para o centro da base do cajado, onde a mão segura.
-      // Não usamos geometry.center() porque weaponMesh é um Group composto
-      // por várias geometrias, e centralizar cada Geometry separadamente
-      // destruiria as posições relativas entre haste, orbe e adornos.
-      if (isStaff) {
-        weaponMesh.updateMatrixWorld(true);
-        const gripBox = new THREE.Box3().setFromObject(weaponMesh);
-        const gripCenter = new THREE.Vector3(
-          (gripBox.min.x + gripBox.max.x) * 0.5,
-          gripBox.min.y,
-          (gripBox.min.z + gripBox.max.z) * 0.5
-        );
-
-        weaponMesh.children.forEach((child) => {
-          child.position.x -= gripCenter.x;
-          child.position.y -= gripCenter.y;
-          child.position.z -= gripCenter.z;
-        });
-
-        weaponMesh.updateMatrixWorld(true);
-      }
-
-      const box = new THREE.Box3().setFromObject(weaponMesh);
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const baseScale = targetSize / (maxDim || 1);
-      weaponMesh.scale.set(baseScale, baseScale, baseScale);
-
-      const weaponPivot = new THREE.Group();
-      weaponPivot.name = 'PlayerWeaponPivot';
-
-      const handScale = new THREE.Vector3();
-      hand.getWorldScale(handScale);
-
-      const safe = (v) => (Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1);
-      weaponPivot.scale.set(
-        1 / safe(handScale.x),
-        1 / safe(handScale.y),
-        1 / safe(handScale.z)
-      );
-
-      this.applyWeaponOffset(weaponMesh, type);
-
-      weaponPivot.add(weaponMesh);
-      hand.add(weaponPivot);
-
-      this.weaponPivot = type === 'crossbow' || type === 'staff' ? weaponPivot : this.weaponPivot;
-
-      if (isStaff) {
-        this.rig.isStaffEquipped = true;
-        this.rig.equippedWeaponPivot = weaponPivot;
-        this.anim.isStaffEquipped = true;
-        this.anim.equippedWeaponPivot = weaponPivot;
-      }
-
-      return weaponMesh;
-    }
-
     hand.add(weaponMesh);
-    this.applyWeaponOffset(weaponMesh, type);
     return weaponMesh;
   }
-  applyWeaponOffset(weaponMesh, type) {
-    if (!weaponMesh) return;
-
-    const typeStr = String(type || '');
-    const isStaff = typeStr.includes('staff') || typeStr.includes('cajado') || typeStr.includes('sorcerer') || typeStr.includes('druid');
-    const key = isStaff ? 'staff' : type;
-    const offset = WEAPON_OFFSETS[key] || WEAPON_OFFSETS.default;
-
-    console.log('[ARENA Offset] Chave aplicada:', key, offset);
-
-    if (offset) {
-      if (offset.position) {
-        weaponMesh.position.set(offset.position[0], offset.position[1], offset.position[2]);
-      }
-      if (offset.rotation) {
-        weaponMesh.rotation.set(offset.rotation[0], offset.rotation[1], offset.rotation[2]);
-      }
-    }
-  }
-
-  // As armas GLTF não precisam de correção por frame. O mixer anima apenas o
-  // skeleton; posição, rotação e escala da arma ficam no espaço local definido
-  // durante attachWeapon().
-  updateWeapons() {}
 
   logPlayerDiagnostics() {
     this.root.updateMatrixWorld(true);
