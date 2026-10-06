@@ -257,7 +257,8 @@ function isWeaponOrShieldNode(name) {
     n.includes('staff') ||
     n.includes('bow') ||
     n.includes('1h') ||
-    n.includes('2h');
+    n.includes('2h') ||
+    n.includes('knife');
 }
 
 function isNativeDaggerNode(name) {
@@ -302,7 +303,13 @@ function configureNativeKayKitWeapons(model, vocation) {
   } else if (v === 'sorcerer' || v === 'druid') {
     weapon = findNativeNode(model, [/^staff(?:$|\\d)/]);
   } else if (v === 'paladin') {
-    weapon = findNativeNode(model, [/^bow(?:$|\\d)/, /^crossbow(?:$|\\d)/]);
+    // KayKit Rogue uses the native ranged accessory as 1H_Crossbow.
+    weapon = findNativeNode(model, [
+      /^1hcrossbow(?:$|\\d)/,
+      /^2hcrossbow(?:$|\\d)/,
+      /^crossbow(?:$|\\d)/,
+      /^bow(?:$|\\d)/,
+    ]);
   }
 
   const shield = v === 'knight'
@@ -326,9 +333,9 @@ function configureNativeKayKitWeapons(model, vocation) {
   if (weapon) setSubtreeVisible(weapon, true);
   if (shield) setSubtreeVisible(shield, true);
 
-  // Rogue/KayKit may carry two native daggers as part of the default loadout.
-  // Hide those explicitly AFTER enabling the selected bow/crossbow subtree, so
-  // dagger nodes cannot accidentally disable parts of the ranged weapon itself.
+  // Rogue/KayKit carries knives as separate native accessories.
+  // Hide only the knife/dagger nodes, never their parent hierarchy, so the
+  // selected crossbow remains completely intact.
   if (v === 'paladin') {
     model.traverse((child) => {
       if (isNativeDaggerNode(child.name)) child.visible = false;
