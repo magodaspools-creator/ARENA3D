@@ -258,17 +258,6 @@ function disposeWeaponNode(node) {
   });
 }
 
-function disposeWeaponNode(node) {
-  node.traverse((child) => {
-    if (child.geometry?.dispose) child.geometry.dispose();
-
-    if (child.material) {
-      const materials = Array.isArray(child.material) ? child.material : [child.material];
-      materials.forEach((material) => material?.dispose?.());
-    }
-  });
-}
-
 function clearAttachedGltfWeapons(pivot) {
   if (!pivot) return;
 
