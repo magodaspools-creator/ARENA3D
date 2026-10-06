@@ -258,35 +258,38 @@ function disposeWeaponNode(node) {
   });
 }
 
-function clearAttachedGltfWeapons(rig) {
-  if (!rig?.root) return;
+function disposeWeaponNode(node) {
+  node.traverse((child) => {
+    if (child.geometry?.dispose) child.geometry.dispose();
 
-  const stale = [];
-  rig.root.traverse((child) => {
-    if (
-      child.userData?.arenaPlayerWeapon ||
-      child.name === 'PlayerWeaponPivot'
-    ) {
-      stale.push(child);
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => material?.dispose?.());
     }
   });
+}
 
-  for (const child of stale) {
-    if (child.parent) child.parent.remove(child);
+function clearAttachedGltfWeapons(pivot) {
+  if (!pivot) return;
+
+  while (pivot.children.length > 0) {
+    const child = pivot.children[0];
+    pivot.remove(child);
     disposeWeaponNode(child);
   }
 
-  rig.weaponPivot = null;
-  rig.equippedWeaponPivot = null;
-  rig.isStaffEquipped = false;
+  if (pivot.parent) {
+    pivot.parent.remove(pivot);
+  }
 }
+
 
 export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
   if (!rig?.model || !hand || !type) return null;
 
   // A Player can re-equip/change vocation/weapon without accumulating old
   // pivots. Remove the previous gameplay weapon before attaching the new one.
-  clearAttachedGltfWeapons(rig);
+  clearAttachedGltfWeapons(rig.equippedWeaponPivot || rig.weaponPivot);
 
   const weaponMesh = createWeapon(type, look);
   weaponMesh.userData.arenaPlayerWeapon = type;
