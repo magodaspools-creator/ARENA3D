@@ -35,6 +35,7 @@ export class UI {
     this.minimapCtx = this.el.minimap?.getContext('2d') || null;
     this.minimapLastT = 0;
     this.minimapCache = null;
+    this.minimapTerrain = null;
   }
 
   // ---------- world anchored ----------
