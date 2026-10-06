@@ -22,15 +22,37 @@ function getModelPathForVocation(vocation) {
   return VOCATION_MODELS[key] || VOCATION_MODELS.knight;
 }
 
+async function loadGltfUrl(modelPath) {
+  try {
+    const asset = await loader.loadAsync(modelPath);
+    if (!asset?.scene) throw new Error('GLTF sem scene.');
+    return asset;
+  } catch (error) {
+    throw new Error(`[ARENA] Failed to load vocation GLTF: ${modelPath}`, { cause: error });
+  }
+}
+
 function getPlayerGltf(vocation) {
   const modelPath = getModelPathForVocation(vocation);
 
   if (!PLAYER_GLTF_PROMISES.has(modelPath)) {
     PLAYER_GLTF_PROMISES.set(
       modelPath,
-      loader.loadAsync(modelPath).catch((error) => {
+      loadGltfUrl(modelPath).catch(async (error) => {
+        // Paladin/Druid sources are external CC0 assets rather than files from
+        // the free KayKit Adventurers repository. If either source/CDN fails,
+        // keep the game playable by using the verified KayKit Knight asset.
+        if (modelPath !== VOCATION_MODELS.knight) {
+          console.warn('[ARENA] Vocation GLTF failed; falling back to KayKit Knight.', {
+            requested: modelPath,
+            fallback: VOCATION_MODELS.knight,
+            error,
+          });
+          return loadGltfUrl(VOCATION_MODELS.knight);
+        }
+
         PLAYER_GLTF_PROMISES.delete(modelPath);
-        throw new Error(`[ARENA] Failed to load real vocation GLTF: ${modelPath}`, { cause: error });
+        throw error;
       }),
     );
   }
@@ -53,8 +75,9 @@ function normalizeModel(model) {
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.y) || size.y <= 0.001) return;
 
-  // Mantém o personagem proporcional ao cenário e ao Player antigo.
-  const targetHeight = 76.0;
+  // Todos os GLTFs entram no mundo com a mesma altura humana de referência.
+  // Isso evita que um asset exportado em outra unidade apareça dezenas de vezes maior.
+  const targetHeight = 1.8;
   const scale = targetHeight / size.y;
   model.scale.set(scale, scale, scale);
   // NUNCA alterar model.position.y aqui.
