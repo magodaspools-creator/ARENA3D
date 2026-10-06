@@ -350,12 +350,22 @@ export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
 
     if (nativeNode) {
       nativeNode.visible = true;
-      rig.weaponPivot = nativeNode;
-      if (anim) {
+      const isShield = /shield/i.test(String(type));
+
+      // Keep weaponPivot pointing at the offensive weapon. The shield is only
+      // an offhand visual and must not become the projectile/melee origin.
+      if (!isShield) rig.weaponPivot = nativeNode;
+
+      if (anim && !isShield) {
         anim.equippedWeaponPivot = nativeNode;
         anim.isStaffEquipped = /staff|cajado|sorcerer|druid/i.test(String(type));
       }
-      return { weapon: nativeNode, pivot: nativeNode, native: true };
+
+      return {
+        weapon: nativeNode,
+        pivot: isShield ? null : nativeNode,
+        native: true,
+      };
     }
 
     return { weapon: null, pivot: rig.weaponPivot || null, native: true };
