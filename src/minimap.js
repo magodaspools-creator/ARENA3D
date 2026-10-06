@@ -188,44 +188,40 @@ export class Minimap {
   }
 
   _drawTerrain(c, zones, wx, wz, S, W) {
-    // The surface gets a procedural moss/earth texture. The texture is
-    // generated once per Minimap instance and then reused by drawImage.
+    // A superfície inteira usa uma única máscara. Os polígonos continuam
+    // definindo a geometria do terreno, mas deixam de aparecer como peças
+    // independentes encaixadas umas nas outras.
     if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
       this.groundMinimapTexture = this._makeGroundMinimapTexture(W, W);
     }
 
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
-    c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
 
+    c.save();
     c.beginPath();
+
     let validZones = 0;
     for (const zone of zones) {
       if (!zone || !this._insideBounds(zone, this.bounds)) continue;
       if (this._zonePath(c, zone, wx, wz, S, true)) validZones++;
     }
 
-    if (!validZones) return;
-
-    // Surface zones softly tint the procedural ground instead of replacing it.
-    c.save();
-    c.globalAlpha = 0.35;
-    c.fillStyle = '#3a5540';
-    c.fill();
-    c.globalAlpha = 1;
-
-    // Subtle organic outlines: enough to separate terrain regions without
-    // recreating the old rectangular grid.
-    c.save();
-    c.strokeStyle = 'rgba(90,120,85,0.3)';
-    c.lineWidth = Math.max(0.8, S * 0.07);
-    c.lineJoin = 'round';
-    c.lineCap = 'round';
-    for (const zone of zones) {
-      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
-      this._zonePath(c, zone, wx, wz, S, false);
-      c.stroke();
+    if (!validZones) {
+      c.restore();
+      return;
     }
+
+    // Uma única máscara recorta a textura procedural. Como o clip é feito
+    // sobre o path combinado, não existe mais uma mudança visual por zona.
+    c.clip();
+    c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
+
+    // Tint geral extremamente sutil, aplicado uma única vez sobre toda a
+    // superfície. Não há preenchimento individual nem borda entre polígonos.
+    c.globalAlpha = 0.08;
+    c.fillStyle = '#3a5540';
+    c.fillRect(0, 0, W, W);
     c.restore();
   }
 
