@@ -59,6 +59,16 @@ export class Minimap {
   }
 
   _insideBounds(o, bounds) {
+    if (Array.isArray(o)) {
+      if (o.length && Array.isArray(o[0])) {
+        return o.some(([x, z]) =>
+          x >= bounds.minX && x <= bounds.maxX && z >= bounds.minZ && z <= bounds.maxZ
+        );
+      }
+      const [minX, maxX, minZ, maxZ] = o;
+      return maxX >= bounds.minX && minX <= bounds.maxX &&
+        maxZ >= bounds.minZ && minZ <= bounds.maxZ;
+    }
     if (o.type === 'circle') {
       return o.x + o.r >= bounds.minX && o.x - o.r <= bounds.maxX &&
         o.z + o.r >= bounds.minZ && o.z - o.r <= bounds.maxZ;
@@ -80,13 +90,18 @@ export class Minimap {
       c.fill();
       return;
     }
-    if (zone.type === 'polygon') {
-      const points = zone.points || [];
+    if (zone.type === 'polygon' || (Array.isArray(zone) && Array.isArray(zone[0]))) {
+      const points = zone.type === 'polygon' ? (zone.points || []) : zone;
       if (points.length < 3) return;
       c.beginPath();
       points.forEach(([x, z], i) => i ? c.lineTo(wx(x), wz(z)) : c.moveTo(wx(x), wz(z)));
       c.closePath();
       c.fill();
+      return;
+    }
+    if (Array.isArray(zone)) {
+      const [minX, maxX, minZ, maxZ] = zone;
+      c.fillRect(wx(minX), wz(minZ), (maxX - minX) * S, (maxZ - minZ) * S);
       return;
     }
     c.fillRect(wx(zone.minX), wz(zone.minZ), (zone.maxX - zone.minX) * S, (zone.maxZ - zone.minZ) * S);
