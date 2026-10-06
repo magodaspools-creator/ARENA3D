@@ -333,11 +333,10 @@ function configureNativeKayKitWeapons(model, vocation) {
   if (weapon) setSubtreeVisible(weapon, true);
   if (shield) setSubtreeVisible(shield, true);
 
-  // KayKit's native crossbow is authored with its barrel vertical.
-  // Rotate around Y so the barrel points along the character's forward axis.
-  // Keep X untouched; changing X only rolled the weapon onto its side.
+  // The native crossbow needs its third Euler axis adjusted; Y/X are left
+  // untouched because those orientations were tested and are incorrect.
   if (v === 'paladin' && weapon) {
-    weapon.rotation.y += Math.PI / 2;
+    weapon.rotation.z += Math.PI / 2;
   }
 
   // Rogue/KayKit carries knives as separate native accessories.
