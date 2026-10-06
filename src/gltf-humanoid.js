@@ -155,21 +155,24 @@ function buildGltfRig(asset, look = {}) {
   };
 }
 
-export async function loadPlayerRig(look = {}, createHumanoid) {
-  const asset = await getPlayerGltf();
+export async function loadPlayerRig(look = {}, createHumanoid, vocation = null, playerData = null) {
+  const vocationStr = (typeof vocation !== 'undefined' && vocation)
+    ? String(vocation).toLowerCase()
+    : (playerData && playerData.vocation ? String(playerData.vocation).toLowerCase() : 'paladin');
+  const asset = await getPlayerGltf(vocationStr);
   if (asset) {
     try {
       const rig = buildGltfRig(asset, look);
       console.log('[ARENA] Player rig ready: GLTF final rig.', {
-        vocation,
-        modelPath: getModelPathForVocation(vocation),
+        vocation: vocationStr,
+        modelPath: getModelPathForVocation(vocationStr),
         clonedScene: rig.model !== asset.scene,
         modelName: rig.model.name || '(unnamed)',
         sourceName: asset.scene.name || '(unnamed)',
       });
       return rig;
     } catch (error) {
-      console.warn('[ARENA] Failed to build RobotExpressive rig; using procedural player.', error);
+      console.warn('[ARENA] Failed to build GLTF rig; using procedural player.', error);
     }
   }
   const rig = createHumanoid(look);
