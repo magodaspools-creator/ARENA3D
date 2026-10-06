@@ -256,6 +256,8 @@ function isWeaponOrShieldNode(name) {
     n.includes('shield') ||
     n.includes('staff') ||
     n.includes('bow') ||
+    n.includes('dagger') ||
+    n.includes('knife') ||
     n.includes('1h') ||
     n.includes('2h');
 }
