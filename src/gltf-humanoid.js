@@ -75,7 +75,7 @@ function normalizeModel(model) {
 
   // Todos os GLTFs entram no mundo com a mesma altura humana de referência.
   // Isso evita que um asset exportado em outra unidade apareça dezenas de vezes maior.
-  const targetHeight = 1.8;
+  const targetHeight = 2.0;
   const scale = targetHeight / size.y;
   model.scale.set(scale, scale, scale);
   // NUNCA alterar model.position.y aqui.
