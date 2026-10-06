@@ -88,20 +88,22 @@ export class Minimap {
       o.maxZ >= bounds.minZ && o.minZ <= bounds.maxZ;
   }
 
-  _zonePath(c, zone, wx, wz, S) {
-    if (zone.type === 'circle') {
-      c.beginPath();
+  _zonePath(c, zone, wx, wz, S, append = false) {
+    // Backward-compatible path builder: callers may still pass either
+    // [minX, maxX, minZ, maxZ] boxes or [[x, z], ...] polygons.
+    if (zone?.type === 'circle') {
+      if (!append) c.beginPath();
       c.arc(wx(zone.x), wz(zone.z), zone.r * S, 0, Math.PI * 2);
       return true;
     }
 
-    const points = zone.type === 'polygon'
+    const points = zone?.type === 'polygon'
       ? (zone.points || [])
       : (Array.isArray(zone) && Array.isArray(zone[0]) ? zone : null);
 
     if (points) {
       if (points.length < 3) return false;
-      c.beginPath();
+      if (!append) c.beginPath();
       points.forEach(([x, z], i) => i ? c.lineTo(wx(x), wz(z)) : c.moveTo(wx(x), wz(z)));
       c.closePath();
       return true;
@@ -109,7 +111,9 @@ export class Minimap {
 
     const [minX, maxX, minZ, maxZ] = Array.isArray(zone)
       ? zone
-      : [zone.minX, zone.maxX, zone.minZ, zone.maxZ];
+      : [zone?.minX, zone?.maxX, zone?.minZ, zone?.maxZ];
+
+    if (![minX, maxX, minZ, maxZ].every(Number.isFinite)) return false;
 
     const x = wx(minX);
     const y = wz(minZ);
@@ -117,7 +121,7 @@ export class Minimap {
     const h = (maxZ - minZ) * S;
     const r = Math.min(7, Math.max(2, Math.min(w, h) * 0.18));
 
-    c.beginPath();
+    if (!append) c.beginPath();
     c.moveTo(x + r, y);
     c.lineTo(x + w - r, y);
     c.quadraticCurveTo(x + w, y, x + w, y + r);
@@ -132,9 +136,9 @@ export class Minimap {
   }
 
   _drawTerrain(c, zones, wx, wz, S, W) {
-    // Base escura + manchas de baixa frequência. Como o canvas é reduzido,
-    // essas manchas funcionam como uma versão leve do terreno 3D, sem
-    // transformar o minimapa em uma segunda renderização do mundo.
+    // Base escura + manchas de baixa frequência. Todas as zonas são
+    // construídas em um único path, para que o preenchimento não desenhe
+    // fronteiras entre subáreas vizinhas.
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
@@ -146,50 +150,55 @@ export class Minimap {
       'rgba(27,49,35,.48)',
     ];
 
+    c.beginPath();
+    let validZones = 0;
     for (const zone of zones) {
       if (!zone || !this._insideBounds(zone, this.bounds)) continue;
-      c.save();
-      if (!this._zonePath(c, zone, wx, wz, S)) {
-        c.restore();
-        continue;
-      }
-      c.clip();
-
-      // O preenchimento da zona continua respeitando a geometria real,
-      // mas a superfície recebe variação orgânica em vez de um retângulo sólido.
-      c.fillStyle = '#304936';
-      c.fill();
-
-      const minX = this.bounds.minX;
-      const maxX = this.bounds.maxX;
-      const minZ = this.bounds.minZ;
-      const maxZ = this.bounds.maxZ;
-      const spanX = maxX - minX;
-      const spanZ = maxZ - minZ;
-
-      for (let i = 0; i < 26; i++) {
-        const n = Math.sin((i + 1) * 91.73 + spanX * 0.71 + spanZ * 1.13);
-        const m = Math.sin((i + 1) * 47.17 + minX * 0.37 - minZ * 0.61);
-        const x = minX + ((n * 0.5 + 0.5) * spanX);
-        const z = minZ + ((m * 0.5 + 0.5) * spanZ);
-        const radius = 1.5 + (Math.sin(i * 17.9) * 0.5 + 0.5) * 4.5;
-
-        c.fillStyle = terrainPalette[i % terrainPalette.length];
-        c.beginPath();
-        c.ellipse(
-          wx(x),
-          wz(z),
-          radius * S,
-          radius * S * (0.55 + (i % 3) * 0.12),
-          (i * 0.63) % Math.PI,
-          0,
-          Math.PI * 2
-        );
-        c.fill();
-      }
-      c.restore();
+      if (this._zonePath(c, zone, wx, wz, S, true)) validZones++;
     }
+
+    if (!validZones) return;
+
+    // Uma única passada de fill para todas as zonas/subpaths.
+    c.fillStyle = '#304936';
+    c.fill();
+
+    // A mesma geometria combinada vira o clip da textura: há apenas um clip
+    // para o conjunto inteiro, sem clip/fill individual por zona.
+    c.save();
+    c.clip();
+
+    const minX = this.bounds.minX;
+    const maxX = this.bounds.maxX;
+    const minZ = this.bounds.minZ;
+    const maxZ = this.bounds.maxZ;
+    const spanX = maxX - minX;
+    const spanZ = maxZ - minZ;
+
+    for (let i = 0; i < 26; i++) {
+      const n = Math.sin((i + 1) * 91.73 + spanX * 0.71 + spanZ * 1.13);
+      const m = Math.sin((i + 1) * 47.17 + minX * 0.37 - minZ * 0.61);
+      const x = minX + ((n * 0.5 + 0.5) * spanX);
+      const z = minZ + ((m * 0.5 + 0.5) * spanZ);
+      const radius = 1.5 + (Math.sin(i * 17.9) * 0.5 + 0.5) * 4.5;
+
+      c.fillStyle = terrainPalette[i % terrainPalette.length];
+      c.beginPath();
+      c.ellipse(
+        wx(x),
+        wz(z),
+        radius * S,
+        radius * S * (0.55 + (i % 3) * 0.12),
+        (i * 0.63) % Math.PI,
+        0,
+        Math.PI * 2
+      );
+      c.fill();
+    }
+
+    c.restore();
   }
+
 
   _drawWallPath(c, obstacle, wx, wz, S) {
     if (!obstacle.enabled) return;
