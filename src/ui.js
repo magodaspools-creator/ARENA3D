@@ -35,7 +35,6 @@ export class UI {
     this.minimapCtx = this.el.minimap?.getContext('2d') || null;
     this.minimapLastT = 0;
     this.minimapCache = null;
-    this.minimapTerrain = null;
   }
 
   // ---------- world anchored ----------
@@ -115,109 +114,6 @@ export class UI {
   }
 
   // ---------- minimap ----------
-  buildMinimapTerrain(area) {
-    const map = area?.minimap;
-    const collision = this.game.collision;
-    if (!map || !collision) return null;
-
-    const { minX, maxX, minZ, maxZ } = map.bounds;
-    const underground = !!map.underground;
-
-    // The minimap terrain is baked once per area into an offscreen canvas.
-    // Rendering never iterates over terrain pixels/tiles; it only drawImage()s
-    // a cropped portion of this pre-rendered texture.
-    const worldWidth = Math.max(1, maxX - minX);
-    const worldDepth = Math.max(1, maxZ - minZ);
-    const pixelsPerWorldUnit = underground ? 2 : 1.5;
-    const mw = Math.max(64, Math.min(1024, Math.ceil(worldWidth * pixelsPerWorldUnit)));
-    const mh = Math.max(64, Math.min(1024, Math.ceil(worldDepth * pixelsPerWorldUnit)));
-
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = mw;
-    offscreenCanvas.height = mh;
-
-    const off = offscreenCanvas.getContext('2d', { alpha: false });
-    const image = off.createImageData(mw, mh);
-
-    // Base palette: muted RPG-map colors.
-    const ground = underground ? [42, 48, 48] : [45, 58, 46]; // #2d3a2e
-    const wall = [74, 78, 105];                                  // #4a4e69
-    const water = [27, 58, 75];                                  // #1b3a4b
-
-    // Bake the entire walkable map once. Each pixel represents a small piece
-    // of world terrain; the player-relative crop happens only at render time.
-    for (let py = 0; py < mh; py++) {
-      const z = minZ + ((py + 0.5) / mh) * worldDepth;
-
-      for (let px = 0; px < mw; px++) {
-        const x = minX + ((px + 0.5) / mw) * worldWidth;
-        const k = (py * mw + px) * 4;
-
-        if (!collision.inside(x, z)) {
-          image.data[k] = water[0];
-          image.data[k + 1] = water[1];
-          image.data[k + 2] = water[2];
-          image.data[k + 3] = 255;
-          continue;
-        }
-
-        image.data[k] = ground[0];
-        image.data[k + 1] = ground[1];
-        image.data[k + 2] = ground[2];
-        image.data[k + 3] = 255;
-      }
-    }
-
-    off.putImageData(image, 0, 0);
-
-    // Bake collision obstacles as part of the same terrain texture.
-    // This is intentionally done here, not inside updateMinimap().
-    off.save();
-    off.fillStyle = `rgba(${wall[0]}, ${wall[1]}, ${wall[2]}, 0.92)`;
-
-    const wx = mw / worldWidth;
-    const wz = mh / worldDepth;
-
-    for (const o of collision.obstacles || []) {
-      if (!o.enabled) continue;
-
-      if (o.type === 'circle') {
-        off.beginPath();
-        off.arc(
-          (o.x - minX) * wx,
-          (o.z - minZ) * wz,
-          Math.max(1.5, o.r * ((wx + wz) * 0.5)),
-          0,
-          Math.PI * 2
-        );
-        off.fill();
-      } else {
-        off.fillRect(
-          (o.minX - minX) * wx,
-          (o.minZ - minZ) * wz,
-          (o.maxX - o.minX) * wx,
-          (o.maxZ - o.minZ) * wz
-        );
-      }
-    }
-
-    off.restore();
-
-    this.minimapTerrain = {
-      area,
-      canvas: offscreenCanvas,
-      minX,
-      minZ,
-      maxX,
-      maxZ,
-      worldWidth,
-      worldDepth,
-      pixelsPerWorldUnit: (mw / worldWidth + mh / worldDepth) * 0.5
-    };
-
-    return this.minimapTerrain;
-  }
-
   updateMinimap(force = false) {
     const canvas = this.el.minimap;
     const ctx = this.minimapCtx;
@@ -267,35 +163,63 @@ export class UI {
     ctx.fillStyle = underground ? '#25292a' : '#293b35';
     ctx.fillRect(0, 0, w, h);
 
-    // The terrain texture is generated once when the active area changes.
-    // From here onward the minimap performs no terrain/tile loop.
-    let terrain = this.minimapTerrain;
-    if (!terrain || terrain.area !== area) {
-      terrain = this.buildMinimapTerrain(area);
+    const collision = this.game.collision;
+    const cacheKey = [minX, maxX, minZ, maxZ, underground ? 'mine' : 'surface', 'v2'].join('|');
+    if (!this.minimapCache || this.minimapCache.key !== cacheKey) {
+      const mw = 320, mh = 320;
+      const map = document.createElement('canvas');
+      map.width = mw;
+      map.height = mh;
+      const mctx = map.getContext('2d');
+      const image = mctx.createImageData(mw, mh);
+
+      for (let iy = 0; iy < mh; iy++) {
+        const z = minZ + ((iy + 0.5) / mh) * (maxZ - minZ);
+        for (let ix = 0; ix < mw; ix++) {
+          const x = minX + ((ix + 0.5) / mw) * (maxX - minX);
+          if (!collision.inside(x, z)) continue;
+          const k = (iy * mw + ix) * 4;
+          if (underground) {
+            image.data[k] = 42;
+            image.data[k + 1] = 48;
+            image.data[k + 2] = 48;
+          } else {
+            image.data[k] = 45;
+            image.data[k + 1] = 58;
+            image.data[k + 2] = 46;
+          }
+          image.data[k + 3] = 228;
+        }
+      }
+
+      mctx.putImageData(image, 0, 0);
+      this.minimapCache = { key: cacheKey, canvas: map, mw, mh };
     }
 
-    if (terrain) {
-      const srcX = (p.pos.x - terrain.minX) * terrain.pixelsPerWorldUnit - (w / 2);
-      const srcZ = (p.pos.z - terrain.minZ) * terrain.pixelsPerWorldUnit - (h / 2);
-      const srcW = w;
-      const srcH = h;
+    const cache = this.minimapCache;
+    const srcX = ((viewMinX - minX) / (maxX - minX)) * cache.mw;
+    const srcZ = ((viewMinZ - minZ) / (maxZ - minZ)) * cache.mh;
+    const srcW = ((viewMaxX - viewMinX) / (maxX - minX)) * cache.mw;
+    const srcH = ((viewMaxZ - viewMinZ) / (maxZ - minZ)) * cache.mh;
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = 0.98;
-      ctx.drawImage(
-        terrain.canvas,
-        srcX,
-        srcZ,
-        srcW,
-        srcH,
-        0,
-        0,
-        w,
-        h
-      );
-      ctx.restore();
-    }
+    // Draw only the terrain around the player. The source rectangle is
+    // centered on the player's world position, so the terrain scrolls under
+    // the fixed player marker instead of moving the marker with the map.
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 0.94;
+    ctx.drawImage(
+      cache.canvas,
+      srcX,
+      srcZ,
+      srcW,
+      srcH,
+      0,
+      0,
+      w,
+      h
+    );
+    ctx.restore();
 
     // Structural collision: dark graphite masses, not debug rectangles.
     ctx.save();
