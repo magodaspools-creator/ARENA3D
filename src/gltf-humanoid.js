@@ -333,6 +333,13 @@ function configureNativeKayKitWeapons(model, vocation) {
   if (weapon) setSubtreeVisible(weapon, true);
   if (shield) setSubtreeVisible(shield, true);
 
+  // KayKit's native crossbow is authored pointing down in its local pose.
+  // The Arena character faces -Z, so rotate the crossbow 90° around X to aim
+  // forward instead of straight at the floor.
+  if (v === 'paladin' && weapon) {
+    weapon.rotation.x -= Math.PI / 2;
+  }
+
   // Rogue/KayKit carries knives as separate native accessories.
   // Hide only the knife/dagger nodes, never their parent hierarchy, so the
   // selected crossbow remains completely intact.
