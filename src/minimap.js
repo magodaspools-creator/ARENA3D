@@ -36,6 +36,9 @@ export class Minimap {
     this.bounds = null;
     this.built = false;
     this.buildKey = '';
+    // Cache por bounds: a textura/height-field só é recalculada quando a
+    // área geométrica do minimapa realmente muda.
+    this.groundMinimapCache = new Map();
     this.player = { x: 0, z: 0, rot: 0 };
     this.entities = [];
     this.dirty = true;
@@ -43,7 +46,14 @@ export class Minimap {
     if (!opts.canvas) this._style();
   }
 
-  _makeGroundMinimapTexture(w, h) {
+  _makeGroundMinimapTexture(w, h, bounds, S, buildKey) {
+    // A textura agora é calculada em coordenadas do MUNDO, não em pixels.
+    // Assim, quando render() desloca o mapCanvas, o mesmo ponto do terreno
+    // mantém a mesma cor/altura visual.
+    if (this.groundMinimapCache?.has(buildKey)) {
+      return this.groundMinimapCache.get(buildKey);
+    }
+
     const canvas = typeof OffscreenCanvas !== 'undefined'
       ? new OffscreenCanvas(w, h)
       : document.createElement('canvas');
@@ -53,11 +63,11 @@ export class Minimap {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const image = ctx.createImageData(w, h);
     const data = image.data;
-    const scale = 40;
+    const heightData = new Float32Array(w * h);
 
     const hash = (x, z) => {
-      const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
-      return s - Math.floor(s);
+      const value = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+      return value - Math.floor(value);
     };
 
     const noise2 = (x, z) => {
@@ -72,28 +82,159 @@ export class Minimap {
       return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
     };
 
-    const fbm = (x, z) =>
-      noise2(x, z) * 0.6 +
-      noise2(x * 2.1, z * 2.1) * 0.3 +
-      noise2(x * 4.3, z * 4.3) * 0.1;
+    // Quatro escalas principais. A primeira tem período ~15 unidades de
+    // mundo; as seguintes refinam o campo sem criar manchas em blocos.
+    const fbm = (x, z) => {
+      let sum = 0;
+      let amplitude = 0.5;
+      let frequency = 1;
+      let total = 0;
 
-    const base = [0x2a, 0x3e, 0x26];
+      for (let octave = 0; octave < 4; octave++) {
+        sum += noise2(x * frequency, z * frequency) * amplitude;
+        total += amplitude;
+        amplitude *= 0.5;
+        frequency *= 2;
+      }
 
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const n = fbm(x / scale, y / scale);
-        const modulation = (n - 0.5) * 0.24;
-        const i = (y * w + x) * 4;
-        data[i] = Math.max(0, Math.min(255, Math.round(base[0] * (1 + modulation))));
-        data[i + 1] = Math.max(0, Math.min(255, Math.round(base[1] * (1 + modulation))));
-        data[i + 2] = Math.max(0, Math.min(255, Math.round(base[2] * (1 + modulation))));
+      return sum / total;
+    };
+
+    // Rampa contínua: não existem cores por zona. A cor depende somente do
+    // campo escalar de terreno calculado naquele ponto do mundo.
+    const stops = [
+      [0.00, [0x16, 0x24, 0x18]], // verde-escuro
+      [0.34, [0x2f, 0x49, 0x2c]], // verde musgo
+      [0.60, [0x67, 0x68, 0x3e]], // musgo/oliva
+      [0.78, [0x9a, 0x82, 0x4d]], // ocre
+      [1.00, [0x7b, 0x7d, 0x74]], // cinza-pedra
+    ];
+
+    const ramp = (value) => {
+      for (let i = 1; i < stops.length; i++) {
+        if (value <= stops[i][0]) {
+          const [a, ca] = stops[i - 1];
+          const [b, cb] = stops[i];
+          const t = (value - a) / Math.max(0.0001, b - a);
+          const smooth = t * t * (3 - 2 * t);
+          return [
+            ca[0] + (cb[0] - ca[0]) * smooth,
+            ca[1] + (cb[1] - ca[1]) * smooth,
+            ca[2] + (cb[2] - ca[2]) * smooth,
+          ];
+        }
+      }
+      return stops[stops.length - 1][1];
+    };
+
+    const period = 15;
+    const grainPeriod = 3;
+
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        // Conversão exigida: o pixel aponta para uma posição real do mundo.
+        const x = bounds.minX + (px + 0.5) / S;
+        const z = bounds.minZ + (py + 0.5) / S;
+
+        const broad = fbm(x / period, z / period);
+        // O grão fino tem amplitude máxima de 6% do campo total.
+        const grain = noise2(x / grainPeriod, z / grainPeriod) - 0.5;
+        const field = Math.max(0, Math.min(1, broad + grain * 0.12));
+        heightData[py * w + px] = field;
+
+        const color = ramp(field);
+        const i = (py * w + px) * 4;
+        data[i] = Math.round(color[0]);
+        data[i + 1] = Math.round(color[1]);
+        data[i + 2] = Math.round(color[2]);
         data[i + 3] = 255;
       }
     }
 
     ctx.putImageData(image, 0, 0);
-    return canvas;
+
+    const result = {
+      canvas,
+      heightField: { data: heightData, width: w, height: h },
+      width: w,
+      height: h,
+    };
+
+    if (!this.groundMinimapCache) this.groundMinimapCache = new Map();
+    this.groundMinimapCache.set(buildKey, result);
+    return result;
   }
+
+  _drawContours(c, heightField, S) {
+    // Curvas de nível derivadas do MESMO campo escalar da textura.
+    // Cada linha corresponde a frac(h * k) = 0.5, sem usar nenhum polígono
+    // da área. O marching-squares mantém as curvas suaves e antialiasadas.
+    if (!heightField?.data || !heightField.width || !heightField.height) return;
+
+    const W = heightField.width;
+    const H = heightField.height;
+    const field = heightField.data;
+    const k = 7;
+
+    c.save();
+    c.globalAlpha = 0.10;
+    c.strokeStyle = 'rgba(218,218,184,1)';
+    c.lineWidth = Math.max(0.65, Math.min(1.15, S * 0.055));
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    c.beginPath();
+
+    // Cada nível é h = (n + 0.5) / k. Isso é exatamente o cruzamento de
+    // frac(h * k) com 0.5, mas sem o problema de interpolação no salto do frac.
+    for (let level = 0; level < k; level++) {
+      const threshold = (level + 0.5) / k;
+
+      const edgePoint = (a, b, ax, ay, bx, by) => {
+        const da = a - threshold;
+        const db = b - threshold;
+        if ((da < 0 && db < 0) || (da > 0 && db > 0) || a === b) return null;
+
+        const t = da / (da - db);
+        return [ax + (bx - ax) * t, ay + (by - ay) * t];
+      };
+
+      for (let y = 0; y < H - 1; y++) {
+        for (let x = 0; x < W - 1; x++) {
+          const i = y * W + x;
+          const v0 = field[i];
+          const v1 = field[i + 1];
+          const v2 = field[i + W + 1];
+          const v3 = field[i + W];
+
+          const points = [];
+          const p0 = edgePoint(v0, v1, x, y, x + 1, y);
+          const p1 = edgePoint(v1, v2, x + 1, y, x + 1, y + 1);
+          const p2 = edgePoint(v3, v2, x, y + 1, x + 1, y + 1);
+          const p3 = edgePoint(v0, v3, x, y, x, y + 1);
+
+          if (p0) points.push(p0);
+          if (p1) points.push(p1);
+          if (p2) points.push(p2);
+          if (p3) points.push(p3);
+
+          if (points.length >= 2) {
+            c.moveTo(points[0][0], points[0][1]);
+            c.lineTo(points[1][0], points[1][1]);
+
+            // Caso ambíguo do marching-squares: há dois segmentos.
+            if (points.length === 4) {
+              c.moveTo(points[2][0], points[2][1]);
+              c.lineTo(points[3][0], points[3][1]);
+            }
+          }
+        }
+      }
+    }
+
+    c.stroke();
+    c.restore();
+  }
+
 
   _style() {
     const pos = {
@@ -220,9 +361,8 @@ export class Minimap {
   }
 
   _buildTerrainMask(zones, wx, wz, S, W, bounds) {
-    // Não usamos beginPath()/clip()/fill() com os polígonos das áreas.
-    // Cada pixel pergunta apenas: "este ponto pertence ao espaço caminhável?"
-    // O resultado é uma única imagem de terreno.
+    // A máscara continua sendo uma união raster da área caminhável real.
+    // Nenhuma zona é desenhada como path e nenhuma fronteira interna é criada.
     if (!this.terrainMask || this.terrainMask.width !== W || this.terrainMask.height !== W) {
       this.terrainMask = document.createElement('canvas');
       this.terrainMask.width = W;
@@ -234,42 +374,43 @@ export class Minimap {
     const image = ctx.createImageData(W, W);
     const data = image.data;
 
-    // Supersampling reduz a leitura "geométrica" das bordas. Cada pixel usa
-    // 4 amostras e vira uma pequena área de terreno, não uma linha vetorial.
-    const samples = [
-      [-0.25, -0.25], [0.25, -0.25],
-      [-0.25,  0.25], [0.25,  0.25],
-    ];
+    // Grade 4x4 por pixel. A cobertura agora é contínua (0..255), em vez
+    // de quantizada em apenas cinco níveis de alpha.
+    const sampleOffsets = [-0.375, -0.125, 0.125, 0.375];
+    const totalSamples = sampleOffsets.length * sampleOffsets.length;
 
     for (let py = 0; py < W; py++) {
       const z = bounds.minZ + ((py + 0.5) / S);
+
       for (let px = 0; px < W; px++) {
         const x = bounds.minX + ((px + 0.5) / S);
-        let hit = 0;
+        let hits = 0;
 
-        for (const [sx, sz] of samples) {
-          if (this._terrainContains(x + sx / S, z + sz / S, zones)) hit++;
+        for (const sx of sampleOffsets) {
+          for (const sz of sampleOffsets) {
+            if (this._terrainContains(x + sx / S, z + sz / S, zones)) hits++;
+          }
         }
 
-        const a = hit * 64;
+        const alpha = Math.round(255 * hits / totalSamples);
         const i = (py * W + px) * 4;
         data[i] = 255;
         data[i + 1] = 255;
         data[i + 2] = 255;
-        data[i + 3] = a;
+        data[i + 3] = alpha;
       }
     }
 
     ctx.putImageData(image, 0, 0);
 
-    // Une pequenos degraus da rasterização. Isto acontece DEPOIS da união
-    // completa das zonas, portanto nenhuma fronteira interna pode aparecer.
+    // Suaviza somente a transição rasterizada. O raio menor evita que
+    // pequenos vazios internos sejam "fechados" visualmente.
     const softened = document.createElement('canvas');
     softened.width = W;
     softened.height = W;
     const sc = softened.getContext('2d');
 
-    sc.filter = 'blur(1.6px)';
+    sc.filter = 'blur(0.7px)';
     sc.drawImage(this.terrainMask, 0, 0);
     sc.filter = 'none';
 
@@ -279,31 +420,35 @@ export class Minimap {
     return true;
   }
 
-  _drawTerrain(c, zones, wx, wz, S, W, bounds) {
-    if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
-      this.groundMinimapTexture = this._makeGroundMinimapTexture(W, W);
-    }
+
+  _drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey) {
+    const terrain = this._makeGroundMinimapTexture(W, W, bounds, S, buildKey);
 
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
     if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds)) return;
 
-    // Uma textura global + uma máscara raster global.
+    // Textura e curvas vêm do mesmo campo escalar. As curvas são desenhadas
+    // antes da máscara para que jamais apareçam fora da área caminhável.
     c.save();
     c.globalCompositeOperation = 'source-over';
-    c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
+    c.drawImage(terrain.canvas, 0, 0, W, W);
+    this._drawContours(c, terrain.heightField, S);
+
+    // A máscara raster única recorta textura + curvas de uma só vez.
     c.globalCompositeOperation = 'destination-in';
     c.drawImage(this.terrainMask, 0, 0, W, W);
     c.restore();
 
-    // Variação atmosférica única sobre toda a superfície.
+    // Variação atmosférica única sobre toda a superfície, sem divisões.
     c.save();
     c.globalAlpha = 0.07;
     c.fillStyle = '#3a5540';
     c.fillRect(0, 0, W, W);
     c.restore();
   }
+
 
   _drawWallPath(c, obstacle, wx, wz, S) {
     if (!obstacle.enabled) return;
@@ -436,8 +581,12 @@ export class Minimap {
     const wx = (x) => offX + (x - bounds.minX) * S;
     const wz = (z) => offZ + (z - bounds.minZ) * S;
 
+    // A chave depende somente dos bounds, como solicitado. Ela é definida
+    // antes da textura para que o cache possa ser consultado na construção.
+    const buildKey = [bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ].join('|');
+
     c.clearRect(0, 0, W, W);
-    this._drawTerrain(c, zones, wx, wz, S, W, bounds);
+    this._drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey);
     this._drawObstacleBlobs(c, obstacles, wx, wz, S);
 
     for (const p of pois) {
@@ -468,7 +617,7 @@ export class Minimap {
     this._span = span;
     this._offX = offX;
     this._offZ = offZ;
-    this.buildKey = [bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ].join('|');
+    this.buildKey = buildKey;
     this.built = true;
     this.dirty = true;
   }
