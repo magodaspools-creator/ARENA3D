@@ -1,60 +1,49 @@
 import * as THREE from 'three';
+import { createWeapon } from './models.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const VOCATION_MODELS = {
-  sorcerer: './assets/models/mage.glb',
-  druid: './assets/models/druid.glb',
-  paladin: './assets/models/paladin.glb',
-  knight: './assets/models/knight.glb',
-  default: './assets/models/RobotExpressive.glb',
+const PLAYER_MODEL_PATH = './assets/models/RobotExpressive.glb';
+const loader = new GLTFLoader();
+let PLAYER_GLTF_PROMISE = null;
+
+const VOCATION_COLORS = {
+  paladin: 0xFFD700,
+  sorcerer: 0x8A2BE2,
+  druid: 0x2E8B57,
+  knight: 0xC0C0C0,
 };
 
-const loader = new GLTFLoader();
-const PLAYER_GLTF_PROMISES = new Map();
-
-function getModelPathForVocation(vocation) {
-  return VOCATION_MODELS[String(vocation || '').toLowerCase()] || VOCATION_MODELS.default;
+function getVocationColor(vocation) {
+  return VOCATION_COLORS[String(vocation || '').toLowerCase()] ?? 0xD8D8D8;
 }
 
-function getPlayerGltf(vocation) {
-  const modelPath = getModelPathForVocation(vocation);
-
-  if (!PLAYER_GLTF_PROMISES.has(modelPath)) {
-    PLAYER_GLTF_PROMISES.set(
-      modelPath,
-      loader.loadAsync(modelPath).catch(async (error) => {
-        // A missing vocation-specific GLB must NOT send the Player back to the
-        // old procedural/block rig. Use the known-good GLTF model instead.
-        if (modelPath !== VOCATION_MODELS.default) {
-          console.warn('[ARENA] Vocation GLTF unavailable; falling back to default GLTF.', {
-            vocation,
-            modelPath,
-            fallbackModelPath: VOCATION_MODELS.default,
-            error,
-          });
-
-          try {
-            return await getPlayerGltf('default');
-          } catch (fallbackError) {
-            console.error('[ARENA] Default GLTF fallback also failed.', {
-              fallbackModelPath: VOCATION_MODELS.default,
-              fallbackError,
-            });
-            return null;
-          }
-        }
-
-        console.error('[ARENA] Default GLTF unavailable.', {
-          modelPath,
-          error,
-        });
-        return null;
-      }),
-    );
+function getPlayerGltf() {
+  if (!PLAYER_GLTF_PROMISE) {
+    PLAYER_GLTF_PROMISE = loader.loadAsync(PLAYER_MODEL_PATH).catch((error) => {
+      console.error('[ARENA] Default GLTF unavailable.', { modelPath: PLAYER_MODEL_PATH, error });
+      return null;
+    });
   }
+  return PLAYER_GLTF_PROMISE;
+}
 
-  return PLAYER_GLTF_PROMISES.get(modelPath);
+function tintVocationModel(model, vocation) {
+  const color = getVocationColor(vocation);
+  model.traverse((child) => {
+    if (!child.isMesh || !child.material) return;
+    if (Array.isArray(child.material)) {
+      child.material = child.material.map((material) => {
+        const clone = material.clone();
+        if (clone.color) clone.color.set(color);
+        return clone;
+      });
+      return;
+    }
+    const material = child.material.clone();
+    if (material.color) material.color.set(color);
+    child.material = material;
+  });
 }
 
 const findBone = (root, patterns) => {
@@ -79,8 +68,9 @@ function normalizeModel(model) {
   // NUNCA alterar model.position.y aqui.
 }
 
-function buildGltfRig(asset, look = {}) {
+function buildGltfRig(asset, look = {}, vocation = null) {
   const model = SkeletonUtils.clone(asset.scene);
+  tintVocationModel(model, vocation);
   normalizeModel(model);
   model.traverse((o) => {
     if (!o.isMesh) return;
@@ -177,17 +167,78 @@ function buildGltfRig(asset, look = {}) {
   };
 }
 
+const GLTF_WEAPON_OFFSETS = {
+  crossbow: { position: [0, 0, 0], rotation: [-Math.PI / 2, Math.PI, 0], targetSize: 1.4 },
+  staff: { position: [0, 0, 0], rotation: [0, Math.PI / 2, Math.PI / 2], targetSize: 2.0 },
+};
+
+function applyGltfWeaponOffset(weaponMesh, type) {
+  const typeStr = String(type || '');
+  const isStaff = /staff|cajado|sorcerer|druid/i.test(typeStr);
+  const offset = GLTF_WEAPON_OFFSETS[isStaff ? 'staff' : type];
+  if (!offset) return;
+  if (offset.position) weaponMesh.position.set(...offset.position);
+  if (offset.rotation) weaponMesh.rotation.set(...offset.rotation);
+}
+
+export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
+  if (!rig?.model || !hand || !type) return null;
+  const weaponMesh = createWeapon(type, look);
+  weaponMesh.userData.arenaPlayerWeapon = type;
+  const isStaff = /staff|cajado|sorcerer|druid/i.test(String(type));
+  hand.updateMatrixWorld(true);
+  weaponMesh.updateMatrixWorld(true);
+
+  const targetSize = isStaff ? 2.0 : (GLTF_WEAPON_OFFSETS[type]?.targetSize || 1.5);
+  if (isStaff) {
+    const box = new THREE.Box3().setFromObject(weaponMesh);
+    const grip = new THREE.Vector3(
+      (box.min.x + box.max.x) * 0.5,
+      box.min.y,
+      (box.min.z + box.max.z) * 0.5
+    );
+    weaponMesh.children.forEach((child) => child.position.sub(grip));
+    weaponMesh.updateMatrixWorld(true);
+  }
+
+  const box = new THREE.Box3().setFromObject(weaponMesh);
+  const size = box.getSize(new THREE.Vector3());
+  weaponMesh.scale.setScalar(targetSize / (Math.max(size.x, size.y, size.z) || 1));
+
+  const pivot = new THREE.Group();
+  pivot.name = 'PlayerWeaponPivot';
+  const handScale = new THREE.Vector3();
+  hand.getWorldScale(handScale);
+  const safe = (v) => Number.isFinite(v) && Math.abs(v) > 0.00001 ? v : 1;
+  pivot.scale.set(1 / safe(handScale.x), 1 / safe(handScale.y), 1 / safe(handScale.z));
+
+  applyGltfWeaponOffset(weaponMesh, type);
+  pivot.add(weaponMesh);
+  hand.add(pivot);
+
+  if (type === 'crossbow' || isStaff) rig.weaponPivot = pivot;
+  if (isStaff) {
+    rig.isStaffEquipped = true;
+    rig.equippedWeaponPivot = pivot;
+    if (anim) {
+      anim.isStaffEquipped = true;
+      anim.equippedWeaponPivot = pivot;
+    }
+  }
+  return { weapon: weaponMesh, pivot };
+}
+
 export async function loadPlayerRig(look = {}, createHumanoid, vocation = null, playerData = null) {
   const vocationStr = (typeof vocation !== 'undefined' && vocation)
     ? String(vocation).toLowerCase()
     : (playerData && playerData.vocation ? String(playerData.vocation).toLowerCase() : 'paladin');
-  const asset = await getPlayerGltf(vocationStr);
+  const asset = await getPlayerGltf();
   if (asset) {
     try {
-      const rig = buildGltfRig(asset, look);
+      const rig = buildGltfRig(asset, look, vocationStr);
       console.log('[ARENA] Player rig ready: GLTF final rig.', {
         vocation: vocationStr,
-        modelPath: getModelPathForVocation(vocationStr),
+        modelPath: PLAYER_MODEL_PATH,
         clonedScene: rig.model !== asset.scene,
         modelName: rig.model.name || '(unnamed)',
         sourceName: asset.scene.name || '(unnamed)',
