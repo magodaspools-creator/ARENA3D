@@ -19,12 +19,33 @@ function getModelPathForVocation(vocation) {
 
 function getPlayerGltf(vocation) {
   const modelPath = getModelPathForVocation(vocation);
+
   if (!PLAYER_GLTF_PROMISES.has(modelPath)) {
     PLAYER_GLTF_PROMISES.set(
       modelPath,
-      loader.loadAsync(modelPath).catch((error) => {
-        console.warn('[ARENA] GLTF unavailable; using procedural player.', {
-          vocation,
+      loader.loadAsync(modelPath).catch(async (error) => {
+        // A missing vocation-specific GLB must NOT send the Player back to the
+        // old procedural/block rig. Use the known-good GLTF model instead.
+        if (modelPath !== VOCATION_MODELS.default) {
+          console.warn('[ARENA] Vocation GLTF unavailable; falling back to default GLTF.', {
+            vocation,
+            modelPath,
+            fallbackModelPath: VOCATION_MODELS.default,
+            error,
+          });
+
+          try {
+            return await getPlayerGltf('default');
+          } catch (fallbackError) {
+            console.error('[ARENA] Default GLTF fallback also failed.', {
+              fallbackModelPath: VOCATION_MODELS.default,
+              fallbackError,
+            });
+            return null;
+          }
+        }
+
+        console.error('[ARENA] Default GLTF unavailable.', {
           modelPath,
           error,
         });
@@ -32,6 +53,7 @@ function getPlayerGltf(vocation) {
       }),
     );
   }
+
   return PLAYER_GLTF_PROMISES.get(modelPath);
 }
 
