@@ -129,16 +129,23 @@ export class UI {
     const focusSpan = underground ? 42 : 46;
     const half = focusSpan * 0.5;
 
-    const centerX = Math.max(minX + half, Math.min(maxX - half, p.pos.x));
-    const centerZ = Math.max(minZ + half, Math.min(maxZ - half, p.pos.z));
+    // The player is the fixed camera center. Never clamp the viewport to
+    // the map bounds: at the edge of a zone, the player must still remain
+    // exactly at the center of the circular minimap.
+    const centerX = p.pos.x;
+    const centerZ = p.pos.z;
+    const minimapScale = Math.min(w, h) / focusSpan;
     const viewMinX = centerX - half;
     const viewMaxX = centerX + half;
     const viewMinZ = centerZ - half;
     const viewMaxZ = centerZ + half;
-    const sx = w / (viewMaxX - viewMinX);
-    const sy = h / (viewMaxZ - viewMinZ);
-    const px = (x) => (x - viewMinX) * sx;
-    const pz = (z) => (z - viewMinZ) * sy;
+
+    // World -> minimap coordinates. Canvas Y grows downward, matching the
+    // game's +Z screen direction for the top-down map.
+    const px = (x) => cx + (x - p.pos.x) * minimapScale;
+    const pz = (z) => cy + (z - p.pos.z) * minimapScale;
+    const sx = minimapScale;
+    const sy = minimapScale;
 
     // A circular viewport is the visual identity of the minimap. Everything
     // below is clipped to it; the frame itself is drawn afterward.
@@ -195,10 +202,23 @@ export class UI {
     const srcW = ((viewMaxX - viewMinX) / (maxX - minX)) * cache.mw;
     const srcH = ((viewMaxZ - viewMinZ) / (maxZ - minZ)) * cache.mh;
 
+    // Draw only the terrain around the player. The source rectangle is
+    // centered on the player's world position, so the terrain scrolls under
+    // the fixed player marker instead of moving the marker with the map.
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.globalAlpha = 0.94;
-    ctx.drawImage(cache.canvas, srcX, srcZ, srcW, srcH, 0, 0, w, h);
+    ctx.drawImage(
+      cache.canvas,
+      srcX,
+      srcZ,
+      srcW,
+      srcH,
+      0,
+      0,
+      w,
+      h
+    );
     ctx.restore();
 
     // Structural collision: dark graphite masses, not debug rectangles.
@@ -366,7 +386,10 @@ export class UI {
 
     // Player marker: directional arrow with restrained glow.
     ctx.save();
-    ctx.translate(px(p.pos.x), pz(p.pos.z));
+    ctx.translate(cx, cy);
+    // Canvas Y points down. Player facing 0 points toward world +Z, which is
+    // also down on this top-down minimap. The arrow is therefore drawn toward
+    // +Y and rotated by -facing so its X component follows +world X.
     ctx.rotate(-p.facing);
     ctx.shadowColor = 'rgba(194, 204, 173, 0.86)';
     ctx.shadowBlur = 7;
@@ -374,10 +397,10 @@ export class UI {
     ctx.strokeStyle = 'rgba(20, 25, 22, 0.98)';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(0, -10);
-    ctx.lineTo(6, 6);
-    ctx.lineTo(0, 3);
-    ctx.lineTo(-6, 6);
+    ctx.moveTo(0, 10);
+    ctx.lineTo(6, -6);
+    ctx.lineTo(0, -3);
+    ctx.lineTo(-6, -6);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
