@@ -1,4 +1,4 @@
-// Procedural surface terrain texture. This intentionally mirrors world.js\'s\n// hash/noise2/fbm implementation without importing Three.js or world.js.\nconst groundHash = (x, z) => {\n  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;\n  return s - Math.floor(s);\n};\n\nconst groundNoise2 = (x, z) => {\n  const xi = Math.floor(x), zi = Math.floor(z);\n  const xf = x - xi, zf = z - zi;\n  const u = xf * xf * (3 - 2 * xf);\n  const v = zf * zf * (3 - 2 * zf);\n  const a = groundHash(xi, zi);\n  const b = groundHash(xi + 1, zi);\n  const c = groundHash(xi, zi + 1);\n  const d = groundHash(xi + 1, zi + 1);\n  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;\n};\n\nconst groundFbm = (x, z) =>\n  groundNoise2(x, z) * 0.6 +\n  groundNoise2(x * 2.1, z * 2.1) * 0.3 +\n  groundNoise2(x * 4.3, z * 4.3) * 0.1;\n\nconst makeGroundMinimapTexture = (w, h) => {\n  const canvas = typeof OffscreenCanvas !== 'undefined'\n    ? new OffscreenCanvas(w, h)\n    : document.createElement('canvas');\n  canvas.width = w;\n  canvas.height = h;\n\n  const ctx = canvas.getContext('2d', { willReadFrequently: true });\n  const image = ctx.createImageData(w, h);\n  const data = image.data;\n  const scale = 40; // ~40px feature scale: broad terrain variation, not pixels.\n\n  for (let y = 0; y < h; y++) {\n    for (let x = 0; x < w; x++) {\n      const n = groundFbm(x / scale, y / scale);\n      // Center FBM around zero and limit the modulation to +/-12%.\n      const modulation = (n - 0.5) * 0.24;\n      const i = (y * w + x) * 4;\n      const base = [0x2a, 0x3e, 0x26];\n      data[i] = Math.max(0, Math.min(255, Math.round(base[0] * (1 + modulation))));\n      data[i + 1] = Math.max(0, Math.min(255, Math.round(base[1] * (1 + modulation))));\n      data[i + 2] = Math.max(0, Math.min(255, Math.round(base[2] * (1 + modulation))));\n      data[i + 3] = 255;\n    }\n  }\n\n  ctx.putImageData(image, 0, 0);\n  return canvas;\n};\n\n// src/minimap.js — ARENA3D
+// src/minimap.js — ARENA3D
 // Miniatura orgânica do mundo: o mapa-base é construído uma vez em canvas
 // offscreen de baixa resolução. Durante o jogo, render() apenas desloca essa
 // textura ao redor do jogador e desenha os overlays dinâmicos.
@@ -41,6 +41,58 @@ export class Minimap {
     this.dirty = true;
 
     if (!opts.canvas) this._style();
+  }
+
+  _makeGroundMinimapTexture(w, h) {
+    const canvas = typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(w, h)
+      : document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const image = ctx.createImageData(w, h);
+    const data = image.data;
+    const scale = 40;
+
+    const hash = (x, z) => {
+      const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+
+    const noise2 = (x, z) => {
+      const xi = Math.floor(x), zi = Math.floor(z);
+      const xf = x - xi, zf = z - zi;
+      const u = xf * xf * (3 - 2 * xf);
+      const v = zf * zf * (3 - 2 * zf);
+      const a = hash(xi, zi);
+      const b = hash(xi + 1, zi);
+      const c = hash(xi, zi + 1);
+      const d = hash(xi + 1, zi + 1);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    };
+
+    const fbm = (x, z) =>
+      noise2(x, z) * 0.6 +
+      noise2(x * 2.1, z * 2.1) * 0.3 +
+      noise2(x * 4.3, z * 4.3) * 0.1;
+
+    const base = [0x2a, 0x3e, 0x26];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const n = fbm(x / scale, y / scale);
+        const modulation = (n - 0.5) * 0.24;
+        const i = (y * w + x) * 4;
+        data[i] = Math.max(0, Math.min(255, Math.round(base[0] * (1 + modulation))));
+        data[i + 1] = Math.max(0, Math.min(255, Math.round(base[1] * (1 + modulation))));
+        data[i + 2] = Math.max(0, Math.min(255, Math.round(base[2] * (1 + modulation))));
+        data[i + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(image, 0, 0);
+    return canvas;
   }
 
   _style() {
@@ -139,7 +191,7 @@ export class Minimap {
     // The surface gets a procedural moss/earth texture. The texture is
     // generated once per Minimap instance and then reused by drawImage.
     if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
-      this.groundMinimapTexture = makeGroundMinimapTexture(W, W);
+      this.groundMinimapTexture = this._makeGroundMinimapTexture(W, W);
     }
 
     c.fillStyle = '#18261b';
