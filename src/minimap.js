@@ -187,59 +187,99 @@ export class Minimap {
     return true;
   }
 
-  _buildTerrainMask(zones, wx, wz, S, W) {
-    // IMPORTANTE: a união visual é feita em raster, e não apenas juntando
-    // subpaths no clip. Isso elimina qualquer microfenda/antialiasing entre
-    // dois polígonos vizinhos e transforma todas as zonas em UMA superfície.
+  _terrainContains(x, z, zones) {
+    // O minimapa NÃO desenha os polígonos. Ele apenas consulta a área
+    // caminhável real do sistema de colisão e transforma essa informação em
+    // um campo raster contínuo.
+    for (const zone of zones) {
+      if (!zone) continue;
+
+      if (zone.type === 'circle') {
+        if (Math.hypot(x - zone.x, z - zone.z) <= zone.r) return true;
+        continue;
+      }
+
+      if (zone.type === 'rect') {
+        if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) return true;
+        continue;
+      }
+
+      if (zone.type === 'polygon' && Array.isArray(zone.points)) {
+        let inside = false;
+        for (let i = 0, j = zone.points.length - 1; i < zone.points.length; j = i++) {
+          const [xi, zi] = zone.points[i];
+          const [xj, zj] = zone.points[j];
+          const hit = ((zi > z) !== (zj > z)) &&
+            (x < (xj - xi) * (z - zi) / (zj - zi) + xi);
+          if (hit) inside = !inside;
+        }
+        if (inside) return true;
+      }
+    }
+    return false;
+  }
+
+  _buildTerrainMask(zones, wx, wz, S, W, bounds) {
+    // Não usamos beginPath()/clip()/fill() com os polígonos das áreas.
+    // Cada pixel pergunta apenas: "este ponto pertence ao espaço caminhável?"
+    // O resultado é uma única imagem de terreno.
     if (!this.terrainMask || this.terrainMask.width !== W || this.terrainMask.height !== W) {
       this.terrainMask = document.createElement('canvas');
       this.terrainMask.width = W;
       this.terrainMask.height = W;
-      this.terrainMaskCtx = this.terrainMask.getContext('2d');
+      this.terrainMaskCtx = this.terrainMask.getContext('2d', { willReadFrequently: true });
     }
 
-    const m = this.terrainMaskCtx;
-    m.clearRect(0, 0, W, W);
-    m.fillStyle = '#fff';
-    m.beginPath();
+    const ctx = this.terrainMaskCtx;
+    const image = ctx.createImageData(W, W);
+    const data = image.data;
 
-    let validZones = 0;
-    for (const zone of zones) {
-      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
-      if (this._zonePath(m, zone, wx, wz, S, true)) validZones++;
-    }
-
-    if (!validZones) return false;
-    m.fill();
-
-    // Pequeno "fechamento" morfológico. Ele só fecha fissuras microscópicas
-    // criadas por bordas que deveriam encostar, sem arredondar o mapa inteiro.
-    // O mesmo bitmap é usado em todas as zonas, portanto não existem seams.
-    const pad = Math.max(1, Math.min(2, Math.round(S * 0.08)));
-    const expanded = document.createElement('canvas');
-    expanded.width = W;
-    expanded.height = W;
-    const e = expanded.getContext('2d');
-    e.fillStyle = '#fff';
-
-    const offsets = [
-      [-pad, 0], [pad, 0], [0, -pad], [0, pad],
-      [-pad, -pad], [pad, -pad], [-pad, pad], [pad, pad],
+    // Supersampling reduz a leitura "geométrica" das bordas. Cada pixel usa
+    // 4 amostras e vira uma pequena área de terreno, não uma linha vetorial.
+    const samples = [
+      [-0.25, -0.25], [0.25, -0.25],
+      [-0.25,  0.25], [0.25,  0.25],
     ];
-    for (const [ox, oy] of offsets) e.drawImage(this.terrainMask, ox, oy);
-    e.drawImage(this.terrainMask, 0, 0);
 
-    // Suaviza somente a máscara final. A textura continua sendo calculada
-    // globalmente, então a variação de cor nunca reinicia numa zona nova.
-    m.clearRect(0, 0, W, W);
-    m.filter = 'blur(0.65px)';
-    m.drawImage(expanded, 0, 0);
-    m.filter = 'none';
+    for (let py = 0; py < W; py++) {
+      const z = bounds.minZ + ((py + 0.5) / S);
+      for (let px = 0; px < W; px++) {
+        const x = bounds.minX + ((px + 0.5) / S);
+        let hit = 0;
+
+        for (const [sx, sz] of samples) {
+          if (this._terrainContains(x + sx / S, z + sz / S, zones)) hit++;
+        }
+
+        const a = hit * 64;
+        const i = (py * W + px) * 4;
+        data[i] = 255;
+        data[i + 1] = 255;
+        data[i + 2] = 255;
+        data[i + 3] = a;
+      }
+    }
+
+    ctx.putImageData(image, 0, 0);
+
+    // Une pequenos degraus da rasterização. Isto acontece DEPOIS da união
+    // completa das zonas, portanto nenhuma fronteira interna pode aparecer.
+    const softened = document.createElement('canvas');
+    softened.width = W;
+    softened.height = W;
+    const sc = softened.getContext('2d');
+
+    sc.filter = 'blur(1.6px)';
+    sc.drawImage(this.terrainMask, 0, 0);
+    sc.filter = 'none';
+
+    ctx.clearRect(0, 0, W, W);
+    ctx.drawImage(softened, 0, 0);
 
     return true;
   }
 
-  _drawTerrain(c, zones, wx, wz, S, W) {
+  _drawTerrain(c, zones, wx, wz, S, W, bounds) {
     if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
       this.groundMinimapTexture = this._makeGroundMinimapTexture(W, W);
     }
@@ -247,10 +287,9 @@ export class Minimap {
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
-    if (!this._buildTerrainMask(zones, wx, wz, S, W)) return;
+    if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds)) return;
 
-    // A textura é desenhada UMA vez. A máscara já representa a união raster
-    // de todas as zonas, então não há composição individual de polígonos.
+    // Uma textura global + uma máscara raster global.
     c.save();
     c.globalCompositeOperation = 'source-over';
     c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
@@ -258,7 +297,7 @@ export class Minimap {
     c.drawImage(this.terrainMask, 0, 0, W, W);
     c.restore();
 
-    // Pequena camada atmosférica global. Nunca é aplicada por zona.
+    // Variação atmosférica única sobre toda a superfície.
     c.save();
     c.globalAlpha = 0.07;
     c.fillStyle = '#3a5540';
@@ -398,7 +437,7 @@ export class Minimap {
     const wz = (z) => offZ + (z - bounds.minZ) * S;
 
     c.clearRect(0, 0, W, W);
-    this._drawTerrain(c, zones, wx, wz, S, W);
+    this._drawTerrain(c, zones, wx, wz, S, W, bounds);
     this._drawObstacleBlobs(c, obstacles, wx, wz, S);
 
     for (const p of pois) {
