@@ -234,23 +234,13 @@ class Game {
       const look = VOCATIONS[id]?.look || {};
       let finalRig = null;
 
-      // Never create a Player while the final rig is still loading. If the GLTF
-      // takes too long, use the procedural rig immediately so the game can start.
+      // With the real-GLTF player enabled, wait for the selected vocation model.
+      // Do not silently replace it with the old procedural/robot character.
       if (USE_GLTF_PLAYER) {
-        try {
-          finalRig = await Promise.race([
-            loadPlayerRig(look, createHumanoid, id),
-            new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
-          ]);
-        } catch (error) {
-          console.warn('[ARENA] Player rig load failed; using procedural fallback.', error);
-        }
-      }
-
-      if (!finalRig) {
+        finalRig = await loadPlayerRig(look, createHumanoid, id);
+      } else {
         finalRig = createHumanoid(look);
         finalRig.isProceduralFallback = true;
-        if (USE_GLTF_PLAYER) console.warn('[ARENA] Player rig timeout/failure after 5s; using PROCEDURAL FALLBACK.');
       }
 
       // The player is instantiated exactly once, after the final rig exists.
