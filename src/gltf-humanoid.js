@@ -38,9 +38,8 @@ function getPlayerGltf(vocation) {
     PLAYER_GLTF_PROMISES.set(
       modelPath,
       loadGltfUrl(modelPath).catch(async (error) => {
-        // Paladin/Druid sources are external CC0 assets rather than files from
-        // the free KayKit Adventurers repository. If either source/CDN fails,
-        // keep the game playable by using the verified KayKit Knight asset.
+        // Every vocation now resolves to a KayKit Adventurers model. If a
+        // requested CDN asset fails, keep the game playable with KayKit Knight.
         if (modelPath !== VOCATION_MODELS.knight) {
           console.warn('[ARENA] Vocation GLTF failed; falling back to KayKit Knight.', {
             requested: modelPath,
