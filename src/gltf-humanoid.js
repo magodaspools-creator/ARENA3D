@@ -337,6 +337,7 @@ function configureNativeKayKitWeapons(model, vocation) {
   // Do not compose another Euler rotation on top of the character hand pose.
   if (v === 'paladin' && weapon) {
     weapon.quaternion.set(0, Math.SQRT1_2, 0, Math.SQRT1_2);
+    createCrossbowEditor(weapon);
   }
 
   // Rogue/KayKit carries knives as separate native accessories.
@@ -349,6 +350,115 @@ function configureNativeKayKitWeapons(model, vocation) {
   }
 
   return { usesNativeWeapons: true, weapon, shield };
+}
+
+function isCrossbowEditorEnabled() {
+  const params = new URLSearchParams(location.search);
+  return params.get('ajustar-besta') === '1';
+}
+
+function createCrossbowEditor(weapon) {
+  if (!isCrossbowEditorEnabled() || !weapon || document.getElementById('arena-crossbow-editor')) return;
+
+  const panel = document.createElement('div');
+  panel.id = 'arena-crossbow-editor';
+  panel.style.cssText = [
+    'position:fixed','top:12px','right:12px','z-index:99999',
+    'width:270px','padding:12px','border-radius:10px',
+    'background:rgba(10,12,18,.94)','color:#fff',
+    'font:13px/1.3 system-ui,sans-serif','box-shadow:0 8px 30px rgba(0,0,0,.4)'
+  ].join(';');
+
+  const title = document.createElement('div');
+  title.textContent = 'AJUSTE DA BESTA — ao vivo';
+  title.style.cssText = 'font-weight:700;margin-bottom:8px';
+  panel.appendChild(title);
+
+  const rows = {};
+  const makeRow = (label, key, min, max, step, scale = 1) => {
+    const row = document.createElement('label');
+    row.style.cssText = 'display:grid;grid-template-columns:38px 1fr 62px;gap:6px;align-items:center;margin:6px 0';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    const value = document.createElement('input');
+    value.type = 'number';
+    value.step = step;
+    value.style.cssText = 'width:62px;box-sizing:border-box;background:#20242c;color:#fff;border:1px solid #444;border-radius:4px;padding:3px';
+    const initial = key.startsWith('r') ? weapon.rotation[key.slice(1)] * 180 / Math.PI : weapon.position[key.slice(1)];
+    input.value = initial;
+    value.value = initial.toFixed(2);
+    const apply = (raw) => {
+      let v = Number(raw);
+      if (!Number.isFinite(v)) return;
+      v = Math.max(Number(min), Math.min(Number(max), v));
+      if (key.startsWith('r')) weapon.rotation[key.slice(1)] = v * Math.PI / 180;
+      else weapon.position[key.slice(1)] = v;
+      input.value = v;
+      value.value = v.toFixed(2);
+    };
+    input.addEventListener('input', () => apply(input.value));
+    value.addEventListener('change', () => apply(value.value));
+    row.append(name, input, value);
+    panel.appendChild(row);
+    rows[key] = { input, value };
+  };
+
+  makeRow('RX','rx',-180,180,1);
+  makeRow('RY','ry',-180,180,1);
+  makeRow('RZ','rz',-180,180,1);
+  makeRow('PX','px',-1,1,0.01);
+  makeRow('PY','py',-1,1,0.01);
+  makeRow('PZ','pz',-1,1,0.01);
+
+  const output = document.createElement('textarea');
+  output.readOnly = true;
+  output.style.cssText = 'width:100%;height:76px;box-sizing:border-box;background:#11151b;color:#d7e3ff;border:1px solid #444;border-radius:5px;font:11px monospace;margin-top:6px';
+  const updateOutput = () => {
+    output.value =
+      'rotation: [' +
+      weapon.rotation.x.toFixed(4) + ', ' +
+      weapon.rotation.y.toFixed(4) + ', ' +
+      weapon.rotation.z.toFixed(4) + ']\\n' +
+      'position: [' +
+      weapon.position.x.toFixed(4) + ', ' +
+      weapon.position.y.toFixed(4) + ', ' +
+      weapon.position.z.toFixed(4) + ']';
+  };
+
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.textContent = 'Atualizar valores';
+  copy.style.cssText = 'width:100%;margin-top:7px;padding:7px;background:#2b6cff;color:#fff;border:0;border-radius:5px;cursor:pointer';
+  copy.addEventListener('click', updateOutput);
+
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.textContent = 'Zerar rotação / posição';
+  reset.style.cssText = 'width:100%;margin-top:6px;padding:7px;background:#333842;color:#fff;border:0;border-radius:5px;cursor:pointer';
+  reset.addEventListener('click', () => {
+    weapon.rotation.set(0, 0, 0);
+    weapon.position.set(0, 0, 0);
+    ['rx','ry','rz','px','py','pz'].forEach((key) => {
+      const ref = rows[key];
+      const raw = key.startsWith('r') ? 0 : 0;
+      ref.input.value = raw;
+      ref.value.value = '0.00';
+    });
+    updateOutput();
+  });
+
+  panel.append(output, copy, reset);
+  document.body.appendChild(panel);
+
+  ['input','change'].forEach((eventName) => {
+    panel.addEventListener(eventName, updateOutput);
+  });
+  updateOutput();
 }
 
 function disposeWeaponNode(node) {
