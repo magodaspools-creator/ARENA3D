@@ -1,4 +1,4 @@
-// src/minimap.js — ARENA3D
+// Procedural surface terrain texture. This intentionally mirrors world.js\'s\n// hash/noise2/fbm implementation without importing Three.js or world.js.\nconst groundHash = (x, z) => {\n  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;\n  return s - Math.floor(s);\n};\n\nconst groundNoise2 = (x, z) => {\n  const xi = Math.floor(x), zi = Math.floor(z);\n  const xf = x - xi, zf = z - zi;\n  const u = xf * xf * (3 - 2 * xf);\n  const v = zf * zf * (3 - 2 * zf);\n  const a = groundHash(xi, zi);\n  const b = groundHash(xi + 1, zi);\n  const c = groundHash(xi, zi + 1);\n  const d = groundHash(xi + 1, zi + 1);\n  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;\n};\n\nconst groundFbm = (x, z) =>\n  groundNoise2(x, z) * 0.6 +\n  groundNoise2(x * 2.1, z * 2.1) * 0.3 +\n  groundNoise2(x * 4.3, z * 4.3) * 0.1;\n\nconst makeGroundMinimapTexture = (w, h) => {\n  const canvas = typeof OffscreenCanvas !== 'undefined'\n    ? new OffscreenCanvas(w, h)\n    : document.createElement('canvas');\n  canvas.width = w;\n  canvas.height = h;\n\n  const ctx = canvas.getContext('2d', { willReadFrequently: true });\n  const image = ctx.createImageData(w, h);\n  const data = image.data;\n  const scale = 40; // ~40px feature scale: broad terrain variation, not pixels.\n\n  for (let y = 0; y < h; y++) {\n    for (let x = 0; x < w; x++) {\n      const n = groundFbm(x / scale, y / scale);\n      // Center FBM around zero and limit the modulation to +/-12%.\n      const modulation = (n - 0.5) * 0.24;\n      const i = (y * w + x) * 4;\n      const base = [0x2a, 0x3e, 0x26];\n      data[i] = Math.max(0, Math.min(255, Math.round(base[0] * (1 + modulation))));\n      data[i + 1] = Math.max(0, Math.min(255, Math.round(base[1] * (1 + modulation))));\n      data[i + 2] = Math.max(0, Math.min(255, Math.round(base[2] * (1 + modulation))));\n      data[i + 3] = 255;\n    }\n  }\n\n  ctx.putImageData(image, 0, 0);\n  return canvas;\n};\n\n// src/minimap.js — ARENA3D
 // Miniatura orgânica do mundo: o mapa-base é construído uma vez em canvas
 // offscreen de baixa resolução. Durante o jogo, render() apenas desloca essa
 // textura ao redor do jogador e desenha os overlays dinâmicos.
@@ -136,19 +136,15 @@ export class Minimap {
   }
 
   _drawTerrain(c, zones, wx, wz, S, W) {
-    // Base escura + manchas de baixa frequência. Todas as zonas são
-    // construídas em um único path, para que o preenchimento não desenhe
-    // fronteiras entre subáreas vizinhas.
+    // The surface gets a procedural moss/earth texture. The texture is
+    // generated once per Minimap instance and then reused by drawImage.
+    if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
+      this.groundMinimapTexture = makeGroundMinimapTexture(W, W);
+    }
+
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
-
-    const terrainPalette = [
-      'rgba(48,72,48,.78)',
-      'rgba(57,82,52,.62)',
-      'rgba(39,61,42,.72)',
-      'rgba(71,82,52,.26)',
-      'rgba(27,49,35,.48)',
-    ];
+    c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
 
     c.beginPath();
     let validZones = 0;
@@ -159,46 +155,27 @@ export class Minimap {
 
     if (!validZones) return;
 
-    // Uma única passada de fill para todas as zonas/subpaths.
-    c.fillStyle = '#304936';
-    c.fill();
-
-    // A mesma geometria combinada vira o clip da textura: há apenas um clip
-    // para o conjunto inteiro, sem clip/fill individual por zona.
+    // Surface zones softly tint the procedural ground instead of replacing it.
     c.save();
-    c.clip();
+    c.globalAlpha = 0.35;
+    c.fillStyle = '#3a5540';
+    c.fill();
+    c.globalAlpha = 1;
 
-    const minX = this.bounds.minX;
-    const maxX = this.bounds.maxX;
-    const minZ = this.bounds.minZ;
-    const maxZ = this.bounds.maxZ;
-    const spanX = maxX - minX;
-    const spanZ = maxZ - minZ;
-
-    for (let i = 0; i < 26; i++) {
-      const n = Math.sin((i + 1) * 91.73 + spanX * 0.71 + spanZ * 1.13);
-      const m = Math.sin((i + 1) * 47.17 + minX * 0.37 - minZ * 0.61);
-      const x = minX + ((n * 0.5 + 0.5) * spanX);
-      const z = minZ + ((m * 0.5 + 0.5) * spanZ);
-      const radius = 1.5 + (Math.sin(i * 17.9) * 0.5 + 0.5) * 4.5;
-
-      c.fillStyle = terrainPalette[i % terrainPalette.length];
-      c.beginPath();
-      c.ellipse(
-        wx(x),
-        wz(z),
-        radius * S,
-        radius * S * (0.55 + (i % 3) * 0.12),
-        (i * 0.63) % Math.PI,
-        0,
-        Math.PI * 2
-      );
-      c.fill();
+    // Subtle organic outlines: enough to separate terrain regions without
+    // recreating the old rectangular grid.
+    c.save();
+    c.strokeStyle = 'rgba(90,120,85,0.3)';
+    c.lineWidth = Math.max(0.8, S * 0.07);
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    for (const zone of zones) {
+      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
+      this._zonePath(c, zone, wx, wz, S, false);
+      c.stroke();
     }
-
     c.restore();
   }
-
 
   _drawWallPath(c, obstacle, wx, wz, S) {
     if (!obstacle.enabled) return;
