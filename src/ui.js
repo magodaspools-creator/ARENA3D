@@ -126,6 +126,8 @@ export class UI {
     const w = canvas.width, h = canvas.height;
     const { minX, maxX, minZ, maxZ } = area.minimap.bounds;
     const underground = !!area.minimap.underground;
+    const collision = this.game.collision;
+    if (!collision) return;
     const focusSpan = underground ? 42 : 46;
     const half = focusSpan * 0.5;
 
@@ -147,11 +149,12 @@ export class UI {
     const sx = minimapScale;
     const sy = minimapScale;
 
-    // A circular viewport is the visual identity of the minimap. Everything
-    // below is clipped to it; the frame itself is drawn afterward.
     const cx = w * 0.5;
     const cy = h * 0.5;
     const radius = Math.min(w, h) * 0.5 - 5;
+
+    // A circular viewport is the visual identity of the minimap. Everything
+    // below is clipped to it; the frame itself is drawn afterward.
 
     ctx.clearRect(0, 0, w, h);
     ctx.save();
@@ -163,7 +166,6 @@ export class UI {
     ctx.fillStyle = underground ? '#25292a' : '#293b35';
     ctx.fillRect(0, 0, w, h);
 
-    const collision = this.game.collision;
     const cacheKey = [minX, maxX, minZ, maxZ, underground ? 'mine' : 'surface', 'v2'].join('|');
     if (!this.minimapCache || this.minimapCache.key !== cacheKey) {
       const mw = 320, mh = 320;
