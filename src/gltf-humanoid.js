@@ -278,6 +278,12 @@ function getNativeWeaponNameForVocation(vocation) {
   return [];
 }
 
+function setSubtreeVisible(node, visible) {
+  node.traverse((child) => {
+    child.visible = visible;
+  });
+}
+
 function configureNativeKayKitWeapons(model, vocation) {
   const v = String(vocation || '').toLowerCase();
   const nativeNames = getNativeWeaponNameForVocation(v);
@@ -287,27 +293,33 @@ function configureNativeKayKitWeapons(model, vocation) {
 
   let weapon = null;
   if (v === 'knight') {
-    weapon = findNativeNode(model, [/^1hsword(?:$|\d)/, /^2hsword(?:$|\d)/]);
+    weapon = findNativeNode(model, [/^1hsword(?:$|\\d)/, /^2hsword(?:$|\\d)/]);
   } else if (v === 'sorcerer' || v === 'druid') {
-    weapon = findNativeNode(model, [/^staff(?:$|\d)/]);
+    weapon = findNativeNode(model, [/^staff(?:$|\\d)/]);
   } else if (v === 'paladin') {
-    weapon = findNativeNode(model, [/^bow(?:$|\d)/, /^crossbow(?:$|\d)/]);
+    weapon = findNativeNode(model, [/^bow(?:$|\\d)/, /^crossbow(?:$|\\d)/]);
   }
 
   const shield = v === 'knight'
-    ? findNativeNode(model, [/^shield(?:$|\d)/])
+    ? findNativeNode(model, [/^shield(?:$|\\d)/])
     : null;
 
+  // Important: weapon meshes can have child meshes whose names also contain
+  // "sword", "bow", etc. Setting visibility independently during traverse can
+  // accidentally re-enable a child belonging to an inactive weapon.
+  // First disable the complete subtree of EVERY weapon/shield node.
+  const equipmentNodes = [];
   model.traverse((child) => {
-    if (!isWeaponOrShieldNode(child.name)) return;
-
-    const isActiveWeapon = child === weapon ||
-      (weapon && child.name && normalizedNodeName(child.name) === normalizedNodeName(weapon.name));
-    const isActiveShield = child === shield ||
-      (shield && child.name && normalizedNodeName(child.name) === normalizedNodeName(shield.name));
-
-    child.visible = isActiveWeapon || isActiveShield;
+    if (isWeaponOrShieldNode(child.name)) equipmentNodes.push(child);
   });
+
+  for (const node of equipmentNodes) {
+    setSubtreeVisible(node, false);
+  }
+
+  // Then enable only the complete native loadout selected for this vocation.
+  if (weapon) setSubtreeVisible(weapon, true);
+  if (shield) setSubtreeVisible(shield, true);
 
   return { usesNativeWeapons: true, weapon, shield };
 }
