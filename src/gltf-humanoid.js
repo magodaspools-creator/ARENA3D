@@ -336,7 +336,7 @@ function configureNativeKayKitWeapons(model, vocation) {
   // Use KayKit's authored 1H_Crossbow grip orientation directly.
   // Do not compose another Euler rotation on top of the character hand pose.
   if (v === 'paladin' && weapon) {
-    weapon.quaternion.set(0, Math.SQRT1_2, 0, Math.SQRT1_2);
+    weapon.rotation.set(-1.5010, 0.0175, 1.6057);
     createCrossbowEditor(weapon);
   }
 
