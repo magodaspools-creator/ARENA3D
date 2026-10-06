@@ -21,7 +21,10 @@ import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
 
-const USE_GLTF_PLAYER = new URLSearchParams(location.search).get('modelo') === '3d';
+const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
+// The published game uses the finalized vocation GLTFs by default.
+// `?modelo=procedural` remains available only as a development fallback.
+const USE_GLTF_PLAYER = MODEL_MODE !== 'procedural';
 import { MapEditor } from './map-editor.js';
 
 const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
