@@ -84,22 +84,18 @@ function normalizeModel(model) {
 function buildGltfRig(asset, look = {}, vocation = null) {
   const model = SkeletonUtils.clone(asset.scene);
   normalizeModel(model);
-  // KayKit Adventurers ships several equipment meshes inside each character
-  // (sword/shield/staff/bow variants). Hide every embedded equipment node so
-  // the player never renders a second "default loadout". The gameplay weapon
-  // is attached separately by attachGltfWeapon().
+  // KayKit Adventurers ships multiple native equipment variants inside the
+  // character. Keep only the loadout that belongs to the active vocation.
+  const nativeWeaponConfig = configureNativeKayKitWeapons(model, vocation);
+  if (nativeWeaponConfig.usesNativeWeapons) {
+    console.log('[ARENA] Native KayKit weapon loadout enabled.', {
+      vocation,
+      weapon: nativeWeaponConfig.weapon?.name || null,
+      shield: nativeWeaponConfig.shield?.name || null,
+    });
+  }
+
   model.traverse((child) => {
-    const name = String(child.name || '').toLowerCase();
-    const isEmbeddedWeapon =
-      name.includes('sword') ||
-      name.includes('shield') ||
-      name.includes('staff') ||
-      name.includes('bow') ||
-      name.includes('1h_') ||
-      name.includes('2h_');
-
-    if (isEmbeddedWeapon) child.visible = false;
-
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
@@ -193,6 +189,9 @@ function buildGltfRig(asset, look = {}, vocation = null) {
     root,
     body, torso, head, legL, legR, armL, armR,
     handL, handR, eyes, cape: null, model,
+    usesNativeWeapons: nativeWeaponConfig.usesNativeWeapons,
+    nativeWeapon: nativeWeaponConfig.weapon,
+    nativeShield: nativeWeaponConfig.shield,
     animations: asset.animations || [],
     // Diagnostic-only reference: proves the mixer targets the SkeletonUtils clone,
     // not the loader cache's original scene.
@@ -247,6 +246,72 @@ function applyGltfWeaponOffset(weaponMesh, type) {
   if (offset.rotation) weaponMesh.rotation.set(...offset.rotation);
 }
 
+function normalizedNodeName(name) {
+  return String(name || '').toLowerCase().replace(/[.\s_-]+/g, '');
+}
+
+function isWeaponOrShieldNode(name) {
+  const n = normalizedNodeName(name);
+  return n.includes('sword') ||
+    n.includes('shield') ||
+    n.includes('staff') ||
+    n.includes('bow') ||
+    n.includes('1h') ||
+    n.includes('2h');
+}
+
+function findNativeNode(model, patterns) {
+  let hit = null;
+  model.traverse((child) => {
+    if (hit) return;
+    const n = normalizedNodeName(child.name);
+    if (patterns.some((pattern) => pattern.test(n))) hit = child;
+  });
+  return hit;
+}
+
+function getNativeWeaponNameForVocation(vocation) {
+  const v = String(vocation || '').toLowerCase();
+  if (v === 'knight') return ['1hsword', '2hsword'];
+  if (v === 'sorcerer' || v === 'druid') return ['staff'];
+  if (v === 'paladin') return ['bow', 'crossbow'];
+  return [];
+}
+
+function configureNativeKayKitWeapons(model, vocation) {
+  const v = String(vocation || '').toLowerCase();
+  const nativeNames = getNativeWeaponNameForVocation(v);
+  const usesNativeWeapons = nativeNames.length > 0;
+
+  if (!usesNativeWeapons) return { usesNativeWeapons: false, weapon: null, shield: null };
+
+  let weapon = null;
+  if (v === 'knight') {
+    weapon = findNativeNode(model, [/^1hsword(?:$|\d)/, /^2hsword(?:$|\d)/]);
+  } else if (v === 'sorcerer' || v === 'druid') {
+    weapon = findNativeNode(model, [/^staff(?:$|\d)/]);
+  } else if (v === 'paladin') {
+    weapon = findNativeNode(model, [/^bow(?:$|\d)/, /^crossbow(?:$|\d)/]);
+  }
+
+  const shield = v === 'knight'
+    ? findNativeNode(model, [/^shield(?:$|\d)/])
+    : null;
+
+  model.traverse((child) => {
+    if (!isWeaponOrShieldNode(child.name)) return;
+
+    const isActiveWeapon = child === weapon ||
+      (weapon && child.name && normalizedNodeName(child.name) === normalizedNodeName(weapon.name));
+    const isActiveShield = child === shield ||
+      (shield && child.name && normalizedNodeName(child.name) === normalizedNodeName(shield.name));
+
+    child.visible = isActiveWeapon || isActiveShield;
+  });
+
+  return { usesNativeWeapons: true, weapon, shield };
+}
+
 function disposeWeaponNode(node) {
   node.traverse((child) => {
     if (child.geometry?.dispose) child.geometry.dispose();
@@ -275,6 +340,26 @@ function clearAttachedGltfWeapons(pivot) {
 
 export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
   if (!rig?.model || !hand || !type) return null;
+
+  // KayKit already contains the correct native weapon/shield for these
+  // vocations. Never create a second generic gameplay weapon on top of it.
+  if (rig.usesNativeWeapons) {
+    const nativeNode = /shield/i.test(String(type))
+      ? rig.nativeShield
+      : rig.nativeWeapon;
+
+    if (nativeNode) {
+      nativeNode.visible = true;
+      rig.weaponPivot = nativeNode;
+      if (anim) {
+        anim.equippedWeaponPivot = nativeNode;
+        anim.isStaffEquipped = /staff|cajado|sorcerer|druid/i.test(String(type));
+      }
+      return { weapon: nativeNode, pivot: nativeNode, native: true };
+    }
+
+    return { weapon: null, pivot: rig.weaponPivot || null, native: true };
+  }
 
   // A Player can re-equip/change vocation/weapon without accumulating old
   // pivots. Remove the previous gameplay weapon before attaching the new one.
