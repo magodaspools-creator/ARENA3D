@@ -247,6 +247,17 @@ function applyGltfWeaponOffset(weaponMesh, type) {
   if (offset.rotation) weaponMesh.rotation.set(...offset.rotation);
 }
 
+function disposeWeaponNode(node) {
+  node.traverse((child) => {
+    if (child.geometry?.dispose) child.geometry.dispose();
+
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => material?.dispose?.());
+    }
+  });
+}
+
 function clearAttachedGltfWeapons(rig) {
   if (!rig?.root) return;
 
@@ -262,16 +273,12 @@ function clearAttachedGltfWeapons(rig) {
 
   for (const child of stale) {
     if (child.parent) child.parent.remove(child);
+    disposeWeaponNode(child);
   }
 
   rig.weaponPivot = null;
   rig.equippedWeaponPivot = null;
   rig.isStaffEquipped = false;
-
-  if (anim) {
-    anim.equippedWeaponPivot = null;
-    anim.isStaffEquipped = false;
-  }
 }
 
 export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
