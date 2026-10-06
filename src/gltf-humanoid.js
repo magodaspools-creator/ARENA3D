@@ -3,16 +3,15 @@ import { createWeapon } from './models.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const VOCATION_MODELS = {
-  // Real, public CC0 fantasy characters. No local GLB is requested.
-  knight: 'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb',
-  sorcerer: 'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Mage.glb',
-  paladin: 'https://pub-63ab27389d044634a73e89c1a0c6d4a6.r2.dev/free-library/3d-models/paladin/paladin.glb',
-  // Public CC0 green-hooded fantasy humanoid used for the Druid silhouette.
-  // The source does not publish a dedicated 3D Druid GLB, so we do not invent
-  // a fake URL that would 404.
-  druid: 'https://pub-63ab27389d044634a73e89c1a0c6d4a6.r2.dev/free-library/3d-models/hooded-blade/hooded-blade.glb',
+const KAYKIT_MODELS = {
+  knight: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Knight.glb',
+  sorcerer: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Mage.glb',
+  druid: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Mage.glb',
+  paladin: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Rogue.glb',
+  monk: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Barbarian.glb',
 };
+
+const VOCATION_MODELS = KAYKIT_MODELS;
 
 const loader = new GLTFLoader();
 const PLAYER_GLTF_PROMISES = new Map();
@@ -86,10 +85,26 @@ function normalizeModel(model) {
 function buildGltfRig(asset, look = {}, vocation = null) {
   const model = SkeletonUtils.clone(asset.scene);
   normalizeModel(model);
-  model.traverse((o) => {
-    if (!o.isMesh) return;
-    o.castShadow = true;
-    o.receiveShadow = true;
+  // KayKit Adventurers ships several equipment meshes inside each character
+  // (sword/shield/staff/bow variants). Hide every embedded equipment node so
+  // the player never renders a second "default loadout". The gameplay weapon
+  // is attached separately by attachGltfWeapon().
+  model.traverse((child) => {
+    const name = String(child.name || '').toLowerCase();
+    const isEmbeddedWeapon =
+      name.includes('sword') ||
+      name.includes('shield') ||
+      name.includes('staff') ||
+      name.includes('bow') ||
+      name.includes('1h_') ||
+      name.includes('2h_');
+
+    if (isEmbeddedWeapon) child.visible = false;
+
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
   });
   model.updateMatrixWorld(true);
   let invalidSkeletonBindings = 0;
@@ -233,8 +248,40 @@ function applyGltfWeaponOffset(weaponMesh, type) {
   if (offset.rotation) weaponMesh.rotation.set(...offset.rotation);
 }
 
+function clearAttachedGltfWeapons(rig) {
+  if (!rig?.root) return;
+
+  const stale = [];
+  rig.root.traverse((child) => {
+    if (
+      child.userData?.arenaPlayerWeapon ||
+      child.name === 'PlayerWeaponPivot'
+    ) {
+      stale.push(child);
+    }
+  });
+
+  for (const child of stale) {
+    if (child.parent) child.parent.remove(child);
+  }
+
+  rig.weaponPivot = null;
+  rig.equippedWeaponPivot = null;
+  rig.isStaffEquipped = false;
+
+  if (anim) {
+    anim.equippedWeaponPivot = null;
+    anim.isStaffEquipped = false;
+  }
+}
+
 export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
   if (!rig?.model || !hand || !type) return null;
+
+  // A Player can re-equip/change vocation/weapon without accumulating old
+  // pivots. Remove the previous gameplay weapon before attaching the new one.
+  clearAttachedGltfWeapons(rig);
+
   const weaponMesh = createWeapon(type, look);
   weaponMesh.userData.arenaPlayerWeapon = type;
   const isStaff = /staff|cajado|sorcerer|druid/i.test(String(type));
