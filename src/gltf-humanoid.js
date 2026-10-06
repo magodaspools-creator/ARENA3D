@@ -53,7 +53,7 @@ function normalizeModel(model) {
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.y) || size.y <= 0.001) return;
 
-  // Mantém o robô proporcional ao cenário e ao Player antigo (~3.8m na escala atual).
+  // Mantém o personagem proporcional ao cenário e ao Player antigo.
   const targetHeight = 76.0;
   const scale = targetHeight / size.y;
   model.scale.set(scale, scale, scale);
@@ -62,7 +62,6 @@ function normalizeModel(model) {
 
 function buildGltfRig(asset, look = {}, vocation = null) {
   const model = SkeletonUtils.clone(asset.scene);
-  tintVocationModel(model, vocation);
   normalizeModel(model);
   model.traverse((o) => {
     if (!o.isMesh) return;
