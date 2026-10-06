@@ -1,7 +1,11 @@
 // src/minimap.js — ARENA3D
-// Fonte única do mapa: collision.zones + collision.obstacles.
-// O mapa-base é desenhado uma vez em um canvas offscreen; durante o jogo,
-// render() apenas recorta a janela ao redor do jogador com drawImage().
+// Miniatura orgânica do mundo: o mapa-base é construído uma vez em canvas
+// offscreen de baixa resolução. Durante o jogo, render() apenas desloca essa
+// textura ao redor do jogador e desenha os overlays dinâmicos.
+//
+// A geometria continua vindo da área ativa (zones/obstacles/POIs), mas a
+// apresentação evita a aparência de "grade": terreno texturizado, paredes
+// com paths arredondados e pequenos obstáculos agrupados em blobs.
 
 export class Minimap {
   constructor(opts = {}) {
@@ -18,14 +22,16 @@ export class Minimap {
     this.canvas.style.width = `${this.size}px`;
     this.canvas.style.height = `${this.size}px`;
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.imageSmoothingEnabled = true;
 
-    this.mapRes = 512;
+    // Canvas-base deliberadamente reduzido: ele é uma miniatura do mundo,
+    // não uma cópia 1:1 da cena 3D.
+    this.mapRes = 384;
     this.mapCanvas = document.createElement('canvas');
     this.mapCanvas.width = this.mapRes;
     this.mapCanvas.height = this.mapRes;
     this.mapCtx = this.mapCanvas.getContext('2d');
-    this.mapCtx.imageSmoothingEnabled = false;
+    this.mapCtx.imageSmoothingEnabled = true;
 
     this.bounds = null;
     this.built = false;
@@ -52,7 +58,7 @@ export class Minimap {
       borderRadius: '50%',
       border: '3px solid rgba(20,22,30,.9)',
       boxShadow: '0 6px 18px rgba(0,0,0,.45), inset 0 0 0 2px rgba(255,255,255,.06)',
-      background: '#0e1018',
+      background: '#0b100d',
       ...pos,
     });
     document.body.appendChild(this.canvas);
@@ -82,43 +88,223 @@ export class Minimap {
       o.maxZ >= bounds.minZ && o.minZ <= bounds.maxZ;
   }
 
-  _drawZone(c, zone, wx, wz, S) {
-    c.fillStyle = '#3f6b4a';
+  _zonePath(c, zone, wx, wz, S) {
     if (zone.type === 'circle') {
       c.beginPath();
       c.arc(wx(zone.x), wz(zone.z), zone.r * S, 0, Math.PI * 2);
-      c.fill();
-      return;
+      return true;
     }
-    if (zone.type === 'polygon' || (Array.isArray(zone) && Array.isArray(zone[0]))) {
-      const points = zone.type === 'polygon' ? (zone.points || []) : zone;
-      if (points.length < 3) return;
+
+    const points = zone.type === 'polygon'
+      ? (zone.points || [])
+      : (Array.isArray(zone) && Array.isArray(zone[0]) ? zone : null);
+
+    if (points) {
+      if (points.length < 3) return false;
       c.beginPath();
       points.forEach(([x, z], i) => i ? c.lineTo(wx(x), wz(z)) : c.moveTo(wx(x), wz(z)));
       c.closePath();
-      c.fill();
-      return;
+      return true;
     }
-    if (Array.isArray(zone)) {
-      const [minX, maxX, minZ, maxZ] = zone;
-      c.fillRect(wx(minX), wz(minZ), (maxX - minX) * S, (maxZ - minZ) * S);
-      return;
-    }
-    c.fillRect(wx(zone.minX), wz(zone.minZ), (zone.maxX - zone.minX) * S, (zone.maxZ - zone.minZ) * S);
+
+    const [minX, maxX, minZ, maxZ] = Array.isArray(zone)
+      ? zone
+      : [zone.minX, zone.maxX, zone.minZ, zone.maxZ];
+
+    const x = wx(minX);
+    const y = wz(minZ);
+    const w = (maxX - minX) * S;
+    const h = (maxZ - minZ) * S;
+    const r = Math.min(7, Math.max(2, Math.min(w, h) * 0.18));
+
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+    return true;
   }
 
-  _drawObstacle(c, obstacle, wx, wz, S) {
-    if (!obstacle.enabled) return;
-    c.fillStyle = '#2b2f3d';
-    if (obstacle.type === 'circle') {
-      c.beginPath();
-      c.arc(wx(obstacle.x), wz(obstacle.z), obstacle.r * S, 0, Math.PI * 2);
+  _drawTerrain(c, zones, wx, wz, S, W) {
+    // Base escura + manchas de baixa frequência. Como o canvas é reduzido,
+    // essas manchas funcionam como uma versão leve do terreno 3D, sem
+    // transformar o minimapa em uma segunda renderização do mundo.
+    c.fillStyle = '#18261b';
+    c.fillRect(0, 0, W, W);
+
+    const terrainPalette = [
+      'rgba(48,72,48,.78)',
+      'rgba(57,82,52,.62)',
+      'rgba(39,61,42,.72)',
+      'rgba(71,82,52,.26)',
+      'rgba(27,49,35,.48)',
+    ];
+
+    for (const zone of zones) {
+      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
+      c.save();
+      if (!this._zonePath(c, zone, wx, wz, S)) {
+        c.restore();
+        continue;
+      }
+      c.clip();
+
+      // O preenchimento da zona continua respeitando a geometria real,
+      // mas a superfície recebe variação orgânica em vez de um retângulo sólido.
+      c.fillStyle = '#304936';
       c.fill();
-      return;
+
+      const minX = this.bounds.minX;
+      const maxX = this.bounds.maxX;
+      const minZ = this.bounds.minZ;
+      const maxZ = this.bounds.maxZ;
+      const spanX = maxX - minX;
+      const spanZ = maxZ - minZ;
+
+      for (let i = 0; i < 26; i++) {
+        const n = Math.sin((i + 1) * 91.73 + spanX * 0.71 + spanZ * 1.13);
+        const m = Math.sin((i + 1) * 47.17 + minX * 0.37 - minZ * 0.61);
+        const x = minX + ((n * 0.5 + 0.5) * spanX);
+        const z = minZ + ((m * 0.5 + 0.5) * spanZ);
+        const radius = 1.5 + (Math.sin(i * 17.9) * 0.5 + 0.5) * 4.5;
+
+        c.fillStyle = terrainPalette[i % terrainPalette.length];
+        c.beginPath();
+        c.ellipse(
+          wx(x),
+          wz(z),
+          radius * S,
+          radius * S * (0.55 + (i % 3) * 0.12),
+          (i * 0.63) % Math.PI,
+          0,
+          Math.PI * 2
+        );
+        c.fill();
+      }
+      c.restore();
     }
-    c.fillRect(wx(obstacle.minX), wz(obstacle.minZ),
-      (obstacle.maxX - obstacle.minX) * S,
-      (obstacle.maxZ - obstacle.minZ) * S);
+  }
+
+  _drawWallPath(c, obstacle, wx, wz, S) {
+    if (!obstacle.enabled) return;
+
+    const minX = obstacle.minX;
+    const maxX = obstacle.maxX;
+    const minZ = obstacle.minZ;
+    const maxZ = obstacle.maxZ;
+
+    if (![minX, maxX, minZ, maxZ].every(Number.isFinite)) return;
+
+    const x = wx(minX);
+    const y = wz(minZ);
+    const w = Math.max(1, (maxX - minX) * S);
+    const h = Math.max(1, (maxZ - minZ) * S);
+    const r = Math.min(7, Math.max(2, Math.min(w, h) * 0.28));
+
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+
+    c.fillStyle = 'rgba(20,28,22,.78)';
+    c.fill();
+    c.strokeStyle = 'rgba(101,119,92,.54)';
+    c.lineWidth = Math.max(1.1, S * 0.11);
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    c.stroke();
+  }
+
+  _drawObstacleBlobs(c, obstacles, wx, wz, S) {
+    const circles = [];
+    const regular = [];
+
+    for (const obstacle of obstacles) {
+      if (!obstacle?.enabled || !this._insideBounds(obstacle, this.bounds)) continue;
+      if (obstacle.type === 'circle' && Number.isFinite(obstacle.x) && Number.isFinite(obstacle.z)) {
+        circles.push({
+          x: obstacle.x,
+          z: obstacle.z,
+          r: Math.max(0.35, Number(obstacle.r) || 0.7),
+        });
+      } else {
+        regular.push(obstacle);
+      }
+    }
+
+    // Retângulos grandes continuam sendo paredes, mas com path arredondado.
+    for (const obstacle of regular) {
+      this._drawWallPath(c, obstacle, wx, wz, S);
+    }
+
+    // Pequenas pedras/árvores próximas viram manchas únicas, reduzindo o
+    // aspecto de "pontinhos de grade".
+    const used = new Array(circles.length).fill(false);
+    for (let i = 0; i < circles.length; i++) {
+      if (used[i]) continue;
+
+      const group = [circles[i]];
+      used[i] = true;
+
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let j = 0; j < circles.length; j++) {
+          if (used[j]) continue;
+          for (const g of group) {
+            const reach = Math.max(2.2, (g.r + circles[j].r) * 2.6);
+            if (Math.hypot(g.x - circles[j].x, g.z - circles[j].z) <= reach) {
+              group.push(circles[j]);
+              used[j] = true;
+              changed = true;
+              break;
+            }
+          }
+        }
+      }
+
+      let cx = 0, cz = 0, area = 0, maxR = 0;
+      for (const g of group) {
+        const a = Math.PI * g.r * g.r;
+        cx += g.x * a;
+        cz += g.z * a;
+        area += a;
+        maxR = Math.max(maxR, g.r);
+      }
+      cx /= Math.max(area, 0.001);
+      cz /= Math.max(area, 0.001);
+
+      const blobR = Math.min(4.8, Math.max(maxR * 1.25, Math.sqrt(area / Math.PI) * 1.08));
+
+      c.save();
+      c.shadowColor = 'rgba(8,16,10,.65)';
+      c.shadowBlur = Math.max(1.5, S * 0.45);
+      c.fillStyle = 'rgba(22,35,25,.82)';
+      c.beginPath();
+      c.arc(wx(cx), wz(cz), blobR * S, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      c.strokeStyle = 'rgba(90,112,82,.42)';
+      c.lineWidth = Math.max(1, S * 0.1);
+      c.beginPath();
+      c.arc(wx(cx), wz(cz), blobR * S, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
+    }
   }
 
   buildFromArea({ bounds, zones = [], obstacles = [], pois = [] }) {
@@ -137,37 +323,31 @@ export class Minimap {
     const wz = (z) => offZ + (z - bounds.minZ) * S;
 
     c.clearRect(0, 0, W, W);
-    c.fillStyle = '#12141c';
-    c.fillRect(0, 0, W, W);
-
-    for (const zone of zones) {
-      if (!zone || !this._insideBounds(zone, bounds)) continue;
-      this._drawZone(c, zone, wx, wz, S);
-    }
-
-    for (const obstacle of obstacles) {
-      if (!obstacle || !this._insideBounds(obstacle, bounds)) continue;
-      this._drawObstacle(c, obstacle, wx, wz, S);
-    }
+    this._drawTerrain(c, zones, wx, wz, S, W);
+    this._drawObstacleBlobs(c, obstacles, wx, wz, S);
 
     for (const p of pois) {
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
       const x = wx(p.x), z = wz(p.z);
       if (p.type === 'pz') {
         c.save();
-        c.strokeStyle = 'rgba(91,128,113,.62)';
-        c.lineWidth = Math.max(1, S * 0.16);
-        c.setLineDash([Math.max(3, S * 0.5), Math.max(3, S * 0.65)]);
+        c.strokeStyle = 'rgba(91,128,113,.58)';
+        c.lineWidth = Math.max(1, S * 0.12);
+        c.setLineDash([Math.max(3, S * 0.42), Math.max(3, S * 0.6)]);
         c.beginPath();
         c.arc(x, z, (p.r ?? 1) * S, 0, Math.PI * 2);
         c.stroke();
         c.restore();
         continue;
       }
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,.45)';
+      c.shadowBlur = 3;
       c.fillStyle = this.poiColor(p.type);
       c.beginPath();
-      c.arc(x, z, Math.min(10, Math.max(2, (p.r ?? 1.2) * S)), 0, Math.PI * 2);
+      c.arc(x, z, Math.min(9, Math.max(2, (p.r ?? 1.2) * S)), 0, Math.PI * 2);
       c.fill();
+      c.restore();
     }
 
     this._S = S;
@@ -180,7 +360,7 @@ export class Minimap {
   }
 
   poiColor(type) {
-    return ({ npc: '#5ec9a0', mine: '#c98b3a', arena: '#c94f4f', portal: '#5890a6', pz: '#5b8071', grave: '#8a7fa8' })[type] || '#fff';
+    return ({ npc: '#74c69d', mine: '#d49a4a', arena: '#d45c5c', portal: '#66a9bd', pz: '#6a917f', grave: '#9a8bb8' })[type] || '#fff';
   }
 
   update(player, entities = []) {
@@ -202,14 +382,16 @@ export class Minimap {
 
     const cx = this.size * 0.5;
     const cy = this.size * 0.5;
-    const radius = Math.min(this.size, this.size) * 0.5 - 1;
+    const radius = this.size * 0.5 - 1;
 
+    // A máscara circular é aplicada antes de qualquer desenho do frame.
+    // Nada consegue escapar da área do minimapa.
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.clip();
 
-    ctx.fillStyle = '#0e1018';
+    ctx.fillStyle = '#0b100d';
     ctx.fillRect(0, 0, this.size, this.size);
 
     const pxPerUnit = this.size / this.viewWorld;
@@ -219,7 +401,7 @@ export class Minimap {
     const dz = (this.player.z - centerZ) * pxPerUnit;
     const drawSize = this._span * pxPerUnit;
 
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(
       this.mapCanvas,
       cx - dx - drawSize * 0.5,
@@ -228,28 +410,36 @@ export class Minimap {
       drawSize
     );
 
+    // Mobs/NPCs continuam dinâmicos e ficam sempre por cima da miniatura.
     for (const e of this.entities) {
       const ex = cx + (e.x - this.player.x) * pxPerUnit;
       const ez = cy + (e.z - this.player.z) * pxPerUnit;
       if (ex < -6 || ez < -6 || ex > this.size + 6 || ez > this.size + 6) continue;
 
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.7)';
+      ctx.shadowBlur = 2;
       ctx.beginPath();
       ctx.arc(ex, ez, e.radius ?? 3, 0, Math.PI * 2);
       ctx.fillStyle = this.entColor(e.type);
       ctx.fill();
       ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(0,0,0,.6)';
+      ctx.strokeStyle = 'rgba(0,0,0,.7)';
       ctx.stroke();
+      ctx.restore();
     }
 
+    // Jogador: seta orientada para a direção atual.
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(-this.player.rot);
+    ctx.shadowColor = 'rgba(0,0,0,.75)';
+    ctx.shadowBlur = 3;
     ctx.beginPath();
-    ctx.moveTo(0, -7);
-    ctx.lineTo(-5, 6);
-    ctx.lineTo(0, 3);
-    ctx.lineTo(5, 6);
+    ctx.moveTo(0, -8);
+    ctx.lineTo(-5.5, 6);
+    ctx.lineTo(0, 3.2);
+    ctx.lineTo(5.5, 6);
     ctx.closePath();
     ctx.fillStyle = '#ff6b6b';
     ctx.fill();
@@ -260,11 +450,23 @@ export class Minimap {
 
     ctx.restore();
 
+    // Borda circular com profundidade: sombra externa + aro discreto.
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.72)';
+    ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(cx, cy, this.size * 0.5 - 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.strokeStyle = 'rgba(8,12,9,.95)';
     ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 2.5, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(202,215,193,.20)';
+    ctx.stroke();
+    ctx.restore();
 
     this.dirty = false;
   }
