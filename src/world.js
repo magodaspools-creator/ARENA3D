@@ -49,18 +49,89 @@ export function createGround(scene, terrain, colorAt, { width = 200, depth = 200
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
   const c = new THREE.Color();
+
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + cx, z = pos.getZ(i) + cz;
     pos.setXYZ(i, x, terrain.height(x, z) - 0.01, z);
     colorAt(x, z, c);
     colors.set([c.r, c.g, c.b], i * 3);
   }
+
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  // Smooth shading removes the artificial grid/facet lighting while keeping
+  // the existing procedural height field completely untouched.
   geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
-  m.receiveShadow = true;
-  scene.add(m);
-  return m;
+
+  // Build a small seamless procedural tangent-space normal map from the same
+  // fbm/noise2 functions used by the terrain. The toroidal sampling makes the
+  // texture tile cleanly when repeated across the 200x200 ground.
+  const normalSize = 256;
+  const normalCanvas = document.createElement('canvas');
+  normalCanvas.width = normalSize;
+  normalCanvas.height = normalSize;
+  const normalCtx = normalCanvas.getContext('2d', { willReadFrequently: true });
+  const normalImage = normalCtx.createImageData(normalSize, normalSize);
+  const data = normalImage.data;
+  const TAU = Math.PI * 2;
+  const tileScale = 2.8;
+  const sampleStep = 1 / normalSize;
+  const normalStrength = 2.2;
+
+  const proceduralHeight = (u, v) => {
+    const a = u * TAU;
+    const b = v * TAU;
+    const x = Math.cos(a) * tileScale + Math.cos(b) * tileScale * 0.72;
+    const z = Math.sin(a) * tileScale + Math.sin(b) * tileScale * 0.72;
+    return fbm(x, z);
+  };
+
+  for (let y = 0; y < normalSize; y++) {
+    const v = y / normalSize;
+    for (let x = 0; x < normalSize; x++) {
+      const u = x / normalSize;
+      const hL = proceduralHeight(u - sampleStep, v);
+      const hR = proceduralHeight(u + sampleStep, v);
+      const hD = proceduralHeight(u, v - sampleStep);
+      const hU = proceduralHeight(u, v + sampleStep);
+
+      let nx = -(hR - hL) * normalStrength;
+      let ny = 1;
+      let nz = -(hU - hD) * normalStrength;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len;
+      ny /= len;
+      nz /= len;
+
+      const i = (y * normalSize + x) * 4;
+      data[i] = Math.round((nx * 0.5 + 0.5) * 255);
+      data[i + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      data[i + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      data[i + 3] = 255;
+    }
+  }
+
+  normalCtx.putImageData(normalImage, 0, 0);
+  const normalMap = new THREE.CanvasTexture(normalCanvas);
+  normalMap.wrapS = THREE.RepeatWrapping;
+  normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(50, 50);
+  normalMap.needsUpdate = true;
+
+  const m = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    flatShading: false,
+    roughness: 0.85,
+    metalness: 0.05,
+    normalMap,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+  });
+  m.flatShading = false;
+  m.needsUpdate = true;
+
+  const ground = new THREE.Mesh(geo, m);
+  ground.receiveShadow = true;
+  scene.add(ground);
+  return ground;
 }
 
 /** Collects transforms and turns them into a single InstancedMesh. */
