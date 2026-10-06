@@ -137,9 +137,21 @@ export class Minimap {
 
     for (const p of pois) {
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+      const x = wx(p.x), z = wz(p.z);
+      if (p.type === 'pz') {
+        c.save();
+        c.strokeStyle = 'rgba(91,128,113,.62)';
+        c.lineWidth = Math.max(1, S * 0.16);
+        c.setLineDash([Math.max(3, S * 0.5), Math.max(3, S * 0.65)]);
+        c.beginPath();
+        c.arc(x, z, (p.r ?? 1) * S, 0, Math.PI * 2);
+        c.stroke();
+        c.restore();
+        continue;
+      }
       c.fillStyle = this.poiColor(p.type);
       c.beginPath();
-      c.arc(wx(p.x), wz(p.z), Math.min(10, Math.max(2, (p.r ?? 1.2) * S)), 0, Math.PI * 2);
+      c.arc(x, z, Math.min(10, Math.max(2, (p.r ?? 1.2) * S)), 0, Math.PI * 2);
       c.fill();
     }
 
@@ -153,7 +165,7 @@ export class Minimap {
   }
 
   poiColor(type) {
-    return ({ npc: '#5ec9a0', mine: '#c98b3a', arena: '#c94f4f', portal: '#5890a6', grave: '#8a7fa8' })[type] || '#fff';
+    return ({ npc: '#5ec9a0', mine: '#c98b3a', arena: '#c94f4f', portal: '#5890a6', pz: '#5b8071', grave: '#8a7fa8' })[type] || '#fff';
   }
 
   update(player, entities = []) {
