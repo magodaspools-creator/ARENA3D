@@ -187,10 +187,59 @@ export class Minimap {
     return true;
   }
 
+  _buildTerrainMask(zones, wx, wz, S, W) {
+    // IMPORTANTE: a união visual é feita em raster, e não apenas juntando
+    // subpaths no clip. Isso elimina qualquer microfenda/antialiasing entre
+    // dois polígonos vizinhos e transforma todas as zonas em UMA superfície.
+    if (!this.terrainMask || this.terrainMask.width !== W || this.terrainMask.height !== W) {
+      this.terrainMask = document.createElement('canvas');
+      this.terrainMask.width = W;
+      this.terrainMask.height = W;
+      this.terrainMaskCtx = this.terrainMask.getContext('2d');
+    }
+
+    const m = this.terrainMaskCtx;
+    m.clearRect(0, 0, W, W);
+    m.fillStyle = '#fff';
+    m.beginPath();
+
+    let validZones = 0;
+    for (const zone of zones) {
+      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
+      if (this._zonePath(m, zone, wx, wz, S, true)) validZones++;
+    }
+
+    if (!validZones) return false;
+    m.fill();
+
+    // Pequeno "fechamento" morfológico. Ele só fecha fissuras microscópicas
+    // criadas por bordas que deveriam encostar, sem arredondar o mapa inteiro.
+    // O mesmo bitmap é usado em todas as zonas, portanto não existem seams.
+    const pad = Math.max(1, Math.min(2, Math.round(S * 0.08)));
+    const expanded = document.createElement('canvas');
+    expanded.width = W;
+    expanded.height = W;
+    const e = expanded.getContext('2d');
+    e.fillStyle = '#fff';
+
+    const offsets = [
+      [-pad, 0], [pad, 0], [0, -pad], [0, pad],
+      [-pad, -pad], [pad, -pad], [-pad, pad], [pad, pad],
+    ];
+    for (const [ox, oy] of offsets) e.drawImage(this.terrainMask, ox, oy);
+    e.drawImage(this.terrainMask, 0, 0);
+
+    // Suaviza somente a máscara final. A textura continua sendo calculada
+    // globalmente, então a variação de cor nunca reinicia numa zona nova.
+    m.clearRect(0, 0, W, W);
+    m.filter = 'blur(0.65px)';
+    m.drawImage(expanded, 0, 0);
+    m.filter = 'none';
+
+    return true;
+  }
+
   _drawTerrain(c, zones, wx, wz, S, W) {
-    // A superfície inteira usa uma única máscara. Os polígonos continuam
-    // definindo a geometria do terreno, mas deixam de aparecer como peças
-    // independentes encaixadas umas nas outras.
     if (!this.groundMinimapTexture || this.groundMinimapTexture.width !== W || this.groundMinimapTexture.height !== W) {
       this.groundMinimapTexture = this._makeGroundMinimapTexture(W, W);
     }
@@ -198,28 +247,20 @@ export class Minimap {
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
+    if (!this._buildTerrainMask(zones, wx, wz, S, W)) return;
+
+    // A textura é desenhada UMA vez. A máscara já representa a união raster
+    // de todas as zonas, então não há composição individual de polígonos.
     c.save();
-    c.beginPath();
-
-    let validZones = 0;
-    for (const zone of zones) {
-      if (!zone || !this._insideBounds(zone, this.bounds)) continue;
-      if (this._zonePath(c, zone, wx, wz, S, true)) validZones++;
-    }
-
-    if (!validZones) {
-      c.restore();
-      return;
-    }
-
-    // Uma única máscara recorta a textura procedural. Como o clip é feito
-    // sobre o path combinado, não existe mais uma mudança visual por zona.
-    c.clip();
+    c.globalCompositeOperation = 'source-over';
     c.drawImage(this.groundMinimapTexture, 0, 0, W, W);
+    c.globalCompositeOperation = 'destination-in';
+    c.drawImage(this.terrainMask, 0, 0, W, W);
+    c.restore();
 
-    // Tint geral extremamente sutil, aplicado uma única vez sobre toda a
-    // superfície. Não há preenchimento individual nem borda entre polígonos.
-    c.globalAlpha = 0.08;
+    // Pequena camada atmosférica global. Nunca é aplicada por zona.
+    c.save();
+    c.globalAlpha = 0.07;
     c.fillStyle = '#3a5540';
     c.fillRect(0, 0, W, W);
     c.restore();
