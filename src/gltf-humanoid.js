@@ -170,7 +170,7 @@ const GLTF_WEAPON_OFFSETS = {
 };
 
 
-function centerWeaponAtGrip(weapon) {
+function centerWeaponAtGrip(weapon, type) {
   weapon.updateMatrixWorld(true);
 
   // For a single BufferGeometry, geometry.center() is the correct primitive.
@@ -186,11 +186,14 @@ function centerWeaponAtGrip(weapon) {
   const box = new THREE.Box3().setFromObject(weapon);
   if (box.isEmpty()) return;
 
-  const grip = new THREE.Vector3(
-    (box.min.x + box.max.x) * 0.5,
-    box.min.y,
-    (box.min.z + box.max.z) * 0.5
-  );
+  const center = box.getCenter(new THREE.Vector3());
+  const grip = type === 'crossbow'
+    ? center
+    : new THREE.Vector3(
+      center.x,
+      box.min.y,
+      center.z
+    );
 
   weapon.children.forEach((child) => {
     child.position.sub(grip);
@@ -217,7 +220,7 @@ export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
 
   const targetSize = isStaff ? 2.0 : (GLTF_WEAPON_OFFSETS[type]?.targetSize || 1.5);
   if (isStaff || type === 'crossbow') {
-    centerWeaponAtGrip(weaponMesh);
+    centerWeaponAtGrip(weaponMesh, type);
   }
 
   const box = new THREE.Box3().setFromObject(weaponMesh);
