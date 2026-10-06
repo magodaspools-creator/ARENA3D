@@ -180,13 +180,13 @@ export class UI {
           if (!collision.inside(x, z)) continue;
           const k = (iy * mw + ix) * 4;
           if (underground) {
-            image.data[k] = 55;
-            image.data[k + 1] = 61;
-            image.data[k + 2] = 61;
+            image.data[k] = 42;
+            image.data[k + 1] = 48;
+            image.data[k + 2] = 48;
           } else {
-            image.data[k] = 55;
-            image.data[k + 1] = 76;
-            image.data[k + 2] = 64;
+            image.data[k] = 45;
+            image.data[k + 1] = 58;
+            image.data[k + 2] = 46;
           }
           image.data[k + 3] = 228;
         }
@@ -224,7 +224,7 @@ export class UI {
     // Structural collision: dark graphite masses, not debug rectangles.
     ctx.save();
     ctx.strokeStyle = underground ? 'rgba(19, 21, 21, 0.94)' : 'rgba(25, 34, 30, 0.88)';
-    ctx.fillStyle = underground ? 'rgba(18, 20, 21, 0.86)' : 'rgba(25, 34, 30, 0.70)';
+    ctx.fillStyle = underground ? 'rgba(58, 62, 68, 0.84)' : 'rgba(74, 78, 105, 0.78)';
 
     for (const o of collision.obstacles || []) {
       if (!o.enabled) continue;
