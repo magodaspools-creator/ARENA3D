@@ -3,47 +3,39 @@ import { createWeapon } from './models.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const PLAYER_MODEL_PATH = './assets/models/RobotExpressive.glb';
-const loader = new GLTFLoader();
-let PLAYER_GLTF_PROMISE = null;
-
-const VOCATION_COLORS = {
-  paladin: 0xFFD700,
-  sorcerer: 0x8A2BE2,
-  druid: 0x2E8B57,
-  knight: 0xC0C0C0,
+const VOCATION_MODELS = {
+  // Real, public CC0 fantasy characters. No local GLB is requested.
+  knight: 'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb',
+  sorcerer: 'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/672074b73ba276876a19e8816ecdc5241817ab47/addons/kaykit_character_pack_adventures/Characters/gltf/Mage.glb',
+  paladin: 'https://pub-63ab27389d044634a73e89c1a0c6d4a6.r2.dev/free-library/3d-models/paladin/paladin.glb',
+  // Public CC0 green-hooded fantasy humanoid used for the Druid silhouette.
+  // The source does not publish a dedicated 3D Druid GLB, so we do not invent
+  // a fake URL that would 404.
+  druid: 'https://pub-63ab27389d044634a73e89c1a0c6d4a6.r2.dev/free-library/3d-models/hooded-blade/hooded-blade.glb',
 };
 
-function getVocationColor(vocation) {
-  return VOCATION_COLORS[String(vocation || '').toLowerCase()] ?? 0xD8D8D8;
+const loader = new GLTFLoader();
+const PLAYER_GLTF_PROMISES = new Map();
+
+function getModelPathForVocation(vocation) {
+  const key = String(vocation || '').toLowerCase();
+  return VOCATION_MODELS[key] || VOCATION_MODELS.knight;
 }
 
-function getPlayerGltf() {
-  if (!PLAYER_GLTF_PROMISE) {
-    PLAYER_GLTF_PROMISE = loader.loadAsync(PLAYER_MODEL_PATH).catch((error) => {
-      console.error('[ARENA] Default GLTF unavailable.', { modelPath: PLAYER_MODEL_PATH, error });
-      return null;
-    });
+function getPlayerGltf(vocation) {
+  const modelPath = getModelPathForVocation(vocation);
+
+  if (!PLAYER_GLTF_PROMISES.has(modelPath)) {
+    PLAYER_GLTF_PROMISES.set(
+      modelPath,
+      loader.loadAsync(modelPath).catch((error) => {
+        PLAYER_GLTF_PROMISES.delete(modelPath);
+        throw new Error(`[ARENA] Failed to load real vocation GLTF: ${modelPath}`, { cause: error });
+      }),
+    );
   }
-  return PLAYER_GLTF_PROMISE;
-}
 
-function tintVocationModel(model, vocation) {
-  const color = getVocationColor(vocation);
-  model.traverse((child) => {
-    if (!child.isMesh || !child.material) return;
-    if (Array.isArray(child.material)) {
-      child.material = child.material.map((material) => {
-        const clone = material.clone();
-        if (clone.color) clone.color.set(color);
-        return clone;
-      });
-      return;
-    }
-    const material = child.material.clone();
-    if (material.color) material.color.set(color);
-    child.material = material;
-  });
+  return PLAYER_GLTF_PROMISES.get(modelPath);
 }
 
 const findBone = (root, patterns) => {
@@ -121,12 +113,18 @@ function buildGltfRig(asset, look = {}, vocation = null) {
 
   root.add(body, torso, head, legL, legR, armL, armR);
 
-  // RobotExpressive.glb: GLTFLoader removes dots from bone names.
-  // The actual hand bones are Palm2L and Palm2R (source names Palm2.L/Palm2.R).
+  // vocation GLTF: GLTFLoader removes dots from bone names.
+  // KayKit uses handslot.l/r; other humanoids are matched through generic Hand/LeftHand/RightHand patterns.
   // Keep the gameplay anchors DIRECTLY under those animated bones so every
   // weapon follows the hand translation/rotation/scale produced by the mixer.
-  const handBoneL = findBone(model, [/^Palm2L$/i, /LeftHand$/i, /HandL$/i, /LeftPalm$/i, /PalmL$/i]);
-  const handBoneR = findBone(model, [/^Palm2R$/i, /RightHand$/i, /HandR$/i, /RightPalm$/i, /PalmR$/i]);
+  const handBoneL = findBone(model, [
+    /^handslotl$/i, /^handl$/i, /^lefthand$/i, /^left_hand$/i, /^hand\.l$/i,
+    /left.*hand/i, /hand.*left/i, /wrist.*l$/i, /forearm.*l$/i,
+  ]);
+  const handBoneR = findBone(model, [
+    /^handslotr$/i, /^handr$/i, /^righthand$/i, /^right_hand$/i, /^hand\.r$/i,
+    /right.*hand/i, /hand.*right/i, /wrist.*r$/i, /forearm.*r$/i,
+  ]);
 
   const handL = armL;
   const handR = armR;
@@ -172,6 +170,36 @@ const GLTF_WEAPON_OFFSETS = {
   staff: { position: [0, 0, 0], rotation: [0, Math.PI / 2, Math.PI / 2], targetSize: 2.0 },
 };
 
+
+function centerWeaponAtGrip(weapon) {
+  weapon.updateMatrixWorld(true);
+
+  // For a single BufferGeometry, geometry.center() is the correct primitive.
+  // Composite weapon Groups need the equivalent group-space rebase so the
+  // relative positions of stock/limbs/rail/orb are preserved.
+  if (weapon.isMesh && weapon.geometry?.center) {
+    weapon.geometry.center();
+    weapon.position.set(0, 0, 0);
+    weapon.updateMatrixWorld(true);
+    return;
+  }
+
+  const box = new THREE.Box3().setFromObject(weapon);
+  if (box.isEmpty()) return;
+
+  const grip = new THREE.Vector3(
+    (box.min.x + box.max.x) * 0.5,
+    box.min.y,
+    (box.min.z + box.max.z) * 0.5
+  );
+
+  weapon.traverse((child) => {
+    if (child === weapon || !child.parent) return;
+    child.position.sub(grip);
+  });
+  weapon.updateMatrixWorld(true);
+}
+
 function applyGltfWeaponOffset(weaponMesh, type) {
   const typeStr = String(type || '');
   const isStaff = /staff|cajado|sorcerer|druid/i.test(typeStr);
@@ -190,15 +218,8 @@ export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
   weaponMesh.updateMatrixWorld(true);
 
   const targetSize = isStaff ? 2.0 : (GLTF_WEAPON_OFFSETS[type]?.targetSize || 1.5);
-  if (isStaff) {
-    const box = new THREE.Box3().setFromObject(weaponMesh);
-    const grip = new THREE.Vector3(
-      (box.min.x + box.max.x) * 0.5,
-      box.min.y,
-      (box.min.z + box.max.z) * 0.5
-    );
-    weaponMesh.children.forEach((child) => child.position.sub(grip));
-    weaponMesh.updateMatrixWorld(true);
+  if (isStaff || type === 'crossbow') {
+    centerWeaponAtGrip(weaponMesh);
   }
 
   const box = new THREE.Box3().setFromObject(weaponMesh);
@@ -229,28 +250,23 @@ export function attachGltfWeapon(rig, anim, type, look = {}, hand) {
 }
 
 export async function loadPlayerRig(look = {}, createHumanoid, vocation = null, playerData = null) {
-  const vocationStr = (typeof vocation !== 'undefined' && vocation)
-    ? String(vocation).toLowerCase()
-    : (playerData && playerData.vocation ? String(playerData.vocation).toLowerCase() : 'paladin');
-  const asset = await getPlayerGltf();
-  if (asset) {
-    try {
-      const rig = buildGltfRig(asset, look, vocationStr);
-      console.log('[ARENA] Player rig ready: GLTF final rig.', {
-        vocation: vocationStr,
-        modelPath: PLAYER_MODEL_PATH,
-        clonedScene: rig.model !== asset.scene,
-        modelName: rig.model.name || '(unnamed)',
-        sourceName: asset.scene.name || '(unnamed)',
-      });
-      return rig;
-    } catch (error) {
-      console.warn('[ARENA] Failed to build GLTF rig; using procedural player.', error);
-    }
+  const vocationStr = (vocation || playerData?.vocation || 'knight').toString().toLowerCase();
+  const modelPath = getModelPathForVocation(vocationStr);
+  const asset = await getPlayerGltf(vocationStr);
+
+  if (!asset?.scene) {
+    throw new Error(`[ARENA] No real GLTF scene available for vocation: ${vocationStr}`);
   }
-  const rig = createHumanoid(look);
-  rig.isProceduralFallback = true;
-  console.log('[ARENA] Player rig ready: PROCEDURAL FALLBACK.');
+
+  const rig = buildGltfRig(asset, look, vocationStr);
+  console.log('[ARENA] Real vocation GLTF rig ready.', {
+    vocation: vocationStr,
+    modelPath,
+    clonedScene: rig.model !== asset.scene,
+    modelName: rig.model.name || '(unnamed)',
+    sourceName: asset.scene.name || '(unnamed)',
+    animations: rig.animations.map((clip) => clip.name),
+  });
   return rig;
 }
 
@@ -263,14 +279,46 @@ export class GltfAnimator {
     this.mixer = new THREE.AnimationMixer(rig.model);
     this.mixerTarget = rig.model;
     this.actions = {};
+
     for (const clip of rig.animations) {
       const action = this.mixer.clipAction(clip);
       this.actions[clip.name] = action;
-      if (clip.name === 'Death' || clip.name === 'Punch') {
+    }
+
+    const findAction = (patterns) => {
+      const key = Object.keys(this.actions).find((name) =>
+        patterns.some((re) => re.test(name))
+      );
+      return key ? this.actions[key] : null;
+    };
+
+    this.actions.Idle = this.actions.Idle || findAction([/^idle$/i, /idle/i, /stand/i]);
+    this.actions.Walking = this.actions.Walking || findAction([/^walking/i, /^walk/i, /walk_loop/i]);
+    this.actions.Running = this.actions.Running || findAction([/^running/i, /^run/i, /sprint/i, /jog/i]);
+    this.actions.Punch = this.actions.Punch || findAction([
+      /punch/i, /attack/i, /melee/i, /shoot/i, /cast/i, /slash/i, /swing/i
+    ]);
+    this.actions.Death = this.actions.Death || findAction([/death/i, /die/i]);
+
+    for (const action of Object.values(this.actions)) {
+      if (!action || !action.getClip) continue;
+      const name = action.getClip().name;
+      if (/death|die/i.test(name)) {
         action.clampWhenFinished = true;
         action.loop = THREE.LoopOnce;
       }
     }
+
+    // Start neutral animation immediately; real assets may call it Idle/idle/stand.
+    for (const name of ['Idle', 'Walking', 'Running']) {
+      const action = this.actions[name];
+      if (!action) continue;
+      action.enabled = true;
+      action.setEffectiveWeight(name === 'Idle' ? 1 : 0);
+      action.setEffectiveTimeScale(1);
+      action.reset().play();
+    }
+
     this.attackState = null;
     this.dying = false;
     this.dead = false;
