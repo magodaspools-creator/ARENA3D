@@ -37,6 +37,7 @@ export class UI {
       ? new Minimap({ canvas: this.el.minimap, size: 274, viewWorld: 42 })
       : null;
     this.minimapAreaKey = null;
+    this.minimapLastZoneCount = null;
   }
 
   // ---------- world anchored ----------
@@ -155,19 +156,33 @@ export class UI {
     if (!this.minimap || !area?.minimap || !p) return;
 
     const b = area.minimap.bounds;
+    const zones = this.game.collision?.zones || [];
+
+    // Não constrói terreno sem zonas: destination-in apagaria tudo.
+    if (!zones.length) {
+      if (this.minimapLastZoneCount !== 0) {
+        console.log('[minimap] aguardando zones', { zoneCount: 0 });
+        this.minimapLastZoneCount = 0;
+      }
+      return;
+    }
+
     const areaKey = [
       b.minX, b.maxX, b.minZ, b.maxZ,
       area.minimap.underground ? 'mine' : 'surface',
+      `zones:${zones.length}`,
     ].join('|');
 
     if (force || this.minimapAreaKey !== areaKey) {
+      console.log('[minimap] build', { areaKey, zoneCount: zones.length });
       this.minimap.buildFromArea({
         bounds: b,
-        zones: this.game.collision?.zones || [],
+        zones,
         obstacles: this.game.collision?.obstacles || [],
         pois: this._minimapPois(area),
       });
       this.minimapAreaKey = areaKey;
+      this.minimapLastZoneCount = zones.length;
     }
 
     this.minimap.update(p, this._minimapEntities());
