@@ -193,8 +193,7 @@ function centerWeaponAtGrip(weapon) {
     (box.min.z + box.max.z) * 0.5
   );
 
-  weapon.traverse((child) => {
-    if (child === weapon || !child.parent) return;
+  weapon.children.forEach((child) => {
     child.position.sub(grip);
   });
   weapon.updateMatrixWorld(true);
