@@ -129,9 +129,6 @@ export class UI {
     const focusSpan = underground ? 42 : 46;
     const half = focusSpan * 0.5;
 
-    // The old map showed the entire world at once, which made the player and
-    // nearby routes microscopic. The minimap now behaves like a real navigation
-    // map: it follows the player and keeps a useful local area in view.
     const centerX = Math.max(minX + half, Math.min(maxX - half, p.pos.x));
     const centerZ = Math.max(minZ + half, Math.min(maxZ - half, p.pos.z));
     const viewMinX = centerX - half;
@@ -143,34 +140,51 @@ export class UI {
     const px = (x) => (x - viewMinX) * sx;
     const pz = (z) => (z - viewMinZ) * sy;
 
+    // A circular viewport is the visual identity of the minimap. Everything
+    // below is clipped to it; the frame itself is drawn afterward.
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const radius = Math.min(w, h) * 0.5 - 5;
+
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(5, 8, 11, 0.94)';
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Restrained fantasy palette: deep greens, graphite and closed blue.
+    ctx.fillStyle = underground ? '#25292a' : '#293b35';
     ctx.fillRect(0, 0, w, h);
 
-    // Build the playable silhouette from the REAL collision field instead of
-    // drawing each rectangular zone. This turns overlapping rectangles/circles/
-    // polygons into one continuous map contour, so the minimap follows the
-    // actual playable shape rather than looking like a debug grid.
     const collision = this.game.collision;
-    const cacheKey = [minX, maxX, minZ, maxZ, underground ? 'mine' : 'surface'].join('|');
+    const cacheKey = [minX, maxX, minZ, maxZ, underground ? 'mine' : 'surface', 'v2'].join('|');
     if (!this.minimapCache || this.minimapCache.key !== cacheKey) {
       const mw = 320, mh = 320;
       const map = document.createElement('canvas');
-      map.width = mw; map.height = mh;
+      map.width = mw;
+      map.height = mh;
       const mctx = map.getContext('2d');
       const image = mctx.createImageData(mw, mh);
+
       for (let iy = 0; iy < mh; iy++) {
         const z = minZ + ((iy + 0.5) / mh) * (maxZ - minZ);
         for (let ix = 0; ix < mw; ix++) {
           const x = minX + ((ix + 0.5) / mw) * (maxX - minX);
           if (!collision.inside(x, z)) continue;
           const k = (iy * mw + ix) * 4;
-          image.data[k] = underground ? 82 : 68;
-          image.data[k + 1] = underground ? 94 : 98;
-          image.data[k + 2] = underground ? 88 : 70;
-          image.data[k + 3] = 215;
+          if (underground) {
+            image.data[k] = 55;
+            image.data[k + 1] = 61;
+            image.data[k + 2] = 61;
+          } else {
+            image.data[k] = 55;
+            image.data[k + 1] = 76;
+            image.data[k + 2] = 64;
+          }
+          image.data[k + 3] = 228;
         }
       }
+
       mctx.putImageData(image, 0, 0);
       this.minimapCache = { key: cacheKey, canvas: map, mw, mh };
     }
@@ -180,57 +194,61 @@ export class UI {
     const srcZ = ((viewMinZ - minZ) / (maxZ - minZ)) * cache.mh;
     const srcW = ((viewMaxX - viewMinX) / (maxX - minX)) * cache.mw;
     const srcH = ((viewMaxZ - viewMinZ) / (maxZ - minZ)) * cache.mh;
+
     ctx.save();
     ctx.imageSmoothingEnabled = true;
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.94;
     ctx.drawImage(cache.canvas, srcX, srcZ, srcW, srcH, 0, 0, w, h);
     ctx.restore();
 
-    // Structural collision is drawn over the silhouette as actual walls/rocks,
-    // using the same collision objects that the player encounters in the world.
-    // Small vegetation clutter is intentionally skipped.
+    // Structural collision: dark graphite masses, not debug rectangles.
     ctx.save();
-    ctx.strokeStyle = underground ? 'rgba(28, 25, 23, 0.9)' : 'rgba(30, 31, 28, 0.82)';
-    ctx.fillStyle = underground ? 'rgba(24, 22, 20, 0.88)' : 'rgba(29, 31, 27, 0.72)';
+    ctx.strokeStyle = underground ? 'rgba(19, 21, 21, 0.94)' : 'rgba(25, 34, 30, 0.88)';
+    ctx.fillStyle = underground ? 'rgba(18, 20, 21, 0.86)' : 'rgba(25, 34, 30, 0.70)';
+
     for (const o of collision.obstacles || []) {
       if (!o.enabled) continue;
       const ox = o.type === 'circle' ? o.x : (o.minX + o.maxX) * 0.5;
       const oz = o.type === 'circle' ? o.z : (o.minZ + o.maxZ) * 0.5;
       if (ox < viewMinX - 2 || ox > viewMaxX + 2 || oz < viewMinZ - 2 || oz > viewMaxZ + 2) continue;
+
       if (o.type === 'circle') {
         if (o.r < 0.7 && !underground) continue;
         ctx.beginPath();
         ctx.arc(px(o.x), pz(o.z), Math.max(1.2, o.r * sx), 0, Math.PI * 2);
         ctx.fill();
       } else {
-        const rw = (o.maxX - o.minX) * sx, rh = (o.maxZ - o.minZ) * sy;
+        const rw = (o.maxX - o.minX) * sx;
+        const rh = (o.maxZ - o.minZ) * sy;
         if (rw < 3 && rh < 3) continue;
         ctx.fillRect(px(o.minX), pz(o.minZ), rw, rh);
       }
     }
     ctx.restore();
 
-    // A thin edge around the real playable silhouette gives the map a clean
-    // hand-drawn contour without reintroducing square zone outlines.
+    // Subtle navigation route.
     ctx.save();
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.strokeStyle = underground ? 'rgba(137, 150, 137, 0.52)' : 'rgba(126, 148, 111, 0.58)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, w, h);
+    ctx.strokeStyle = underground ? 'rgba(94, 111, 116, 0.72)' : 'rgba(91, 120, 105, 0.72)';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+
+    const path = underground
+      ? [[110,101],[110,112],[101,116],[92,116],[84,123],[91,134],[105,139],[121,143],[132,143]]
+      : [[0,46],[0.5,38],[-2.5,30],[1.5,22],[-0.5,14],[0,6],[0,-20],[0,-31],[0,-44]];
+
+    path.forEach(([x,z], i) => i ? ctx.lineTo(px(x), pz(z)) : ctx.moveTo(px(x), pz(z)));
+    ctx.stroke();
     ctx.restore();
 
-    // Navigation landmarks on the surface. These are deliberately drawn as
-    // symbols instead of collision blobs, so the minimap communicates gameplay
-    // landmarks rather than just physical obstacles.
     if (!underground) {
       const protectionZone = { x: 0.1, z: 35.2, radius: 8.2 };
 
-      // Keep landmarks subtle: the map should read as terrain first, not as a
-      // collection of oversized UI labels and colored shapes.
       ctx.save();
-      ctx.strokeStyle = 'rgba(112, 178, 157, 0.48)';
+      ctx.strokeStyle = 'rgba(91, 128, 113, 0.46)';
       ctx.lineWidth = 1.25;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([4, 5]);
       ctx.beginPath();
       ctx.arc(px(protectionZone.x), pz(protectionZone.z), protectionZone.radius * sx, 0, Math.PI * 2);
       ctx.stroke();
@@ -238,12 +256,18 @@ export class UI {
 
       const drawNpc = (x, z) => {
         const x0 = px(x), z0 = pz(z);
+        const pulse = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(Date.now() * 0.004));
+        const r = 2.7 + pulse * 1.1;
+
         ctx.save();
-        ctx.fillStyle = 'rgba(238, 201, 112, 0.9)';
-        ctx.strokeStyle = 'rgba(28, 24, 17, 0.85)';
+        ctx.globalAlpha = 0.65 + pulse * 0.25;
+        ctx.shadowColor = 'rgba(159, 166, 132, 0.72)';
+        ctx.shadowBlur = 5 + pulse * 3;
+        ctx.fillStyle = 'rgba(159, 166, 132, 0.92)';
+        ctx.strokeStyle = 'rgba(34, 39, 34, 0.95)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(x0, z0, 3.2, 0, Math.PI * 2);
+        ctx.arc(x0, z0, r, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.restore();
@@ -252,110 +276,147 @@ export class UI {
       drawNpc(-4.6, 35.2);
       drawNpc(4.8, 35.2);
 
-      // Mine entrance: compact diamond, without a large text label.
       const mx = px(12.4), mz = pz(35.0);
       ctx.save();
-      ctx.fillStyle = 'rgba(216, 155, 84, 0.92)';
-      ctx.strokeStyle = 'rgba(38, 25, 15, 0.85)';
+      ctx.fillStyle = 'rgba(139, 119, 83, 0.92)';
+      ctx.strokeStyle = 'rgba(35, 31, 24, 0.95)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(mx, mz - 5);
-      ctx.lineTo(mx + 5, mz);
-      ctx.lineTo(mx, mz + 5);
-      ctx.lineTo(mx - 5, mz);
+      ctx.moveTo(mx, mz - 4.5);
+      ctx.lineTo(mx + 4.5, mz);
+      ctx.lineTo(mx, mz + 4.5);
+      ctx.lineTo(mx - 4.5, mz);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.restore();
     }
 
-    // Main route / important structures.
-    ctx.strokeStyle = underground
-      ? 'rgba(202, 164, 102, 0.72)'
-      : 'rgba(205, 177, 116, 0.68)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    const path = underground
-      ? [[110,101],[110,112],[101,116],[92,116],[84,123],[91,134],[105,139],[121,143],[132,143]]
-      : [[0,46],[0.5,38],[-2.5,30],[1.5,22],[-0.5,14],[0,6],[0,-20],[0,-31],[0,-44]];
-    path.forEach(([x,z], i) => i ? ctx.lineTo(px(x), pz(z)) : ctx.moveTo(px(x), pz(z)));
-    ctx.stroke();
-
-    // Boss arena on the surface.
     if (!underground && area.minimap.arena) {
       const a = area.minimap.arena;
       ctx.beginPath();
       ctx.arc(px(a.x), pz(a.z), Math.max(4, a.r * sx), 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(155, 47, 72, 0.38)';
+      ctx.fillStyle = 'rgba(103, 63, 76, 0.40)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(225, 106, 125, 0.82)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(151, 101, 116, 0.78)';
+      ctx.lineWidth = 1.75;
       ctx.stroke();
-      ctx.fillStyle = 'rgba(245, 210, 170, 0.9)';
-      ctx.font = 'bold 10px Segoe UI, sans-serif';
+
+      ctx.fillStyle = 'rgba(190, 174, 167, 0.84)';
+      ctx.font = '600 9px Segoe UI, sans-serif';
       ctx.fillText('BOSS', px(a.x) + 7, pz(a.z) - 7);
     }
 
-    // Surface secret chamber.
     if (!underground) {
-      ctx.fillStyle = 'rgba(104, 164, 196, 0.48)';
+      ctx.fillStyle = 'rgba(67, 91, 104, 0.48)';
       ctx.fillRect(px(24), pz(18), 14 * sx, 14 * sy);
 
       if (area.minimap.portal) {
         const portal = area.minimap.portal;
-        ctx.fillStyle = '#71d9ff';
+        const pulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(Date.now() * 0.003));
+        ctx.save();
+        ctx.globalAlpha = 0.65 + pulse * 0.25;
+        ctx.shadowColor = 'rgba(88, 128, 146, 0.72)';
+        ctx.shadowBlur = 6 + pulse * 4;
+        ctx.fillStyle = 'rgba(88, 128, 146, 0.95)';
         ctx.beginPath();
-        ctx.arc(px(portal.x), pz(portal.z), 4, 0, Math.PI * 2);
+        ctx.arc(px(portal.x), pz(portal.z), 3 + pulse * 1.2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(210, 245, 255, 0.95)';
-        ctx.font = 'bold 10px Segoe UI, sans-serif';
-        ctx.fillText('PORTAL', px(portal.x) + 7, pz(portal.z) + 4);
+        ctx.restore();
       }
     } else {
-      // Mine exit is deliberately prominent so the player can always orient
-      // himself relative to the way back out.
       const ex = { x: 110, z: 101 };
-      ctx.fillStyle = 'rgba(113, 217, 255, 0.95)';
+      const pulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(Date.now() * 0.003));
+      ctx.save();
+      ctx.globalAlpha = 0.65 + pulse * 0.25;
+      ctx.shadowColor = 'rgba(88, 128, 146, 0.72)';
+      ctx.shadowBlur = 6 + pulse * 4;
+      ctx.fillStyle = 'rgba(88, 128, 146, 0.95)';
       ctx.beginPath();
-      ctx.arc(px(ex.x), pz(ex.z), 5, 0, Math.PI * 2);
+      ctx.arc(px(ex.x), pz(ex.z), 3.5 + pulse * 1.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = 'rgba(210, 245, 255, 0.95)';
-      ctx.font = 'bold 10px Segoe UI, sans-serif';
-      ctx.fillText('SAÍDA', px(ex.x) + 8, pz(ex.z) + 4);
+      ctx.restore();
     }
 
-    // Player marker is deliberately large and stays visually dominant.
+    // Dynamic enemy pings. Bosses use a slightly larger ping.
+    const now = Date.now();
+    for (const enemy of this.game.enemies || []) {
+      if (!enemy?.alive || enemy.removed || !enemy.pos) continue;
+      const ex = px(enemy.pos.x);
+      const ez = pz(enemy.pos.z);
+      if (ex < -8 || ex > w + 8 || ez < -8 || ez > h + 8) continue;
+
+      const isBoss = !!enemy.isBoss || !!enemy.boss;
+      const pulse = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(now * 0.005 + enemy.pos.x * 0.11));
+      const r = isBoss ? 3.8 + pulse * 1.8 : 2.1 + pulse * 1.1;
+
+      ctx.save();
+      ctx.globalAlpha = 0.58 + pulse * 0.30;
+      ctx.shadowColor = isBoss ? 'rgba(151, 101, 116, 0.78)' : 'rgba(127, 111, 96, 0.72)';
+      ctx.shadowBlur = 4 + pulse * 5;
+      ctx.fillStyle = isBoss ? 'rgba(151, 101, 116, 0.92)' : 'rgba(127, 111, 96, 0.90)';
+      ctx.strokeStyle = 'rgba(28, 30, 29, 0.95)';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.arc(ex, ez, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Player marker: directional arrow with restrained glow.
     ctx.save();
     ctx.translate(px(p.pos.x), pz(p.pos.z));
     ctx.rotate(-p.facing);
-    ctx.shadowColor = 'rgba(255, 235, 175, 0.75)';
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = '#fff2bd';
+    ctx.shadowColor = 'rgba(194, 204, 173, 0.86)';
+    ctx.shadowBlur = 7;
+    ctx.fillStyle = 'rgba(207, 216, 190, 0.98)';
+    ctx.strokeStyle = 'rgba(20, 25, 22, 0.98)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(0, 12);
-    ctx.lineTo(8, -8);
-    ctx.lineTo(0, -4);
-    ctx.lineTo(-8, -8);
+    ctx.moveTo(0, -10);
+    ctx.lineTo(6, 6);
+    ctx.lineTo(0, 3);
+    ctx.lineTo(-6, 6);
     ctx.closePath();
     ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(15, 12, 8, 0.95)';
-    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
 
-    // Border + compass. The stronger frame makes the minimap read as a
-    // dedicated navigation element instead of a tiny debug widget.
-    ctx.strokeStyle = 'rgba(232,199,122,0.78)';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(2, 2, w - 4, h - 4);
-    ctx.fillStyle = 'rgba(245, 220, 160, 0.95)';
-    ctx.font = 'bold 13px Segoe UI, sans-serif';
-    ctx.fillText('N', w - 18, 17);
-  }
+    // Radial inner vignette adds depth without obscuring navigation information.
+    const vignette = ctx.createRadialGradient(
+      cx, cy, radius * 0.42,
+      cx, cy, radius
+    );
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.68, 'rgba(0, 0, 0, 0.04)');
+    vignette.addColorStop(0.88, 'rgba(0, 0, 0, 0.26)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.62)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
 
+    // Outer frame: crisp, circular and separated from the map content.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(148, 158, 143, 0.88)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 3.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(24, 29, 27, 0.95)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(188, 196, 176, 0.92)';
+    ctx.font = '600 12px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('N', cx, 15);
+    ctx.restore();
+  }
   // ---------- HUD ----------
   showHud(voc, character = null) {
     this.el.hud.classList.remove('hidden');
