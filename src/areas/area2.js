@@ -30,10 +30,12 @@ export function createArea2(game) {
   collision.addRectZone(126, 174, 42, 62);   // northern temple approach
 
   const terrain = new Terrain(collision);
-  const sandA = new THREE.Color(0x9b7142);
-  const sandB = new THREE.Color(0xc49a5c);
-  const sandLight = new THREE.Color(0xd5b06c);
-  const rock = new THREE.Color(0x5b4635);
+  // Map 2 is a true desert: keep the ground clearly sand-colored instead of
+  // inheriting the greener forest palette used by other areas.
+  const sandA = new THREE.Color(0xb98a4d);
+  const sandB = new THREE.Color(0xd9b76b);
+  const sandLight = new THREE.Color(0xf0d28a);
+  const rock = new THREE.Color(0x725337);
 
   createGround(scene, terrain, (x, z, c) => {
     const n = fbm(x * 0.055, z * 0.055);
@@ -471,10 +473,10 @@ export function createArea2(game) {
   };
 
   [
-    ['spider',129,-27,'Aranha das Dunas'],
-    ['spider',143,-33,'Aranha das Dunas'],
-    ['spider',174,-21,'Aranha das Dunas'],
-    ['spider',181,8,'Aranha das Dunas'],
+    ['scorpion',129,-27,'Escorpião das Dunas'],
+    ['scorpion',143,-33,'Escorpião das Dunas'],
+    ['scorpion',174,-21,'Escorpião das Dunas'],
+    ['scorpion',181,8,'Escorpião das Dunas'],
     ['wisp',122,12,'Espírito da Miragem'],
     ['wisp',176,15,'Espírito da Miragem'],
     ['zombie',132,-4,'Guardião Soterrado'],
