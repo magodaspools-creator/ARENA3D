@@ -640,10 +640,11 @@ export class Minimap {
 
     // Desenha a textura circular centralizada e deslocada pelo jogador.
     const tex = this.groundMinimapCache.get(this.buildKey);
+    const pxPerUnit = tex ? this.size / (tex.radius * 2) : this.size / this.viewWorld;
     if (tex) {
       const cx = this.size / 2;
       const cy = this.size / 2;
-      const scale = this.size / (tex.radius * 2);
+      const scale = pxPerUnit;
 
       const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
       const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
