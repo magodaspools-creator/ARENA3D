@@ -15,92 +15,55 @@ const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughn
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
 
-// Local desert scorpion sprite. The silhouette/style was chosen to fit the
-// pixel-art enemy role while keeping the game independent of a remote asset.
-const SCORPION_SPRITE_URL = './assets/scorpion.svg';
-let scorpionTexture = null;
-let scorpionTextureFailed = false;
+// Real 3D desert scorpion from 3DAssets.dev.
+// CC0 1.0, self-contained GLB, no external decoder required.
+// The source model is a static posed scorpion; the enemy controller still
+// provides subtle idle/movement motion so it fits the existing gameplay.
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const SCORPION_MODEL_URL = 'https://cdn.3dassets.dev/assets/22457/v1/model.glb';
+const SCORPION_MODEL_SCALE = 12.5;
+let scorpionModelPromise = null;
 const scorpionInstances = new Set();
 
-function attachScorpionSprite(model) {
-  if (!model?.root || !scorpionTexture || model.root.getObjectByName('scorpion-sprite')) return;
-  model.fallback.visible = false;
-  const material = new THREE.SpriteMaterial({
-    map: scorpionTexture,
-    transparent: true,
-    alphaTest: 0.08,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const sprite = new THREE.Sprite(material);
-  sprite.name = 'scorpion-sprite';
-  sprite.center.set(0.5, 0.08);
-  sprite.scale.set(1.8, 1.35, 1);
-  sprite.position.y = 0.72;
-  model.root.add(sprite);
-}
-
-function loadScorpionTexture() {
-  if (scorpionTexture || scorpionTextureFailed) return scorpionTexture;
-  const loader = new THREE.TextureLoader();
-  loader.setCrossOrigin('anonymous');
-  loader.load(
-    SCORPION_SPRITE_URL,
-    (texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.minFilter = THREE.NearestFilter;
-      texture.magFilter = THREE.NearestFilter;
-      texture.generateMipmaps = false;
-      scorpionTexture = texture;
-      for (const model of scorpionInstances) attachScorpionSprite(model);
-    },
-    undefined,
-    () => { scorpionTextureFailed = true; },
-  );
-  return null;
-}
-
-function createScorpionModel(scale = 1) {
-  const root = new THREE.Group();
-  // Guaranteed local fallback: never show the old "stone" blob while the
-  // scorpion sprite is loading or if the texture cannot be decoded.
-  const fallback = new THREE.Group();
-  const scorpionMat = new THREE.MeshStandardMaterial({ color: 0x70412b, roughness: 0.92, flatShading: true });
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x21140f, roughness: 1, flatShading: true });
-
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 5), scorpionMat);
-  body.scale.set(1.25, 0.48, 0.82);
-  body.position.y = 0.42;
-  fallback.add(body);
-
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.75, 6), darkMat);
-  tail.position.set(0, 0.62, -0.55);
-  tail.rotation.x = -0.7;
-  fallback.add(tail);
-
-  const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 6), scorpionMat);
-  stinger.position.set(0, 0.93, -0.88);
-  stinger.rotation.x = Math.PI;
-  fallback.add(stinger);
-
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.62, 5), darkMat);
-      leg.position.set(side * (0.38 + i * 0.08), 0.34, -0.18 + i * 0.25);
-      leg.rotation.z = side * 1.05;
-      fallback.add(leg);
-    }
-    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 6), scorpionMat);
-    claw.position.set(side * 0.55, 0.4, 0.45);
-    claw.rotation.z = side * 1.25;
-    fallback.add(claw);
+function loadScorpionModel() {
+  if (!scorpionModelPromise) {
+    const loader = new GLTFLoader();
+    scorpionModelPromise = loader.loadAsync(SCORPION_MODEL_URL)
+      .then((gltf) => gltf.scene)
+      .catch((err) => {
+        console.error('[Arena] Falha ao carregar modelo 3D do escorpião:', err);
+        scorpionModelPromise = null;
+        return null;
+      });
   }
-  root.add(fallback);
+  return scorpionModelPromise;
+}
 
-  const model = { root, fallback };
+function createScorpionModel() {
+  const root = new THREE.Group();
+  const modelRoot = new THREE.Group();
+  modelRoot.name = 'scorpion-3d';
+  root.add(modelRoot);
+
+  const model = { root, modelRoot, loaded: false };
   scorpionInstances.add(model);
-  attachScorpionSprite(model);
-  root.scale.setScalar(scale);
+
+  loadScorpionModel().then((source) => {
+    if (!source || !model.root.parent) return;
+    const scorpion = source.clone(true);
+    scorpion.scale.setScalar(SCORPION_MODEL_SCALE);
+    scorpion.traverse((obj) => {
+      if (!obj.isMesh) return;
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+      if (obj.material) obj.material.side = THREE.FrontSide;
+    });
+    modelRoot.clear();
+    modelRoot.add(scorpion);
+    model.loaded = true;
+  });
+
   return model;
 }
 
@@ -468,15 +431,13 @@ export class Enemy {
   }
 
   animateScorpion(dt, stride = 0) {
-    const sprite = this.root.getObjectByName('scorpion-sprite');
-    if (sprite) {
-      const moving = stride > 0.05 && this.state !== 'windup';
-      sprite.scale.y = (moving ? 1.35 : 1.30) + Math.sin(this.t * (moving ? 9 : 3)) * 0.035;
-      sprite.scale.x = (moving ? 1.8 : 1.76);
-      sprite.position.y = 0.72 + Math.sin(this.t * (moving ? 10 : 3)) * 0.025;
-    } else if (this.model?.fallback) {
-      this.model.fallback.rotation.y = Math.sin(this.t * 2.4) * 0.06;
-    }
+    const model = this.model?.modelRoot;
+    if (!model) return;
+    const moving = stride > 0.05 && this.state !== 'windup';
+    const bobSpeed = moving ? 9 : 3;
+    model.position.y = Math.sin(this.t * bobSpeed) * (moving ? 0.018 : 0.010);
+    model.rotation.z = Math.sin(this.t * (moving ? 7 : 2.5)) * (moving ? 0.025 : 0.012);
+    model.rotation.x = Math.sin(this.t * (moving ? 6 : 2.2)) * (moving ? 0.018 : 0.008);
   }
 
   animateWisp(dt) {
