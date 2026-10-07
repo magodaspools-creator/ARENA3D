@@ -353,7 +353,7 @@ export class WorldMap {
     ctx.fillStyle = '#ffe6a3';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('OBJETIVO', 0, -17 * pulse);
+    ctx.fillText(target.label ? String(target.label).toUpperCase() : 'OBJETIVO', 0, -17 * pulse);
     ctx.restore();
   }
 
@@ -424,6 +424,7 @@ export class WorldMap {
       ['#f0c86b', 'NPCs'],
       ['#b77aff', 'Boss'],
       ['#d6a04f', 'Ponto de interesse'],
+      ['#ffd76a', 'Objetivo da missão'],
     ];
     const legendX = this.renderW - 190;
     const legendY = 92;
