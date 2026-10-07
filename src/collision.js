@@ -111,9 +111,9 @@ export class Collision {
   }
 
   /** Moves a circle with wall sliding, obstacle resolution and small step-ups. */
-  move(pos, dx, dz, r) {
+  move(pos, dx, dz, r, maxStepOverride = null) {
     const lim = -r;
-    const maxStep = 0.35;
+    const maxStep = Number.isFinite(maxStepOverride) ? Math.max(0, maxStepOverride) : 0.35;
     let nx = pos.x;
     let nz = pos.z;
     let ny = Number.isFinite(pos.y) ? pos.y : (Number.isFinite(this.groundHeight?.(pos.x, pos.z)) ? this.groundHeight(pos.x, pos.z) : 0);
