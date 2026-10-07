@@ -639,9 +639,6 @@ export class Minimap {
     ctx.fillRect(0, 0, this.size, this.size);
 
     const tex = this.groundMinimapCache.get(this.buildKey);
-    const cx = this.size / 2;
-    const cy = this.size / 2;
-    const r = this.size / 2 - 1;
     const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
     const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
     const mapScale = (this.size - 2) / (tex ? tex.width : this.size);
@@ -651,7 +648,7 @@ export class Minimap {
     if (tex) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.clip();
 
       // Escala proporcional — NÃO estica a textura.
