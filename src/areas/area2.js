@@ -110,6 +110,41 @@ export function createArea2(game) {
 
   const decor = new Decor();
 
+  // ---------- natural sand dunes ----------
+  // Low, elongated sand mounds break the flatness of the desert. They stay
+  // mostly along the edges of the playable lanes so they add depth without
+  // creating invisible collision walls.
+  const duneMats = [
+    new THREE.MeshStandardMaterial({ color: 0xc79b59, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0xd8ad68, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0xe2bd78, roughness: 1 }),
+  ];
+  const duneGeometry = new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  const dunePositions = [
+    [116, -39, 7.5, 1.6, 4.5, -0.12],
+    [132, -47, 10.5, 2.0, 5.5, 0.18],
+    [164, -46, 8.0, 1.5, 4.8, -0.2],
+    [184, -36, 7.0, 1.8, 5.5, 0.12],
+    [118, -15, 6.0, 1.35, 4.2, 0.28],
+    [182, -10, 8.5, 1.7, 4.8, -0.18],
+    [116, 15, 8.0, 1.7, 5.0, 0.1],
+    [184, 14, 9.0, 1.9, 5.2, -0.15],
+    [120, 39, 10.0, 1.9, 5.8, 0.2],
+    [138, 45, 7.0, 1.35, 4.2, -0.16],
+    [168, 46, 11.0, 2.1, 6.0, 0.14],
+    [184, 35, 7.0, 1.45, 4.6, -0.22],
+  ];
+  for (let i = 0; i < dunePositions.length; i++) {
+    const [x, z, sx, sy, sz, rot] = dunePositions[i];
+    const dune = new THREE.Mesh(duneGeometry, duneMats[i % duneMats.length]);
+    dune.position.set(x, 0, z);
+    dune.scale.set(sx, sy, sz);
+    dune.rotation.y = rot;
+    dune.castShadow = true;
+    dune.receiveShadow = true;
+    scene.add(dune);
+  }
+
   // ---------- dunes / rock islands ----------
   for (let i = 0; i < 125; i++) {
     const x = bounds.minX + 2 + r() * 76;
