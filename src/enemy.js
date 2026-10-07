@@ -368,7 +368,7 @@ export class Enemy {
 
     this.cd -= dt;
     if (this.knock.lengthSq() > 0.01) {
-      g.collision.move(this.pos, this.knock.x * dt, this.knock.z * dt, this.radius);
+      g.collision.move(this.pos, this.knock.x * dt, this.knock.z * dt, this.radius, 0.9);
       this.knock.multiplyScalar(Math.exp(-10 * dt));
     }
 
@@ -430,7 +430,7 @@ export class Enemy {
         break;
     }
 
-    if (spd > 0) g.collision.move(this.pos, mvx * spd * dt, mvz * spd * dt, this.radius);
+    if (spd > 0) g.collision.move(this.pos, mvx * spd * dt, mvz * spd * dt, this.radius, 0.9);
     if (face !== null) this.facing = lerpAngle(this.facing, face, 1 - Math.exp(-10 * dt));
     this.root.rotation.y = this.facing;
 
