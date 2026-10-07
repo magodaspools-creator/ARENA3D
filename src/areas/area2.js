@@ -98,17 +98,24 @@ export function createArea2(game) {
   // top of it. This gives the desert real slopes and lets the player climb
   // over them instead of walking into a fake mound.
   const duneFields = [
-    [119, -37, 12, 5.5, 1.35, -0.18],
-    [136, -46, 15, 6.5, 1.65, 0.16],
-    [166, -44, 13, 5.8, 1.45, -0.12],
-    [183, -29, 10, 7.5, 1.2, 0.2],
-    [118, -12, 9, 6.5, 0.95, -0.22],
-    [184, -8, 12, 6, 1.15, 0.18],
-    [117, 18, 11, 7, 1.15, 0.15],
-    [184, 17, 12, 7, 1.35, -0.2],
-    [121, 39, 15, 6.5, 1.55, 0.16],
-    [144, 46, 10, 5.5, 1.0, -0.12],
-    [170, 44, 14, 6.5, 1.55, 0.14],
+    // Broad foreground ridges: low enough to traverse, but visibly larger than
+    // the old bumps so the horizon reads as a real sea of sand.
+    [118, -37, 14, 7.5, 1.75, -0.18],
+    [136, -46, 18, 9.0, 2.45, 0.16],
+    [166, -44, 16, 8.0, 2.15, -0.12],
+    [183, -29, 13, 9.0, 1.8, 0.2],
+    [118, -12, 11, 7.5, 1.35, -0.22],
+    [184, -8, 15, 8.0, 1.7, 0.18],
+    [117, 18, 13, 8.5, 1.75, 0.15],
+    [184, 17, 15, 8.5, 1.95, -0.2],
+    [121, 39, 18, 8.5, 2.25, 0.16],
+    [144, 46, 13, 7.0, 1.45, -0.12],
+    [170, 44, 17, 8.5, 2.35, 0.14],
+    // A few taller, very broad ridges give the desert a stronger silhouette.
+    [129, 2, 20, 10.5, 2.7, -0.10],
+    [169, 7, 19, 10.0, 2.55, 0.13],
+    [151, -19, 17, 9.5, 2.35, 0.04],
+    [151, 27, 18, 10.5, 2.85, -0.08],
   ];
 
   const duneHeight = (x, z) => {
@@ -126,7 +133,7 @@ export function createArea2(game) {
         h += peak * t * t * (3 - 2 * t);
       }
     }
-    return Math.min(2.15, h);
+    return Math.min(3.05, h);
   };
 
   const baseTerrainHeight = terrain.height.bind(terrain);
@@ -150,8 +157,10 @@ export function createArea2(game) {
 
   const decor = new Decor();
 
-  // ---------- dunes / rock islands ----------
-  for (let i = 0; i < 125; i++) {
+  // ---------- dunes / sparse desert rocks ----------
+  // Sand should dominate Map 2. Rocks are now occasional accents rather than
+  // a repeated ground pattern.
+  for (let i = 0; i < 55; i++) {
     const x = bounds.minX + 2 + r() * 76;
     const z = bounds.minZ + 2 + r() * 96;
     if (Math.abs(x - ORIGIN.x) < 14 && Math.abs(z) < 9) continue;
@@ -164,10 +173,11 @@ export function createArea2(game) {
     collision.addCircle(x, z, Math.max(0.5, s * 1.1), { projectiles: false });
   }
 
-  // Sandstone ribs create readable lanes without becoming invisible walls.
+  // Keep only two sandstone ribs as landmarks; the rest of the visual mass
+  // should come from sand dunes rather than stone.
   const ribs = [
-    [119, -35, 126, -8], [181, -29, 174, -2],
-    [116, 27, 127, 43], [184, 18, 174, 39],
+    [119, -35, 126, -8],
+    [184, 18, 174, 39],
   ];
   for (const [x1,z1,x2,z2] of ribs) {
     decor.wall(x1,z1,x2,z2,2.4,r,{ thick:1.5,minH:0.35 });
@@ -182,6 +192,73 @@ export function createArea2(game) {
         { projectiles: false }
       );
     }
+  }
+
+  // ---------- sparse desert vegetation ----------
+  // Simple low-poly cacti: intentionally sparse, with varied heights and
+  // silhouettes so they read as vegetation rather than another rock layer.
+  const cactusSpots = [
+    [116, -27, 2.5, 0.75], [145, -40, 3.4, 0.95], [176, -37, 2.2, 0.65],
+    [120, -4, 3.0, 0.8], [179, -2, 2.6, 0.72], [116, 12, 2.1, 0.6],
+    [136, 15, 3.7, 1.0], [181, 29, 2.4, 0.7], [125, 34, 2.8, 0.8],
+    [155, 43, 3.5, 0.9], [174, 43, 2.0, 0.58], [191, 8, 2.7, 0.72],
+  ];
+  const cactusGreen = new THREE.MeshStandardMaterial({
+    color: 0x4f6f32,
+    roughness: 0.92,
+    metalness: 0,
+  });
+  const cactusDark = new THREE.MeshStandardMaterial({
+    color: 0x355025,
+    roughness: 1,
+    metalness: 0,
+  });
+
+  for (const [x, z, h, radius] of cactusSpots) {
+    // Keep the oasis, temple entrance and boss arena readable.
+    if (Math.hypot(x - ORIGIN.x, z) < 13) continue;
+    if (Math.hypot(x - ORIGIN.x, z - 37) < 11) continue;
+
+    const cactus = new THREE.Group();
+    cactus.name = 'desert-cactus';
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.72, radius, h, 8), cactusGreen);
+    trunk.position.y = h * 0.5;
+    trunk.castShadow = true;
+    cactus.add(trunk);
+
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(radius * 0.74, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      cactusGreen
+    );
+    cap.position.y = h;
+    cap.castShadow = true;
+    cactus.add(cap);
+
+    if (h > 2.35) {
+      const side = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.38, radius * 0.46, h * 0.34, 7), cactusDark);
+      side.position.set(radius * 1.15, h * 0.52, 0);
+      side.rotation.z = -Math.PI / 2;
+      side.castShadow = true;
+      cactus.add(side);
+
+      const sideTop = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.42, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.5), cactusDark);
+      sideTop.position.set(radius * 1.5, h * 0.52, 0);
+      sideTop.castShadow = true;
+      cactus.add(sideTop);
+    }
+
+    if (h > 3.0) {
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.32, radius * 0.4, h * 0.28, 7), cactusGreen);
+      arm.position.set(-radius * 1.05, h * 0.42, 0);
+      arm.rotation.z = Math.PI / 2;
+      arm.castShadow = true;
+      cactus.add(arm);
+    }
+
+    cactus.position.set(x, 0, z);
+    cactus.rotation.y = r() * Math.PI * 2;
+    scene.add(cactus);
+    collision.addCircle(x, z, Math.max(0.45, radius * 1.35), { projectiles: false });
   }
 
   // ---------- oasis hub ----------
