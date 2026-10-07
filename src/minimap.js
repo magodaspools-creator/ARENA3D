@@ -130,14 +130,13 @@ export class Minimap {
     const period = 15;
     const grainPeriod = 3;
 
-    for (let py = 0; py < h; py++) {
-      for (let px = 0; px < w; px++) {
-        // O canvas cresce para baixo; o eixo Z do mundo precisa ser invertido
-        // para manter a orientação do minimapa coerente com o render().
-        const centerX = (bounds.minX + bounds.maxX) * 0.5;
-        const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
-        const x = centerX + (px - w * 0.5) / S;
-        const z = centerZ - (py - h * 0.5) / S;
+    const centerX = (bounds.minX + bounds.maxX) * 0.5;
+    const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+
+    for (let py = 0; py < W; py++) {
+      const z = centerZ - (py - W * 0.5) / S;
+      for (let px = 0; px < W; px++) {
+        const x = centerX + (px - W * 0.5) / S;
 
         const broad = fbm(x / period, z / period);
         // O grão fino tem amplitude máxima de 6% do campo total.
