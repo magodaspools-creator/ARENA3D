@@ -2610,13 +2610,6 @@ const leaveMine = () => {
           // Restore the boss HUD too: a reload recreates the UI in a hidden state.
           game.ui.showBoss(boss.name);
           game.ui.setBoss(boss.hp / boss.maxHp, boss.enraged);
-        } else if (prog.reached('return')) {
-          barrierCol.enabled = false;
-          boss.alive = false;
-          boss.state = 'dead';
-          boss.root.visible = false;
-          boss.tele?.forEach((telegraph) => game.fx.remove(telegraph));
-          boss.tele = [];
         } else if (prog.reached('portal')) {
           barrierCol.enabled = false;
           boss.alive = false;
@@ -2626,6 +2619,13 @@ const leaveMine = () => {
           boss.tele = [];
           portal.restoreActive();
           runeMat.color.set(0xffc36a);
+        } else if (prog.reached('return')) {
+          barrierCol.enabled = false;
+          boss.alive = false;
+          boss.state = 'dead';
+          boss.root.visible = false;
+          boss.tele?.forEach((telegraph) => game.fx.remove(telegraph));
+          boss.tele = [];
         }
       }
 
