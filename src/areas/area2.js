@@ -93,6 +93,45 @@ export function createArea2(game) {
   collision.addRectZone(126, 174, 42, 62);   // northern temple approach
 
   const terrain = new Terrain(collision);
+
+  // Smooth dune ridges are part of the ground itself, not meshes placed on
+  // top of it. This gives the desert real slopes and lets the player climb
+  // over them instead of walking into a fake mound.
+  const duneFields = [
+    [119, -37, 12, 5.5, 1.35, -0.18],
+    [136, -46, 15, 6.5, 1.65, 0.16],
+    [166, -44, 13, 5.8, 1.45, -0.12],
+    [183, -29, 10, 7.5, 1.2, 0.2],
+    [118, -12, 9, 6.5, 0.95, -0.22],
+    [184, -8, 12, 6, 1.15, 0.18],
+    [117, 18, 11, 7, 1.15, 0.15],
+    [184, 17, 12, 7, 1.35, -0.2],
+    [121, 39, 15, 6.5, 1.55, 0.16],
+    [144, 46, 10, 5.5, 1.0, -0.12],
+    [170, 44, 14, 6.5, 1.55, 0.14],
+  ];
+
+  const duneHeight = (x, z) => {
+    let h = 0;
+    for (const [cx, cz, rx, rz, peak, rot] of duneFields) {
+      const dx = x - cx;
+      const dz = z - cz;
+      const cs = Math.cos(rot);
+      const sn = Math.sin(rot);
+      const lx = dx * cs - dz * sn;
+      const lz = dx * sn + dz * cs;
+      const q = (lx * lx) / (rx * rx) + (lz * lz) / (rz * rz);
+      if (q < 1) {
+        const t = 1 - q;
+        h += peak * t * t * (3 - 2 * t);
+      }
+    }
+    return Math.min(2.15, h);
+  };
+
+  const baseTerrainHeight = terrain.height.bind(terrain);
+  terrain.height = (x, z) => baseTerrainHeight(x, z) + duneHeight(x, z);
+
   // Map 2 is a true desert: keep the ground clearly sand-colored instead of
   // inheriting the greener forest palette used by other areas.
   const sandA = new THREE.Color(0xb98a4d);
@@ -109,41 +148,6 @@ export function createArea2(game) {
   }, { width: 110, depth: 125, cx: ORIGIN.x, cz: 0, seg: 105 });
 
   const decor = new Decor();
-
-  // ---------- natural sand dunes ----------
-  // Low, elongated sand mounds break the flatness of the desert. They stay
-  // mostly along the edges of the playable lanes so they add depth without
-  // creating invisible collision walls.
-  const duneMats = [
-    new THREE.MeshStandardMaterial({ color: 0xc79b59, roughness: 1 }),
-    new THREE.MeshStandardMaterial({ color: 0xd8ad68, roughness: 1 }),
-    new THREE.MeshStandardMaterial({ color: 0xe2bd78, roughness: 1 }),
-  ];
-  const duneGeometry = new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, 0, Math.PI * 0.5);
-  const dunePositions = [
-    [116, -39, 7.5, 1.6, 4.5, -0.12],
-    [132, -47, 10.5, 2.0, 5.5, 0.18],
-    [164, -46, 8.0, 1.5, 4.8, -0.2],
-    [184, -36, 7.0, 1.8, 5.5, 0.12],
-    [118, -15, 6.0, 1.35, 4.2, 0.28],
-    [182, -10, 8.5, 1.7, 4.8, -0.18],
-    [116, 15, 8.0, 1.7, 5.0, 0.1],
-    [184, 14, 9.0, 1.9, 5.2, -0.15],
-    [120, 39, 10.0, 1.9, 5.8, 0.2],
-    [138, 45, 7.0, 1.35, 4.2, -0.16],
-    [168, 46, 11.0, 2.1, 6.0, 0.14],
-    [184, 35, 7.0, 1.45, 4.6, -0.22],
-  ];
-  for (let i = 0; i < dunePositions.length; i++) {
-    const [x, z, sx, sy, sz, rot] = dunePositions[i];
-    const dune = new THREE.Mesh(duneGeometry, duneMats[i % duneMats.length]);
-    dune.position.set(x, 0, z);
-    dune.scale.set(sx, sy, sz);
-    dune.rotation.y = rot;
-    dune.castShadow = true;
-    dune.receiveShadow = true;
-    scene.add(dune);
-  }
 
   // ---------- dunes / rock islands ----------
   for (let i = 0; i < 125; i++) {
@@ -765,6 +769,18 @@ export function createArea2(game) {
       water.material.opacity = 0.78 + Math.sin(t*1.8)*0.06;
 
       // Heat shimmer / drifting sand. Kept lightweight for the prototype.
+      if (game.player) {
+        const groundY = terrain.height(game.player.pos.x, game.player.pos.z);
+        game.player.root.position.y = THREE.MathUtils.damp(game.player.root.position.y, groundY, 10, dt);
+      }
+
+      for (const enemy of areaEnemies) {
+        if (enemy?.root && !enemy.isBoss) {
+          const groundY = terrain.height(enemy.pos.x, enemy.pos.z);
+          enemy.root.position.y = THREE.MathUtils.damp(enemy.root.position.y, groundY, 10, dt);
+        }
+      }
+
       if (game.state === 'play' && Math.random() < 0.34) {
         game.fx.particles.spawn(
           game.player.pos.x + (Math.random()-0.5)*18,
