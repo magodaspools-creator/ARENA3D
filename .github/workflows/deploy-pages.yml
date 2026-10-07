@@ -28,6 +28,41 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Install Blender and conversion tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender unzip curl
+
+      - name: Convert OpenGameArt scorpion to GLB
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/arena-scorpion assets/scorpion
+          curl -L --fail --retry 3 \
+            https://opengameart.org/sites/default/files/scorpion.zip \
+            -o /tmp/arena-scorpion/scorpion.zip
+          unzip -o /tmp/arena-scorpion/scorpion.zip -d /tmp/arena-scorpion/source
+          BLEND="$(find /tmp/arena-scorpion/source -type f -iname '*.blend' | head -n 1)"
+          test -n "$BLEND"
+          blender -b "$BLEND" --python tools/export_scorpion.py -- \
+            --output "$PWD/assets/scorpion/scorpion.glb"
+          ls -lh assets/scorpion/scorpion.glb
+
+      - name: Add asset attribution
+        run: |
+          cat > assets/scorpion/ATTRIBUTION.txt <<'EOF'
+ARENA3D SCORPION ASSET
+
+Original work: "Scorpion (3D)"
+Author: Guillaume "GuieA_7" Englert
+Source: https://opengameart.org/content/scorpion-3d
+License: Creative Commons Attribution-ShareAlike 4.0 International
+License: https://creativecommons.org/licenses/by-sa/4.0/
+
+The original Blender asset was technically converted to GLB for web use
+and integrated into ARENA3D. The source archive is retrieved during the
+GitHub Pages build and is not stored in this repository.
+EOF
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
@@ -36,5 +71,3 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-
-# Pages enabled; redeploy after RPG core updates.
