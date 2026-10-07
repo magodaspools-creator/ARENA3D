@@ -153,21 +153,14 @@ export class WorldMap {
         }
 
         const i = (py * cols + px) * 4;
-        if (!hits) {
-          pixels[i] = 7;
-          pixels[i + 1] = 11;
-          pixels[i + 2] = 9;
-          pixels[i + 3] = 255;
-          continue;
-        }
-
         const broad = fbm(x / 25, z / 25);
         const fine = noise(x / 4.5, z / 4.5) - 0.5;
         const c = terrainColor(broad + fine * 0.14, fine);
         pixels[i] = c[0];
         pixels[i + 1] = c[1];
         pixels[i + 2] = c[2];
-        pixels[i + 3] = Math.round(255 * (0.82 + hits * 0.045));
+        // Coverage contínua: a borda não vira uma sequência de quadrados.
+        pixels[i + 3] = hits ? Math.round(255 * (0.38 + hits * 0.155)) : 0;
       }
     }
 
@@ -178,7 +171,9 @@ export class WorldMap {
 
     ctx.save();
     ctx.imageSmoothingEnabled = true;
+    ctx.filter = 'blur(0.65px)';
     ctx.drawImage(terrain, p.ox, p.oy, p.drawW, p.drawH);
+    ctx.filter = 'none';
     ctx.restore();
 
     // Subtle contour bands. They follow the same continuous field and never
