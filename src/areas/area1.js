@@ -1897,12 +1897,12 @@ const leaveMine = () => {
 
   // ---------- quest state ----------
   const prog = new Progression(game, [
-    { id: 'arrive', timeline: 'Conhecer Maren', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E' },
-    { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
-    { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
-    { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
-    { id: 'return', timeline: 'Concluir a Floresta de Vhal', text: 'Volte até Maren e fale com ela novamente', hint: 'A Vigia está perto da fogueira, na entrada da floresta' },
-    { id: 'portal', timeline: 'Seguir para o próximo mapa', text: 'Atravesse o portal para o Deserto do Sol Sepultado', hint: 'O portal se abriu no fundo do santuário' },
+    { id: 'arrive', timeline: 'Conhecer Maren', text: 'Fale com Maren, a Vigia, perto da fogueira', hint: 'Aproxime-se e pressione E', target: { x: -4.6, z: 35.2, label: 'Maren' } },
+    { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto', target: () => braziers.filter((b) => !b.lit).map((b) => ({ x: b.pos.x, z: b.pos.z, label: 'Chama-Vigia' })) },
+    { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão', target: { x: 0, z: -20, label: 'Santuário Afundado' } },
+    { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas', target: { x: ARENA.x, z: ARENA.z - 3, label: 'Morvhal' } },
+    { id: 'return', timeline: 'Concluir a Floresta de Vhal', text: 'Volte até Maren e fale com ela novamente', hint: 'A Vigia está perto da fogueira, na entrada da floresta', target: { x: -4.6, z: 35.2, label: 'Maren' } },
+    { id: 'portal', timeline: 'Seguir para o próximo mapa', text: 'Atravesse o portal para o Deserto do Sol Sepultado', hint: 'O portal se abriu no fundo do santuário', target: { x: 0, z: -55.5, label: 'Portal' } },
     { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
   ], 'area1');
 
