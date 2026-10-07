@@ -15,6 +15,64 @@ const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughn
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
 
+// CC0 sprite from OpenGameArt (madameberry):
+// https://opengameart.org/content/scorpy-scorp-side-scroller-enemy
+// The image is used as a billboard so the desert enemy reads as a 2D sprite
+// inside the otherwise 3D world.
+const SCORPION_SPRITE_URL = 'https://opengameart.org/sites/default/files/Scorpion_0.png';
+let scorpionTexture = null;
+let scorpionTextureFailed = false;
+
+function loadScorpionTexture() {
+  if (scorpionTexture || scorpionTextureFailed) return scorpionTexture;
+  const loader = new THREE.TextureLoader();
+  loader.setCrossOrigin('anonymous');
+  loader.load(
+    SCORPION_SPRITE_URL,
+    (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.NearestFilter;
+      texture.magFilter = THREE.NearestFilter;
+      texture.generateMipmaps = false;
+      scorpionTexture = texture;
+    },
+    undefined,
+    () => { scorpionTextureFailed = true; },
+  );
+  return null;
+}
+
+function createScorpionModel(scale = 1) {
+  const root = new THREE.Group();
+  const fallback = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.48, 0),
+    new THREE.MeshStandardMaterial({ color: 0x6a4630, roughness: 0.9, flatShading: true }),
+  );
+  fallback.scale.set(1.25, 0.55, 0.85);
+  fallback.position.y = 0.38;
+  root.add(fallback);
+
+  const texture = loadScorpionTexture();
+  if (texture) {
+    fallback.visible = false;
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.08,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.name = 'scorpion-sprite';
+    sprite.center.set(0.5, 0.08);
+    sprite.scale.set(1.8, 1.35, 1);
+    sprite.position.y = 0.72;
+    root.add(sprite);
+  }
+  root.scale.setScalar(scale);
+  return { root, fallback };
+}
+
 function createSpiderModel(scale = 1) {
   const root = new THREE.Group();
   const body = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 0), SPIDER_BODY_MAT);
@@ -85,6 +143,11 @@ export const ENEMY_TYPES = {
     { itemId: 'worn_boots', chance: 0.04 },
     { itemId: 'moon_herb', chance: 0.2 },
   ], aggro: 11, range: 9, keep: 6.5, damage: [10, 13], windup: 0.75, cooldown: 2.3, radius: 0.45, height: 2.1, ranged: true, knock: 7 },
+  scorpion: { name: 'Escorpião das Dunas', hp: 78, speed: 3.35, resistances: { physical: 0.04, magic: 0 }, rewards: { xp: 40, gold: 17 }, loot: [
+    { itemId: 'moon_herb', chance: 0.20, min: 1, max: 1 },
+    { itemId: 'iron_scrap', chance: 0.42, min: 1, max: 2 },
+    { itemId: 'red_potion', chance: 0.04 },
+  ], aggro: 9.5, range: 1.5, damage: [10, 14], windup: 0.48, cooldown: 1.55, radius: 0.5, height: 1.15, knock: 3, poison: { damage: [2, 4], duration: 5, tick: 1 } },
   spider: { name: 'Aranha da Mina', hp: 72, speed: 3.65, resistances: { physical: 0.03, magic: 0 }, rewards: { xp: 38, gold: 15 }, loot: [
     { itemId: 'moon_herb', chance: 0.20, min: 1, max: 1 },
     { itemId: 'iron_scrap', chance: 0.38, min: 1, max: 2 },
@@ -109,6 +172,10 @@ export class Enemy {
     if (type === 'wisp') {
       this.model = createWispModel();
       this.root = this.model.root;
+    } else if (type === 'scorpion') {
+      this.model = createScorpionModel();
+      this.root = this.model.root;
+      this.scorpion = true;
     } else if (type === 'spider' || type === 'spiderling') {
       const spiderScale = type === 'spiderling' ? 0.62 : 1;
       this.model = createSpiderModel(spiderScale);
@@ -213,7 +280,7 @@ export class Enemy {
     this.anim?.die();
     this.game.ui.removeAnchor(this.bar);
     const fx = this.game.fx;
-    const c = this.type === 'wisp' ? 0xc07aff : (this.spider ? 0xb85b55 : 0x8affd8);
+    const c = this.type === 'wisp' ? 0xc07aff : (this.spider ? 0xb85b55 : (this.scorpion ? 0xd58a3f : 0x8affd8));
     fx.emit(V.copy(this.pos).setY(1.2), { count: 40, color: c, speed: 5, up: 1, life: 0.9, size: 0.4, drag: 2 });
     fx.emit(V.copy(this.pos).setY(1.0), { count: 16, color: c, speed: 0.6, up: 3, life: 1.6, size: 0.5, drag: 0.5 });
     this.game.onEnemyKilled(this, rollLoot(this.lootTable));
@@ -333,6 +400,7 @@ export class Enemy {
       const e = this.state === 'windup' ? 7 : 3;
       for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
     } else if (this.spider) this.animateSpider(dt, spd / def.speed);
+    else if (this.scorpion) this.animateScorpion(dt, spd / def.speed);
     else this.animateWisp(dt);
 
     this.barT -= dt;
@@ -360,6 +428,18 @@ export class Enemy {
       leg.rotation.y = swing * side;
       leg.rotation.x = Math.cos(phase + row * 1.2) * (moving ? 0.08 : 0.02);
     });
+  }
+
+  animateScorpion(dt, stride = 0) {
+    const sprite = this.root.getObjectByName('scorpion-sprite');
+    if (sprite) {
+      const moving = stride > 0.05 && this.state !== 'windup';
+      sprite.scale.y = (moving ? 1.35 : 1.30) + Math.sin(this.t * (moving ? 9 : 3)) * 0.035;
+      sprite.scale.x = (moving ? 1.8 : 1.76);
+      sprite.position.y = 0.72 + Math.sin(this.t * (moving ? 10 : 3)) * 0.025;
+    } else if (this.model?.fallback) {
+      this.model.fallback.rotation.y = Math.sin(this.t * 2.4) * 0.06;
+    }
   }
 
   animateWisp(dt) {
