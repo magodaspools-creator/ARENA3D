@@ -552,7 +552,7 @@ export class Minimap {
     }
   }
 
-  buildFromArea({ bounds, zones = [], obstacles = [], pois = [] }) {
+  buildFromArea({ bounds, zones = [], obstacles = [], pois = [], questTarget = null }) {
     if (!bounds) return;
 
     this.bounds = { ...bounds };
@@ -575,6 +575,23 @@ export class Minimap {
     this._makeGroundMinimapTexture(bounds, null, minimapNoise2, minimapFbm, minimapRamp, buildKey);
     this._drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey, offX, offZ);
     this._drawObstacleBlobs(c, obstacles, wx, wz, S);
+
+    if (questTarget && Number.isFinite(questTarget.x) && Number.isFinite(questTarget.z)) {
+      const x = wx(questTarget.x), z = wz(questTarget.z);
+      c.save();
+      c.shadowColor = '#ffd76a';
+      c.shadowBlur = 9;
+      c.strokeStyle = '#ffd76a';
+      c.lineWidth = Math.max(1.5, S * 0.16);
+      c.beginPath();
+      c.arc(x, z, Math.max(3.5, 0.9 * S), 0, Math.PI * 2);
+      c.stroke();
+      c.fillStyle = '#ffd76a';
+      c.beginPath();
+      c.arc(x, z, Math.max(2, 0.38 * S), 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
 
     for (const p of pois) {
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
