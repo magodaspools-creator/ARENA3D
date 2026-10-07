@@ -157,7 +157,7 @@ export class Minimap {
 
     const result = {
       canvas,
-      heightField: { data: heightData, width: w, height: h },
+      heightField: { data: heightData, width: W, height: H },
       width: W,
       height: H,
     };
