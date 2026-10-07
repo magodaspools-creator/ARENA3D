@@ -647,8 +647,9 @@ export class Minimap {
     const worldToMapZ = (wz) => cy + (wz - centerZ) * mapScale;
 
     if (tex) {
-      // A textura cobre TODO o disco, sempre centralizada.
-      // O mapa inteiro cabe no minimapa; não acompanha o player.
+      // Escala proporcional: a textura é conteúdo e o canvas DOM é apenas o container.
+      const scale = (this.size - 2) / tex.width;
+
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -656,10 +657,10 @@ export class Minimap {
 
       ctx.drawImage(
         tex.canvas,
-        cx - r,
-        cy - r,
-        r * 2,
-        r * 2
+        cx - (tex.width * scale) / 2,
+        cy - (tex.height * scale) / 2,
+        tex.width * scale,
+        tex.height * scale
       );
       ctx.restore();
     }
@@ -685,7 +686,7 @@ export class Minimap {
 
     // Jogador: seta orientada para a direção atual.
     ctx.save();
-    ctx.translate(cx, cy);
+    ctx.translate(worldToMapX(this.player.x), worldToMapZ(this.player.z));
     ctx.rotate(-this.player.rot);
     ctx.shadowColor = 'rgba(0,0,0,.75)';
     ctx.shadowBlur = 3;
