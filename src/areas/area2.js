@@ -24,6 +24,69 @@ export function createArea2(game) {
   const ORIGIN = { x: 150, z: 0 };
   const bounds = { minX: 112, maxX: 188, minZ: -48, maxZ: 48 };
 
+  // ---------- desert sunlight / heat haze ----------
+  // Map 2 gets its own harsh midday lighting. It is added locally and removed
+  // with the area, so the forest/mines keep their existing night-like lighting.
+  const desertLights = new THREE.Group();
+  desertLights.name = 'area2-desert-sunlight';
+  scene.add(desertLights);
+
+  const desertSun = new THREE.DirectionalLight(0xffe3a3, 3.4);
+  desertSun.position.set(118, 62, -92);
+  desertSun.target.position.set(150, 0, 4);
+  desertSun.castShadow = true;
+  desertSun.shadow.mapSize.set(2048, 2048);
+  desertSun.shadow.camera.left = -48;
+  desertSun.shadow.camera.right = 48;
+  desertSun.shadow.camera.top = 48;
+  desertSun.shadow.camera.bottom = -48;
+  desertSun.shadow.camera.near = 1;
+  desertSun.shadow.camera.far = 130;
+  desertSun.shadow.bias = -0.0006;
+  desertSun.shadow.normalBias = 0.025;
+  desertLights.add(desertSun, desertSun.target);
+
+  const desertSky = new THREE.HemisphereLight(0xffdca0, 0x9a6b3e, 1.8);
+  desertLights.add(desertSky);
+
+  const sunGlow = new THREE.PointLight(0xffc45c, 5.5, 95, 1.6);
+  sunGlow.position.set(150, 22, -30);
+  desertLights.add(sunGlow);
+
+  const oldBackground = scene.background?.clone?.() || null;
+  scene.background = new THREE.Color(0xe0b878);
+
+  // Thin, animated heat bands sit far from the player and read as mirage
+  // distortion over the hottest sand. They are deliberately subtle.
+  const mirageBands = [];
+  const mirageMat = new THREE.MeshBasicMaterial({
+    color: 0xffe2a3,
+    transparent: true,
+    opacity: 0.075,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+  for (let i = 0; i < 7; i++) {
+    const band = new THREE.Mesh(new THREE.PlaneGeometry(15 + i * 2.5, 0.8 + (i % 3) * 0.25), mirageMat);
+    const a = (i / 7) * Math.PI * 2;
+    band.position.set(150 + Math.cos(a) * (24 + (i % 2) * 8), 0.55 + i * 0.11, Math.sin(a) * (24 + (i % 2) * 8));
+    band.rotation.x = -Math.PI / 2;
+    band.rotation.z = Math.sin(i * 2.7) * 0.08;
+    band.userData.baseY = band.position.y;
+    band.userData.phase = i * 1.37;
+    scene.add(band);
+    mirageBands.push(band);
+  }
+  const heatHaze = { update(t) {
+    for (const band of mirageBands) {
+      band.position.y = band.userData.baseY + Math.sin(t * 1.8 + band.userData.phase) * 0.08;
+      band.scale.x = 1 + Math.sin(t * 1.35 + band.userData.phase) * 0.08;
+      band.material.opacity = 0.045 + (Math.sin(t * 2.2 + band.userData.phase) * 0.5 + 0.5) * 0.045;
+    }
+  }};
+
   // ---------- walkable space ----------
   collision.addRectZone(bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ);
   collision.addRectZone(126, 174, -62, -42); // southern canyon approach
@@ -639,6 +702,10 @@ export function createArea2(game) {
     },
 
     dispose() {
+      // Restore global presentation state changed only for the desert.
+      if (oldBackground) scene.background = oldBackground;
+      else scene.background = null;
+      for (const band of mirageBands) scene.remove(band);
       // Remove every Area 2 interaction and collision entry created after the snapshot.
       game.interaction.items.length = interactionBaseline;
       collision.zones.length = collisionZoneBaseline;
@@ -659,6 +726,7 @@ export function createArea2(game) {
       if (bossCooldown > 0) bossCooldown = Math.max(0, bossCooldown - dt);
       entryPortal.update(dt,t);
       exitPortal.update(dt,t);
+      heatHaze.update(t);
       water.material.opacity = 0.78 + Math.sin(t*1.8)*0.06;
 
       // Heat shimmer / drifting sand. Kept lightweight for the prototype.
