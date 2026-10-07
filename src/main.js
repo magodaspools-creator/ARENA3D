@@ -524,9 +524,9 @@ class Game {
 
   openWorldMap() {
     if (this.state !== 'play' || this.inputLocked || !this.player) return;
-    this.state = 'world-map';
     this.inputLocked = true;
     this.ui.openWorldMap();
+    this.state = 'world-map';
   }
 
   closeWorldMap() {
