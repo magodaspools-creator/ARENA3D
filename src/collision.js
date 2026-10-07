@@ -26,6 +26,12 @@ export class Collision {
   constructor() {
     this.zones = [];
     this.obstacles = [];
+    // Optional terrain surface supplied by an area. Default world ground is Y=0.
+    this.groundHeight = null;
+  }
+
+  setGroundHeight(fn) {
+    this.groundHeight = typeof fn === 'function' ? fn : null;
   }
   addRectZone(minX, maxX, minZ, maxZ) { this.zones.push({ type: 'rect', minX, maxX, minZ, maxZ }); }
   addCircleZone(x, z, r) { this.zones.push({ type: 'circle', x, z, r }); }
@@ -54,7 +60,7 @@ export class Collision {
   // Returns the highest nearby walkable surface that can be reached from the
   // current height in one movement step. The base ground is always Y=0.
   surfaceHeight(x, z, currentY = 0, maxStep = 0.35) {
-    let h = 0;
+    let h = Number.isFinite(this.groundHeight?.(x, z)) ? this.groundHeight(x, z) : 0;
     for (const o of this.obstacles) {
       if (!o.enabled || !o.walkableTop) continue;
       if (o.type === 'box') {
@@ -110,7 +116,7 @@ export class Collision {
     const maxStep = 0.35;
     let nx = pos.x;
     let nz = pos.z;
-    let ny = Number.isFinite(pos.y) ? pos.y : 0;
+    let ny = Number.isFinite(pos.y) ? pos.y : (Number.isFinite(this.groundHeight?.(pos.x, pos.z)) ? this.groundHeight(pos.x, pos.z) : 0);
 
     const tryX = pos.x + dx;
     if (this.inside(tryX, nz, lim)) {
