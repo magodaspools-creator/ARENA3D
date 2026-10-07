@@ -78,7 +78,9 @@ export class SunGodBoss {
     this.pillarTargets = [];
     this.wakeFx = false;
     this.root.rotation.y = 0;
-    this.root.visible = true;
+    // Azhur is sealed beneath the temple until the encounter begins.
+    // The altar must remain visually empty before the player crosses the trigger.
+    this.root.visible = false;
     this.anim.revive();
     this.anim.kneel = 0;
     this.setEyes(0xffd45c);
@@ -103,6 +105,8 @@ export class SunGodBoss {
 
   awaken() {
     if (this.state !== 'dormant') return;
+    // Reveal the boss only when the seal is actually broken.
+    this.root.visible = true;
     this.state = 'waking';
     this.stateT = 0;
     this.pos.y = 0.2;
