@@ -15,90 +15,92 @@ const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughn
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
 
-// Local desert scorpion sprite. The silhouette/style was chosen to fit the
-// pixel-art enemy role while keeping the game independent of a remote asset.
-const SCORPION_SPRITE_URL = './assets/scorpion.svg';
+// Internet CC0 scorpion sprite from OpenGameArt (madameberry).
+// It contains a real walk animation, so the legs visibly move instead of
+// using a homemade geometric scorpion or the old static GLB.
+// https://opengameart.org/content/scorpy-scorp-side-scroller-enemy
+const SCORPION_WALK_GIF_URL = 'https://opengameart.org/sites/default/files/Scorpion_walk.gif';
+const SCORPION_STATIC_URL = 'https://opengameart.org/sites/default/files/Scorpion_0.png';
+let scorpionSpriteImage = null;
+let scorpionSpriteCanvas = null;
+let scorpionSpriteCtx = null;
 let scorpionTexture = null;
 let scorpionTextureFailed = false;
 const scorpionInstances = new Set();
 
 function attachScorpionSprite(model) {
   if (!model?.root || !scorpionTexture || model.root.getObjectByName('scorpion-sprite')) return;
-  model.fallback.visible = false;
   const material = new THREE.SpriteMaterial({
     map: scorpionTexture,
     transparent: true,
-    alphaTest: 0.08,
+    alphaTest: 0.04,
     depthWrite: false,
     toneMapped: false,
   });
   const sprite = new THREE.Sprite(material);
   sprite.name = 'scorpion-sprite';
   sprite.center.set(0.5, 0.08);
-  sprite.scale.set(1.8, 1.35, 1);
-  sprite.position.y = 0.72;
+  sprite.scale.set(2.45, 1.65, 1);
+  sprite.position.y = 0.78;
   model.root.add(sprite);
 }
 
 function loadScorpionTexture() {
   if (scorpionTexture || scorpionTextureFailed) return scorpionTexture;
-  const loader = new THREE.TextureLoader();
-  loader.setCrossOrigin('anonymous');
-  loader.load(
-    SCORPION_SPRITE_URL,
-    (texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.minFilter = THREE.NearestFilter;
-      texture.magFilter = THREE.NearestFilter;
-      texture.generateMipmaps = false;
-      scorpionTexture = texture;
+
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = () => {
+    scorpionSpriteImage = image;
+    scorpionSpriteCanvas = document.createElement('canvas');
+    scorpionSpriteCanvas.width = image.naturalWidth || image.width || 96;
+    scorpionSpriteCanvas.height = image.naturalHeight || image.height || 64;
+    scorpionSpriteCtx = scorpionSpriteCanvas.getContext('2d');
+    scorpionSpriteCtx.imageSmoothingEnabled = false;
+
+    try {
+      scorpionSpriteCtx.drawImage(image, 0, 0);
+      scorpionTexture = new THREE.CanvasTexture(scorpionSpriteCanvas);
+      scorpionTexture.colorSpace = THREE.SRGBColorSpace;
+      scorpionTexture.minFilter = THREE.NearestFilter;
+      scorpionTexture.magFilter = THREE.NearestFilter;
+      scorpionTexture.generateMipmaps = false;
       for (const model of scorpionInstances) attachScorpionSprite(model);
-    },
-    undefined,
-    () => { scorpionTextureFailed = true; },
-  );
+    } catch {
+      scorpionTextureFailed = true;
+    }
+  };
+  image.onerror = () => {
+    // Keep a local/remote static fallback if the animated asset is blocked.
+    const fallback = new Image();
+    fallback.crossOrigin = 'anonymous';
+    fallback.onload = () => {
+      scorpionSpriteImage = fallback;
+      scorpionSpriteCanvas = document.createElement('canvas');
+      scorpionSpriteCanvas.width = fallback.naturalWidth || 96;
+      scorpionSpriteCanvas.height = fallback.naturalHeight || 64;
+      scorpionSpriteCtx = scorpionSpriteCanvas.getContext('2d');
+      scorpionSpriteCtx.imageSmoothingEnabled = false;
+      scorpionSpriteCtx.drawImage(fallback, 0, 0);
+      scorpionTexture = new THREE.CanvasTexture(scorpionSpriteCanvas);
+      scorpionTexture.colorSpace = THREE.SRGBColorSpace;
+      scorpionTexture.minFilter = THREE.NearestFilter;
+      scorpionTexture.magFilter = THREE.NearestFilter;
+      scorpionTexture.generateMipmaps = false;
+      for (const model of scorpionInstances) attachScorpionSprite(model);
+    };
+    fallback.onerror = () => { scorpionTextureFailed = true; };
+    fallback.src = SCORPION_STATIC_URL;
+  };
+  image.src = SCORPION_WALK_GIF_URL;
   return null;
 }
 
 function createScorpionModel(scale = 1) {
   const root = new THREE.Group();
-  // Guaranteed local fallback: never show the old "stone" blob while the
-  // scorpion sprite is loading or if the texture cannot be decoded.
-  const fallback = new THREE.Group();
-  const scorpionMat = new THREE.MeshStandardMaterial({ color: 0x70412b, roughness: 0.92, flatShading: true });
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x21140f, roughness: 1, flatShading: true });
-
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 5), scorpionMat);
-  body.scale.set(1.25, 0.48, 0.82);
-  body.position.y = 0.42;
-  fallback.add(body);
-
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.75, 6), darkMat);
-  tail.position.set(0, 0.62, -0.55);
-  tail.rotation.x = -0.7;
-  fallback.add(tail);
-
-  const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 6), scorpionMat);
-  stinger.position.set(0, 0.93, -0.88);
-  stinger.rotation.x = Math.PI;
-  fallback.add(stinger);
-
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.62, 5), darkMat);
-      leg.position.set(side * (0.38 + i * 0.08), 0.34, -0.18 + i * 0.25);
-      leg.rotation.z = side * 1.05;
-      fallback.add(leg);
-    }
-    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 6), scorpionMat);
-    claw.position.set(side * 0.55, 0.4, 0.45);
-    claw.rotation.z = side * 1.25;
-    fallback.add(claw);
-  }
-  root.add(fallback);
-
-  const model = { root, fallback };
+  const model = { root };
   scorpionInstances.add(model);
+  loadScorpionTexture();
   attachScorpionSprite(model);
   root.scale.setScalar(scale);
   return model;
@@ -469,13 +471,23 @@ export class Enemy {
 
   animateScorpion(dt, stride = 0) {
     const sprite = this.root.getObjectByName('scorpion-sprite');
+    if (scorpionSpriteImage && scorpionSpriteCanvas && scorpionSpriteCtx && scorpionTexture) {
+      // The source is an animated GIF. Redrawing its current frame into the
+      // canvas makes Three.js pick up the visible walk cycle.
+      try {
+        scorpionSpriteCtx.clearRect(0, 0, scorpionSpriteCanvas.width, scorpionSpriteCanvas.height);
+        scorpionSpriteCtx.drawImage(scorpionSpriteImage, 0, 0);
+        scorpionTexture.needsUpdate = true;
+      } catch {
+        // If the browser blocks the remote canvas, the already-created texture
+        // remains usable instead of breaking the enemy update loop.
+      }
+    }
     if (sprite) {
       const moving = stride > 0.05 && this.state !== 'windup';
-      sprite.scale.y = (moving ? 1.35 : 1.30) + Math.sin(this.t * (moving ? 9 : 3)) * 0.035;
-      sprite.scale.x = (moving ? 1.8 : 1.76);
-      sprite.position.y = 0.72 + Math.sin(this.t * (moving ? 10 : 3)) * 0.025;
-    } else if (this.model?.fallback) {
-      this.model.fallback.rotation.y = Math.sin(this.t * 2.4) * 0.06;
+      sprite.scale.y = (moving ? 1.65 : 1.58) + Math.sin(this.t * (moving ? 9 : 3)) * 0.025;
+      sprite.scale.x = moving ? 2.45 : 2.38;
+      sprite.position.y = 0.78 + Math.sin(this.t * (moving ? 10 : 3)) * 0.02;
     }
   }
 
