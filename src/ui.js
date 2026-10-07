@@ -290,7 +290,8 @@ export class UI {
     const areaKey = [
       b.minX, b.maxX, b.minZ, b.maxZ,
       area.minimap.underground ? 'mine' : 'surface',
-      `zones:${zones.length}`,\n      `quest:${area.progression?.id || 'none'}`,
+      `zones:${zones.length}`,
+      `quest:${area.progression?.id || 'none'}`,
     ].join('|');
 
     if (force || this.minimapAreaKey !== areaKey) {
@@ -299,7 +300,8 @@ export class UI {
         bounds: b,
         zones,
         obstacles: this.game.collision?.obstacles || [],
-        pois: this._minimapPois(area),\n        questTarget: area.progression?.target || null,
+        pois: this._minimapPois(area),
+        questTarget: area.progression?.target || null,
       });
       this.minimapAreaKey = areaKey;
       this.minimapLastZoneCount = zones.length;
