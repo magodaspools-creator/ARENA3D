@@ -638,37 +638,36 @@ export class Minimap {
     ctx.fillStyle = '#0b100d';
     ctx.fillRect(0, 0, this.size, this.size);
 
-    // Desenha a textura circular centralizada e deslocada pelo jogador.
     const tex = this.groundMinimapCache.get(this.buildKey);
-    const pxPerUnit = tex ? this.size / (tex.radius * 2) : this.size / this.viewWorld;
+    const r = this.size / 2 - 1;
+    const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
+    const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
+    const mapScale = (this.size - 2) / (tex ? tex.radius * 2 : this.size);
+    const worldToMapX = (wx) => cx + (wx - centerX) * mapScale;
+    const worldToMapZ = (wz) => cy + (wz - centerZ) * mapScale;
+
     if (tex) {
-      const cx = this.size / 2;
-      const cy = this.size / 2;
-      const scale = pxPerUnit;
-
-      const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
-      const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
-      const dx = (this.player.x - centerX) * scale;
-      const dz = (this.player.z - centerZ) * scale;
-
+      // A textura cobre TODO o disco, sempre centralizada.
+      // O mapa inteiro cabe no minimapa; não acompanha o player.
       ctx.save();
       ctx.beginPath();
-      ctx.arc(cx, cy, this.size / 2 - 1, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.clip();
+
       ctx.drawImage(
         tex.canvas,
-        cx - tex.radius * scale - dx,
-        cy - tex.radius * scale - dz,
-        tex.radius * scale * 2,
-        tex.radius * scale * 2
+        cx - r,
+        cy - r,
+        r * 2,
+        r * 2
       );
       ctx.restore();
     }
 
     // Mobs/NPCs continuam dinâmicos e ficam sempre por cima da miniatura.
     for (const e of this.entities) {
-      const ex = cx + (e.x - this.player.x) * pxPerUnit;
-      const ez = cy + (e.z - this.player.z) * pxPerUnit;
+      const ex = worldToMapX(e.x);
+      const ez = worldToMapZ(e.z);
       if (ex < -6 || ez < -6 || ex > this.size + 6 || ez > this.size + 6) continue;
 
       ctx.save();
@@ -701,8 +700,6 @@ export class Minimap {
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#fff';
     ctx.stroke();
-    ctx.restore();
-
     ctx.restore();
 
     // Borda circular com profundidade: sombra externa + aro discreto.
