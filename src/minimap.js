@@ -639,22 +639,23 @@ export class Minimap {
     ctx.fillRect(0, 0, this.size, this.size);
 
     const tex = this.groundMinimapCache.get(this.buildKey);
+    const cx = this.size / 2;
+    const cy = this.size / 2;
     const r = this.size / 2 - 1;
     const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
     const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
-    const mapScale = (this.size - 2) / (tex ? tex.radius * 2 : this.size);
+    const mapScale = (this.size - 2) / (tex ? tex.width : this.size);
     const worldToMapX = (wx) => cx + (wx - centerX) * mapScale;
     const worldToMapZ = (wz) => cy + (wz - centerZ) * mapScale;
 
     if (tex) {
-      // Escala proporcional: a textura é conteúdo e o canvas DOM é apenas o container.
-      const scale = (this.size - 2) / tex.width;
-
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.clip();
 
+      // Escala proporcional — NÃO estica a textura.
+      const scale = (this.size - 2) / tex.width;
       ctx.drawImage(
         tex.canvas,
         cx - (tex.width * scale) / 2,
@@ -665,12 +666,11 @@ export class Minimap {
       ctx.restore();
     }
 
-    // Mobs/NPCs continuam dinâmicos e ficam sempre por cima da miniatura.
+    // Entidades
     for (const e of this.entities) {
       const ex = worldToMapX(e.x);
       const ez = worldToMapZ(e.z);
       if (ex < -6 || ez < -6 || ex > this.size + 6 || ez > this.size + 6) continue;
-
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,.7)';
       ctx.shadowBlur = 2;
@@ -684,7 +684,7 @@ export class Minimap {
       ctx.restore();
     }
 
-    // Jogador: seta orientada para a direção atual.
+    // Jogador — marcador móvel no mapa global.
     ctx.save();
     ctx.translate(worldToMapX(this.player.x), worldToMapZ(this.player.z));
     ctx.rotate(-this.player.rot);
@@ -698,31 +698,8 @@ export class Minimap {
     ctx.closePath();
     ctx.fillStyle = '#ff6b6b';
     ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#fff';
-    ctx.stroke();
     ctx.restore();
 
-    // Borda circular com profundidade: sombra externa + aro discreto.
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.72)';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(8,12,9,.95)';
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius - 2.5, 0, Math.PI * 2);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(202,215,193,.20)';
-    ctx.stroke();
-    ctx.restore();
-
-    this.dirty = false;
-  }
 
   entColor(type) {
     return ({ enemy: '#ff4757', ally: '#2ed573', item: '#ffd32a', npc: '#a29bfe' })[type] || '#fff';
