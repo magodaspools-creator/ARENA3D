@@ -135,12 +135,37 @@ export function createArea2(game) {
     }
     // Gameplay landmarks sit on the original desert floor. Attenuate the
     // procedural dunes around them instead of letting sand swallow their meshes.
-    const oasisClear = Math.max(0, 1 - Math.hypot(x - ORIGIN.x, z) / 9.5);
-    const nadirClear = Math.max(0, 1 - Math.hypot(x - 142, z) / 4.0);
-    const templeClearX = Math.max(0, 1 - Math.abs(x - ORIGIN.x) / 23);
-    const templeClearZ = Math.max(0, 1 - Math.abs(z - 38) / 13);
+    // Gameplay structures are authored at fixed Y coordinates. Keep their
+    // immediate footprints on the original desert floor; otherwise the
+    // procedural dunes visually cut through walls, NPCs, the caravan, portals
+    // and the altar even when the object itself has not moved.
+    const clearCircle = (cx, cz, radius) =>
+      Math.max(0, 1 - Math.hypot(x - cx, z - cz) / radius);
+
+    const oasisClear = clearCircle(ORIGIN.x, 0, 12);
+    const nadirClear = clearCircle(142, 0, 7);
+    const caravanClear = clearCircle(171, -30, 6);
+    const loreClear = clearCircle(150, -17, 4.5);
+    const chestClear = clearCircle(150, 22, 4.5);
+    const entryPortalClear = clearCircle(ORIGIN.x, -45, 7);
+    const bossClear = clearCircle(ORIGIN.x, 37, 12);
+
+    // The entire temple footprint is deliberately flat. The altar, stairs,
+    // pillars and north/south ruin blocks all use fixed world-space heights.
+    const templeClearX = Math.max(0, 1 - Math.abs(x - ORIGIN.x) / 22);
+    const templeClearZ = Math.max(0, 1 - Math.abs(z - 37) / 15);
     const templeClear = templeClearX * templeClearZ;
-    const keepGround = Math.max(oasisClear, nadirClear, templeClear);
+
+    const keepGround = Math.max(
+      oasisClear,
+      nadirClear,
+      caravanClear,
+      loreClear,
+      chestClear,
+      entryPortalClear,
+      bossClear,
+      templeClear,
+    );
     return Math.min(3.05, h) * (1 - keepGround);
   };
 
