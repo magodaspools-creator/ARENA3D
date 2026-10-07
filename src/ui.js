@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Minimap } from './minimap.js';
+import { WorldMap } from './world-map.js';
 
 // Minimal DOM HUD + world-anchored elements (damage numbers, HP bars,
 // interaction prompts, speech bubbles) projected from 3D each frame.
@@ -24,6 +25,9 @@ export class UI {
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
       minimap: $('minimap-canvas'),
+      worldMap: $('world-map-canvas'),
+      worldMapOverlay: $('world-map'),
+      worldMapClose: $('world-map-close'),
       pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
 
@@ -38,6 +42,10 @@ export class UI {
       : null;
     this.minimapAreaKey = null;
     this.minimapLastZoneCount = null;
+    this.worldMap = this.el.worldMap
+      ? new WorldMap({ canvas: this.el.worldMap, title: 'MAPA DE VHAL', subtitle: 'Cartografia da área atual' })
+      : null;
+    this.el.worldMapClose?.addEventListener('click', () => this.game.closeWorldMap?.());
   }
 
   // ---------- world anchored ----------
@@ -114,6 +122,78 @@ export class UI {
       a.el.style.transform = `translate(${s.x | 0}px, ${s.y | 0}px) translate(-50%, ${ty})`;
       a.el.style.visibility = s.ok ? 'visible' : 'hidden';
     }
+  }
+
+  // ---------- mapa-múndi ----------
+  _worldMapPois(area) {
+    const pois = [];
+    if (!area?.minimap) return pois;
+    if (area.minimap.arena) {
+      const a = area.minimap.arena;
+      pois.push({ type: 'arena', x: a.x, z: a.z, r: 2.2, label: 'Arena' });
+    }
+    if (area.minimap.portal) {
+      const p = area.minimap.portal;
+      pois.push({ type: 'portal', x: p.x, z: p.z, r: 1.5, label: 'Portal' });
+    }
+    if (!area.minimap.underground) {
+      pois.push({ type: 'mine', x: 12.4, z: 35.0, r: 2.0, label: 'Entrada da Mina' });
+      pois.push({ type: 'pz', x: 0.1, z: 35.2, r: 8.2, label: 'Zona Protegida' });
+    } else {
+      pois.push({ type: 'mine', x: 110, z: 101, r: 2.0, label: 'Mina' });
+    }
+    return pois;
+  }
+
+  _worldMapEntities() {
+    const entities = [];
+    const add = (entry, type, radius = 3) => {
+      if (!entry?.pos || entry.dead || entry.removed) return;
+      if (entry.root && entry.root.visible === false) return;
+      entities.push({
+        x: entry.pos.x,
+        z: entry.pos.z,
+        type: entry.isBoss ? 'boss' : type,
+        radius,
+        label: entry.isBoss ? (entry.name || 'Boss') : (entry.name || (type === 'npc' ? 'NPC' : 'Monstro')),
+      });
+    };
+    for (const e of this.game.enemies || []) add(e, 'enemy', e.isBoss ? 4 : 3);
+    for (const n of this.game.npcs || []) add(n, 'npc', 3.2);
+    for (const loot of this.game.groundLoot || []) {
+      if (!loot?.pos || loot.dead) continue;
+      entities.push({ x: loot.pos.x, z: loot.pos.z, type: 'loot', label: 'Loot' });
+    }
+    return entities;
+  }
+
+  updateWorldMap() {
+    if (!this.worldMap || !this.game.area || !this.game.player) return;
+    const area = this.game.area;
+    const bounds = area.minimap?.bounds;
+    const zones = this.game.collision?.zones || [];
+    if (!bounds || !zones.length) return;
+    this.worldMap.setData({
+      bounds,
+      zones,
+      obstacles: this.game.collision?.obstacles || [],
+      pois: this._worldMapPois(area),
+      entities: this._worldMapEntities(),
+      player: { x: this.game.player.pos.x, z: this.game.player.pos.z },
+      areaName: area.name || 'Área atual',
+    });
+  }
+
+  openWorldMap() {
+    if (!this.worldMap || !this.game.player || this.game.state !== 'play') return;
+    this.updateWorldMap();
+    this.el.worldMapOverlay?.classList.remove('hidden');
+    this.worldMap.open();
+  }
+
+  closeWorldMap() {
+    this.worldMap?.close();
+    this.el.worldMapOverlay?.classList.add('hidden');
   }
 
   // ---------- minimap ----------
