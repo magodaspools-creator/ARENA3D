@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { rng, fbm, smooth, Terrain, createGround, Decor, createPortal, createRuneStone, createChest } from '../world.js';
 import { Enemy } from '../enemy.js';
 import { SunGodBoss } from '../sun-boss.js';
+import { NPC } from '../npc.js';
+import { Progression } from '../progression.js';
 
 // Prototype Area 2 — Desert of the Buried Sun.
 // This is intentionally a standalone prototype: it lives far from Area 1 so
