@@ -52,14 +52,44 @@ function attachScorpionModel(model, gltf) {
       ? obj.material.map((m) => m.clone())
       : obj.material.clone();
   });
+  // The source model's longitudinal axis is X; Arena enemies face +Z.
+  visual.rotation.y = -Math.PI / 2;
   visual.scale.setScalar(1.0);
+
   model.root.add(visual);
   model.scorpionVisual = visual;
+  model.scorpionMixer = gltf.animations?.length ? new THREE.AnimationMixer(visual) : null;
+  model.scorpionActions = {};
+  if (model.scorpionMixer) {
+    for (const clip of gltf.animations) {
+      const key = clip.name.toLowerCase();
+      model.scorpionActions[key] = model.scorpionMixer.clipAction(clip);
+    }
+  }
+
+  // Keep references to articulated parts when the asset exposes them.
+  model.scorpionLegs = [];
+  model.scorpionTail = [];
+  visual.traverse((obj) => {
+    const n = String(obj.name || '').toLowerCase();
+    if (/(^|[_ .-])(leg|leg[0-9]|frontleg|backleg|leftleg|rightleg)([_ .-]|$)/i.test(n) || /leg/i.test(n)) {
+      model.scorpionLegs.push(obj);
+    }
+    if (/(tail|stinger|sting|cauda)/i.test(n)) model.scorpionTail.push(obj);
+  });
 }
 
 function createScorpionModel(scale = 1) {
   const root = new THREE.Group();
-  const model = { root, scorpionVisual: null };
+  const model = {
+    root,
+    scorpionVisual: null,
+    scorpionMixer: null,
+    scorpionActions: {},
+    scorpionLegs: [],
+    scorpionTail: [],
+    scorpionAction: null,
+  };
   scorpionInstances.add(model);
   root.scale.setScalar(scale);
   loadScorpionModel().then((gltf) => attachScorpionModel(model, gltf));
@@ -412,6 +442,7 @@ export class Enemy {
     this.state = 'windup';
     this.stateT = 0;
     if (this.anim) this.anim.attack('slash', this.def.windup / 0.5);
+    if (this.scorpion) this.playScorpionAction('attack');
   }
 
   animateSpider(dt, stride = 0) {
@@ -429,14 +460,65 @@ export class Enemy {
     });
   }
 
+  playScorpionAction(kind) {
+    const m = this.model;
+    if (!m) return;
+    const keys = Object.keys(m.scorpionActions || {});
+    if (!keys.length) return;
+
+    const wanted = kind === 'attack'
+      ? keys.find((k) => /(attack|sting|strike|stab|hit)/i.test(k))
+      : keys.find((k) => /(walk|run|move|locomotion)/i.test(k));
+
+    if (!wanted) return;
+    const action = m.scorpionActions[wanted];
+    if (m.scorpionAction && m.scorpionAction !== action) m.scorpionAction.fadeOut(0.12);
+    action.reset().fadeIn(0.12).play();
+    m.scorpionAction = action;
+  }
+
   animateScorpion(dt, stride = 0) {
-    const visual = this.model?.scorpionVisual;
+    const m = this.model;
+    const visual = m?.scorpionVisual;
     if (!visual) return;
+
     const moving = stride > 0.05 && this.state !== 'windup';
-    // The source GLB is a static posed scorpion. Keep the silhouette grounded
-    // while giving the creature a restrained body motion during locomotion.
+    if (m.scorpionMixer) m.scorpionMixer.update(dt);
+
+    // If the GLB contains its own locomotion clip, use it instead of sliding.
+    if (moving) this.playScorpionAction('walk');
+
+    // Fallback for static GLBs: articulate separately named legs.
+    if (!m.scorpionMixer && m.scorpionLegs.length) {
+      const phase = this.t * 11;
+      m.scorpionLegs.forEach((leg, i) => {
+        const side = i % 2 ? -1 : 1;
+        const row = Math.floor(i / 2);
+        const swing = moving ? Math.sin(phase + row * 0.9) * 0.18 : 0;
+        leg.rotation.z = side * swing;
+        leg.rotation.x = moving ? Math.cos(phase + row * 0.9) * 0.07 : 0;
+      });
+    }
+
+    // Tail strike: lift the tail before impact, then whip the stinger forward.
+    if (this.state === 'windup' && m.scorpionTail.length) {
+      const p = THREE.MathUtils.clamp(this.stateT / Math.max(0.001, this.def.windup), 0, 1);
+      const wind = p < 0.55 ? p / 0.55 : 1 - (p - 0.55) / 0.45;
+      m.scorpionTail.forEach((part, i) => {
+        const weight = (i + 1) / m.scorpionTail.length;
+        part.rotation.x = -0.15 - wind * (0.45 + weight * 0.65);
+        part.rotation.z = Math.sin(p * Math.PI) * 0.18 * weight;
+      });
+    }
+
+    if (!moving && this.state !== 'windup' && m.scorpionTail.length) {
+      m.scorpionTail.forEach((part) => {
+        part.rotation.x *= Math.exp(-10 * dt);
+        part.rotation.z *= Math.exp(-10 * dt);
+      });
+    }
+
     visual.position.y = moving ? Math.sin(this.t * 10) * 0.018 : 0;
-    visual.rotation.y = moving ? Math.sin(this.t * 7) * 0.035 : 0;
   }
 
   animateWisp(dt) {
