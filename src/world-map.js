@@ -159,7 +159,6 @@ export class WorldMap {
         pixels[i] = c[0];
         pixels[i + 1] = c[1];
         pixels[i + 2] = c[2];
-        // Coverage contínua: a borda não vira uma sequência de quadrados.
         pixels[i + 3] = hits ? Math.round(255 * (0.38 + hits * 0.155)) : 0;
       }
     }
@@ -176,8 +175,6 @@ export class WorldMap {
     ctx.filter = 'none';
     ctx.restore();
 
-    // Subtle contour bands. They follow the same continuous field and never
-    // create artificial zone borders.
     ctx.save();
     ctx.beginPath();
     ctx.rect(p.ox, p.oy, p.drawW, p.drawH);
@@ -294,19 +291,6 @@ export class WorldMap {
     ctx.textBaseline = 'middle';
     ctx.fillText(icons[poi.type] || '•', x, y + 0.5);
     ctx.restore();
-
-    if (poi.label) {
-      ctx.save();
-      ctx.font = '600 12px Georgia, serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(4,7,5,.9)';
-      ctx.strokeText(poi.label, x + 11, y - 8);
-      ctx.fillStyle = '#ead9ad';
-      ctx.fillText(poi.label, x + 11, y - 8);
-      ctx.restore();
-    }
   }
 
   _drawEntities(ctx, entities, p) {
@@ -329,18 +313,6 @@ export class WorldMap {
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
-
-      if (e.label) {
-        ctx.save();
-        ctx.font = '600 10px "Segoe UI", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(4,7,5,.92)';
-        ctx.strokeText(e.label, x, y - r - 7);
-        ctx.fillStyle = '#f0e5ca';
-        ctx.fillText(e.label, x, y - r - 7);
-        ctx.restore();
-      }
     }
   }
 
@@ -366,16 +338,6 @@ export class WorldMap {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-
-    ctx.save();
-    ctx.font = '700 12px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(4,7,5,.95)';
-    ctx.strokeText('VOCÊ', x, y + 22);
-    ctx.fillStyle = '#fff0d0';
-    ctx.fillText('VOCÊ', x, y + 22);
-    ctx.restore();
   }
 
   render() {
@@ -388,7 +350,6 @@ export class WorldMap {
     ctx.fillStyle = '#070b09';
     ctx.fillRect(0, 0, this.renderW, this.renderH);
 
-    // Moldura do mapa: um papel cartográfico escuro, sem grid quadriculado.
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,.65)';
     ctx.shadowBlur = 30;
@@ -405,7 +366,6 @@ export class WorldMap {
     this._drawEntities(ctx, data.entities, p);
     this._drawPlayer(ctx, data.player, p);
 
-    // Header and legend live outside the terrain itself.
     ctx.save();
     ctx.font = '700 25px Georgia, serif';
     ctx.fillStyle = '#f0d9a8';
@@ -424,15 +384,16 @@ export class WorldMap {
     ];
     let lx = this.renderW - 36;
     ctx.textAlign = 'right';
-    ctx.font = '10px "Segoe UI", sans-serif';
+    ctx.font = '700 14px "Segoe UI", sans-serif';
     for (const [color, label] of legend) {
+      const textWidth = ctx.measureText(label).width;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(lx - ctx.measureText(label).width - 8, 30, 4, 0, Math.PI * 2);
+      ctx.arc(lx - textWidth - 11, 30, 5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#a7ad9f';
-      ctx.fillText(label, lx, 34);
-      lx -= ctx.measureText(label).width + 74;
+      ctx.fillStyle = '#c3c8bb';
+      ctx.fillText(label, lx, 35);
+      lx -= textWidth + 86;
     }
 
     ctx.fillStyle = '#697465';
