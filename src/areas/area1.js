@@ -1480,6 +1480,40 @@ const mine = {
   },
 };
 
+// ---------- mine lore NPC ----------
+// Ivar is the last miner who stayed behind to understand what was awakened.
+// He is an optional lore encounter and does not alter the main Area 1 quest.
+const mineKeeper = new NPC(game, {
+  name: 'Ivar, o Último Mineiro',
+  x: 104.2,
+  z: 103.2,
+  facing: -0.55,
+  look: {
+    skin: 0x9a6b4c,
+    body: 0x4b3b2f,
+    legs: 0x29231f,
+    robe: 0x574536,
+    hood: 0x302a26,
+    head: null,
+    accent: 0xc08a42,
+    npcRole: 'watcher',
+  },
+  dialogue: () => ({
+    lines: [
+      'Você desceu... então viu as quatro pedras no centro do poço.',
+      'Aquilo não era um altar para rezar. Era um selo. Os primeiros mineiros encontraram a câmara muito antes de nós.',
+      'Eles descobriram que a montanha já tinha dono: uma criatura enorme, uma aranha que fazia seus ninhos nas profundezas.',
+      'Quando começaram a retirar o minério negro daqui, quebraram parte do selo. Depois vieram as teias, os ovos... e os desaparecimentos.',
+      'Os sobreviventes tentaram refazer o ritual. Quatro pedras, uma luz no centro e sangue oferecido à terra. Era uma tentativa desesperada de manter a criatura adormecida.',
+      'Não funcionou. A coisa lá embaixo aprendeu a esperar.',
+      'Se você ouvir patas nas pedras, não siga as teias. E se encontrar a aranha... não pense que ela está protegendo o ninho. O ninho é que está protegendo ela.',
+      'Se decidir descer até a caverna natural, prepare-se. O que vive ali não é apenas um monstro: é o resto de um ritual que deu errado.',
+    ],
+  }),
+});
+mineKeeper.root.visible = false;
+game.npcs.push(mineKeeper);
+
 // ---------- Stage 4 natural boss cave + optional miniboss ----------
 // This is NOT the main Area 1 boss arena. Morvhal remains above, in the
 // Santuário Afundado, and the mine is an optional exploration branch.
@@ -1789,6 +1823,7 @@ const enterMine = () => {
 
     mine.active = true;
     mine.group.visible = true;
+    mineKeeper.root.visible = true;
 
     // Keep dynamic lights asleep for the first rendered mine frame. Static
     // geometry can appear immediately without also activating every PointLight.
@@ -1843,6 +1878,7 @@ const leaveMine = () => {
   game.schedule(0.45, () => {
     mine.active = false;
     mine.group.visible = false;
+    mineKeeper.root.visible = false;
     for (const light of mineLights) light.visible = true;
     for (const e of game.enemies) {
       if (e.group === 'mine' && !e.removed) e.root.visible = false;
@@ -1865,7 +1901,8 @@ const leaveMine = () => {
     { id: 'braziers', timeline: 'Reacender as Chamas-Vigia', text: (c) => `Reacenda as Chamas-Vigia no pátio em ruínas (${c.lit || 0}/3)`, hint: 'O fogo não pega com Ocos por perto' },
     { id: 'shrine', timeline: 'Abrir o Santuário Afundado', text: 'O selo caiu. Entre no Santuário Afundado', hint: 'Siga para o norte, além do portão' },
     { id: 'boss', timeline: 'Enfrentar Morvhal', text: 'Derrote Morvhal, o Guardião Oco', hint: 'Fique fora das áreas vermelhas' },
-    { id: 'portal', timeline: 'Abrir o caminho adiante', text: 'Atravesse o portal para a próxima área', hint: 'Ao fundo do santuário' },
+    { id: 'return', timeline: 'Concluir a Floresta de Vhal', text: 'Volte até Maren e fale com ela novamente', hint: 'A Vigia está perto da fogueira, na entrada da floresta' },
+    { id: 'portal', timeline: 'Seguir para o próximo mapa', text: 'Atravesse o portal para o Deserto do Sol Sepultado', hint: 'O portal se abriu no fundo do santuário' },
     { id: 'complete', timeline: 'Concluir a Floresta de Vhal', text: 'Área 1 concluída!' },
   ], 'area1');
 
@@ -2172,8 +2209,24 @@ const leaveMine = () => {
         };
       }
       if (!prog.reached('shrine')) return { lines: [`Ainda faltam ${3 - lit()} chama(s). Derrote os Ocos perto de cada braseiro e use [E] para acendê-lo.`] };
-      if (!prog.reached('portal')) return { lines: ['O selo caiu! Eu senti daqui. Morvhal espera no santuário... que a luz te guie.'] };
-      return { lines: ['Você conseguiu. A floresta respira de novo.', 'O caminho para as Criptas Submersas está aberto. Eu nunca vou esquecer isso, viajante.'] };
+      if (!prog.reached('return')) return { lines: ['O selo caiu! Eu senti daqui. Morvhal espera no santuário... que a luz te guie.'] };
+      if (!prog.reached('portal')) {
+        return {
+          lines: [
+            'Você voltou... então é verdade. Morvhal caiu.',
+            'Por um instante, a floresta ficou em silêncio. O peso que estava sobre Vhal finalmente se desfez.',
+            'Com a morte do Guardião Oco, o antigo caminho além do santuário pode ser aberto.',
+            'A Floresta de Vhal está concluída. Siga pelo portal quando estiver pronto.',
+          ],
+          onDone: () => {
+            if (prog.advance('portal')) {
+              maren.setMarker(null);
+              game.ui.toast('Novo objetivo: atravesse o portal para o Deserto do Sol Sepultado');
+            }
+          },
+        };
+      }
+      return { lines: ['Você conseguiu. A floresta respira de novo.', 'O caminho para o Deserto do Sol Sepultado está aberto. Vá. Ainda há algo muito pior esperando além das ruínas.'] };
     },
   });
   game.npcs.push(maren);
@@ -2479,7 +2532,7 @@ const leaveMine = () => {
       game.onBossDefeated({ xp: 500, gold: 250, loot: [{ itemId: 'hollow_core', amount: 1 }, { itemId: 'moon_ring', amount: 1 }] }, boss.pos);
       game.stats.bossTime = game.time - fightStart;
       localStorage.setItem(BOSS_KEY, String(+(localStorage.getItem(BOSS_KEY) || 0) + 1));
-      prog.advance('portal');
+      prog.advance('return');
       for (const e of adds) if (e.alive) { e.takeDamage(9999, e.pos.clone().add(new THREE.Vector3(0, 0, 1))); }
       game.schedule(1.2, () => {
         game.ui.banner('VITÓRIA', 'Morvhal, o Guardião Oco, foi derrotado', 'victory', 4.5);
@@ -2490,7 +2543,7 @@ const leaveMine = () => {
         runeMat.color.set(0xffc36a);
         portal.rise();
         game.rig.cinematic(portal.pos, 3);
-        game.ui.toast('Um portal se abriu ao fundo do santuário');
+        game.ui.toast('Morvhal caiu. Volte até Maren para concluir a Floresta de Vhal');
       });
       maren.setMarker(0x6ae0ff);
     },
@@ -2557,6 +2610,13 @@ const leaveMine = () => {
           // Restore the boss HUD too: a reload recreates the UI in a hidden state.
           game.ui.showBoss(boss.name);
           game.ui.setBoss(boss.hp / boss.maxHp, boss.enraged);
+        } else if (prog.reached('return')) {
+          barrierCol.enabled = false;
+          boss.alive = false;
+          boss.state = 'dead';
+          boss.root.visible = false;
+          boss.tele?.forEach((telegraph) => game.fx.remove(telegraph));
+          boss.tele = [];
         } else if (prog.reached('portal')) {
           barrierCol.enabled = false;
           boss.alive = false;
@@ -2568,6 +2628,9 @@ const leaveMine = () => {
           runeMat.color.set(0xffc36a);
         }
       }
+
+      if (prog.reached('portal')) maren.setMarker(null);
+      else if (prog.reached('return')) maren.setMarker(0x6ae0ff);
 
       prog.apply();
 
