@@ -15,10 +15,8 @@ const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughn
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
 
-// CC0 sprite from OpenGameArt (madameberry):
-// https://opengameart.org/content/scorpy-scorp-side-scroller-enemy
-// The image is used as a billboard so the desert enemy reads as a 2D sprite
-// inside the otherwise 3D world.
+// Local desert scorpion sprite. The silhouette/style was chosen to fit the
+// pixel-art enemy role while keeping the game independent of a remote asset.
 const SCORPION_SPRITE_URL = './assets/scorpion.svg';
 let scorpionTexture = null;
 let scorpionTextureFailed = false;
