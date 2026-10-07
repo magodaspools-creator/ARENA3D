@@ -133,7 +133,15 @@ export function createArea2(game) {
         h += peak * t * t * (3 - 2 * t);
       }
     }
-    return Math.min(3.05, h);
+    // Gameplay landmarks sit on the original desert floor. Attenuate the
+    // procedural dunes around them instead of letting sand swallow their meshes.
+    const oasisClear = Math.max(0, 1 - Math.hypot(x - ORIGIN.x, z) / 9.5);
+    const nadirClear = Math.max(0, 1 - Math.hypot(x - 142, z) / 4.0);
+    const templeClearX = Math.max(0, 1 - Math.abs(x - ORIGIN.x) / 23);
+    const templeClearZ = Math.max(0, 1 - Math.abs(z - 38) / 13);
+    const templeClear = templeClearX * templeClearZ;
+    const keepGround = Math.max(oasisClear, nadirClear, templeClear);
+    return Math.min(3.05, h) * (1 - keepGround);
   };
 
   const baseTerrainHeight = terrain.height.bind(terrain);
@@ -168,7 +176,7 @@ export function createArea2(game) {
     // combat field and break movement around the guardian.
     if (Math.hypot(x - ORIGIN.x, z - 40) < 9.5) continue;
     const s = 0.5 + r() * 2.4;
-    decor.rock(x, 0, z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
+    decor.rock(x, terrain.height(x, z), z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
     // Every gameplay-visible rock is also a physical obstacle.
     collision.addCircle(x, z, Math.max(0.5, s * 1.1), { projectiles: false });
   }
@@ -255,7 +263,7 @@ export function createArea2(game) {
       cactus.add(arm);
     }
 
-    cactus.position.set(x, 0, z);
+    cactus.position.set(x, terrain.height(x, z), z);
     cactus.rotation.y = r() * Math.PI * 2;
     scene.add(cactus);
     collision.addCircle(x, z, Math.max(0.45, radius * 1.35), { projectiles: false });
