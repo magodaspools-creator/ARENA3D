@@ -131,6 +131,7 @@ export function createArea2(game) {
 
   const baseTerrainHeight = terrain.height.bind(terrain);
   terrain.height = (x, z) => baseTerrainHeight(x, z) + duneHeight(x, z);
+  collision.setGroundHeight((x, z) => terrain.height(x, z));
 
   // Map 2 is a true desert: keep the ground clearly sand-colored instead of
   // inheriting the greener forest palette used by other areas.
@@ -749,6 +750,7 @@ export function createArea2(game) {
       game.interaction.items.length = interactionBaseline;
       collision.zones.length = collisionZoneBaseline;
       collision.obstacles.length = collisionObstacleBaseline;
+      collision.setGroundHeight(null);
 
       for (const enemy of areaEnemies) enemy.dispose?.();
       game.enemies = game.enemies.filter((enemy) => !areaEnemies.includes(enemy));
@@ -769,18 +771,6 @@ export function createArea2(game) {
       water.material.opacity = 0.78 + Math.sin(t*1.8)*0.06;
 
       // Heat shimmer / drifting sand. Kept lightweight for the prototype.
-      if (game.player) {
-        const groundY = terrain.height(game.player.pos.x, game.player.pos.z);
-        game.player.root.position.y = THREE.MathUtils.damp(game.player.root.position.y, groundY, 10, dt);
-      }
-
-      for (const enemy of areaEnemies) {
-        if (enemy?.root && !enemy.isBoss) {
-          const groundY = terrain.height(enemy.pos.x, enemy.pos.z);
-          enemy.root.position.y = THREE.MathUtils.damp(enemy.root.position.y, groundY, 10, dt);
-        }
-      }
-
       if (game.state === 'play' && Math.random() < 0.34) {
         game.fx.particles.spawn(
           game.player.pos.x + (Math.random()-0.5)*18,
