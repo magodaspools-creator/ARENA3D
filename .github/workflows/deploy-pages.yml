@@ -42,17 +42,18 @@ jobs:
       - name: Add asset attribution
         shell: bash
         run: |
+          mkdir -p assets/scorpion
           cat > assets/scorpion/ATTRIBUTION.txt <<'EOF'
-ARENA3D SCORPION ASSET
+          ARENA3D SCORPION ASSET
 
-Original work: "Scorpion (3D)"
-Author: Guillaume "GuieA_7" Englert
-Source: https://opengameart.org/content/scorpion-3d
-License: Creative Commons Attribution-ShareAlike 4.0 International
-License: https://creativecommons.org/licenses/by-sa/4.0/
+          Original work: "Scorpion (3D)"
+          Author: Guillaume "GuieA_7" Englert
+          Source: https://opengameart.org/content/scorpion-3d
+          License: Creative Commons Attribution-ShareAlike 4.0 International
+          License: https://creativecommons.org/licenses/by-sa/4.0/
 
-The Blender source is converted to GLB during the GitHub Pages build.
-EOF
+          The Blender source is converted to GLB during the GitHub Pages build.
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
