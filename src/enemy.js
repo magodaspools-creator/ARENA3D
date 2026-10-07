@@ -62,12 +62,39 @@ function loadScorpionTexture() {
 
 function createScorpionModel(scale = 1) {
   const root = new THREE.Group();
-  const fallback = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.48, 0),
-    new THREE.MeshStandardMaterial({ color: 0x6a4630, roughness: 0.9, flatShading: true }),
-  );
-  fallback.scale.set(1.25, 0.55, 0.85);
-  fallback.position.y = 0.38;
+  // Guaranteed local fallback: never show the old "stone" blob while the
+  // scorpion sprite is loading or if the texture cannot be decoded.
+  const fallback = new THREE.Group();
+  const scorpionMat = new THREE.MeshStandardMaterial({ color: 0x70412b, roughness: 0.92, flatShading: true });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x21140f, roughness: 1, flatShading: true });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 5), scorpionMat);
+  body.scale.set(1.25, 0.48, 0.82);
+  body.position.y = 0.42;
+  fallback.add(body);
+
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.75, 6), darkMat);
+  tail.position.set(0, 0.62, -0.55);
+  tail.rotation.x = -0.7;
+  fallback.add(tail);
+
+  const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.32, 6), scorpionMat);
+  stinger.position.set(0, 0.93, -0.88);
+  stinger.rotation.x = Math.PI;
+  fallback.add(stinger);
+
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.62, 5), darkMat);
+      leg.position.set(side * (0.38 + i * 0.08), 0.34, -0.18 + i * 0.25);
+      leg.rotation.z = side * 1.05;
+      fallback.add(leg);
+    }
+    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 6), scorpionMat);
+    claw.position.set(side * 0.55, 0.4, 0.45);
+    claw.rotation.z = side * 1.25;
+    fallback.add(claw);
+  }
   root.add(fallback);
 
   const model = { root, fallback };
