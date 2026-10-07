@@ -128,30 +128,16 @@ export function createArea2(game) {
   collision.addCircle(ORIGIN.x, ORIGIN.z, 6.5, { projectiles:false });
 
   // ---------- desert guide / pre-boss quest ----------
-  // Nadir is the first contact in Map 2. He explains why the Sun God is
-  // sealed and gives the player a concrete task before the temple can be
-  // approached.
+  // Map 2 deliberately uses a different quest structure from Map 1:
+  // one investigation in a buried caravan, followed by a return to Nadir.
+  // There are no repeated "activate three points" objectives here.
   const progression = new Progression(game, [
-    {
-      id: 'markers',
-      text: 'Restaure os 3 Marcos do Sol',
-      hint: 'Encontre os marcos espalhados pelo deserto.',
-    },
-    {
-      id: 'pet',
-      text: 'Fale com Nadir e desperte seu companheiro',
-      hint: 'Os três marcos foram restaurados.',
-    },
-    {
-      id: 'boss',
-      text: 'Encontre Azhur, o Deus Sol',
-      hint: 'O selo do templo está enfraquecido.',
-    },
-    {
-      id: 'portal',
-      text: 'Atravesse o portal do templo',
-      hint: 'Azhur foi derrotado.',
-    },
+    { id: 'nadir', text: 'Fale com Nadir, o Guardião das Dunas', hint: 'Ele sabe por que o caminho do templo desapareceu.', timeline: 'Falar com Nadir' },
+    { id: 'caravan', text: 'Investigue a caravana soterrada', hint: 'Procure os destroços a oeste do oásis.', timeline: 'Investigar a caravana' },
+    { id: 'return', text: 'Volte ao oásis e fale com Nadir', hint: 'Você encontrou o Fragmento Solar.', timeline: 'Voltar ao oásis' },
+    { id: 'pet', text: 'Desperte seu companheiro do deserto', hint: 'Nadir pode revelar o espírito que respondeu a você.', timeline: 'Despertar companheiro' },
+    { id: 'boss', text: 'Entre no Templo do Sol e enfrente Azhur', hint: 'O Fragmento Solar revelou a entrada soterrada.', timeline: 'Enfrentar Azhur' },
+    { id: 'portal', text: 'Atravesse o portal do templo', hint: 'Azhur foi derrotado. O caminho adiante está aberto.', timeline: 'Atravessar o portal' },
   ], 'area2');
   progression.load();
 
@@ -191,102 +177,81 @@ export function createArea2(game) {
     const vocation = game.character?.vocation;
     const pet = petNames[vocation];
     if (!pet) return;
-    game.character.data.pet = {
-      id: vocation + '_desert',
-      name: pet,
-      vocation,
-      source: 'desert',
-    };
+    game.character.data.pet = { id: vocation + '_desert', name: pet, vocation, source: 'desert' };
     game.character.save();
     petGranted = true;
     createPetVisual(vocation);
     game.ui.toast(pet + ' despertou ao seu lado.');
   };
 
-  const markerData = [
-    { id: 'dune', x: 126, z: -18, name: 'Marco da Duna Vermelha', color: 0xffb84d },
-    { id: 'oasis', x: 141, z: 7, name: 'Marco do Oásis Perdido', color: 0x6dd7d0 },
-    { id: 'ruins', x: 176, z: 22, name: 'Marco das Ruínas Soterradas', color: 0xffd66b },
-  ];
-  const solarMarkers = [];
+  // The quest object is a single buried caravan: an investigation, not a
+  // checklist. It has a visible sun-disc and a half-buried wagon silhouette.
+  const caravan = new THREE.Group();
+  caravan.name = 'buried-caravan';
+  caravan.position.set(171, 0, -30);
+  scene.add(caravan);
 
-  const restoreMarker = (entry) => {
-    if (progression.counters[entry.id]) return;
-    progression.setCounter(entry.id, 1);
-    const restored = solarMarkers.find((m) => m.id === entry.id);
-    if (restored) {
-      restored.active = true;
-      restored.core.material.emissiveIntensity = 2.5;
-      restored.ring.material.opacity = 0.9;
-      game.fx.ring(restored.group.position, entry.color, 1.6, 0.8);
-      game.ui.toast(entry.name + ' restaurado.');
-    }
-    const total = markerData.filter((m) => progression.counters[m.id]).length;
-    if (total >= 3) {
-      progression.advance('pet');
-      game.ui.banner('OS TRÊS MARCOS RESPONDEM', 'Volte ao oásis e fale com Nadir.', 'victory', 3);
-    }
+  const caravanWood = new THREE.MeshStandardMaterial({ color: 0x68452d, roughness: 0.95 });
+  const caravanCloth = new THREE.MeshStandardMaterial({ color: 0x8f6b3d, roughness: 1, side: THREE.DoubleSide });
+  const caravanMetal = new THREE.MeshStandardMaterial({ color: 0x8b6a3f, roughness: 0.65, metalness: 0.25 });
+
+  const wagon = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.25, 2.0), caravanWood);
+  wagon.position.y = 0.65;
+  wagon.rotation.y = -0.2;
+  caravan.add(wagon);
+
+  for (const x of [-1.25, 1.25]) {
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.12, 8, 16), caravanWood);
+    wheel.rotation.y = Math.PI / 2;
+    wheel.position.set(x, 0.6, -0.65);
+    caravan.add(wheel);
+  }
+
+  const cloth = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.8, 0.12), caravanCloth);
+  cloth.position.set(0, 1.55, 0.55);
+  cloth.rotation.x = -0.35;
+  caravan.add(cloth);
+
+  const buriedSand = new THREE.Mesh(
+    new THREE.ConeGeometry(2.0, 0.9, 7),
+    new THREE.MeshStandardMaterial({ color: 0xd9b76b, roughness: 1 })
+  );
+  buriedSand.position.set(0, 0.35, -0.2);
+  buriedSand.scale.set(1.5, 0.7, 0.8);
+  caravan.add(buriedSand);
+
+  const shard = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.34),
+    new THREE.MeshStandardMaterial({ color: 0xffcf5b, emissive: 0xf2a51a, emissiveIntensity: 1.8, metalness: 0.25 })
+  );
+  shard.position.set(0, 2.25, 0.15);
+  shard.visible = progression.reached('return');
+  caravan.add(shard);
+
+  const caravanHalo = new THREE.Mesh(
+    new THREE.RingGeometry(0.75, 1.05, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffc44d, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+  );
+  caravanHalo.rotation.x = -Math.PI / 2;
+  caravanHalo.position.y = 0.06;
+  caravan.add(caravanHalo);
+
+  const investigateCaravan = () => {
+    if (progression.id !== 'caravan') return;
+    shard.visible = true;
+    progression.advance('return');
+    game.fx.ring(caravan.position, 0xffc44d, 2.2, 1.0);
+    game.ui.banner('FRAGMENTO SOLAR ENCONTRADO', 'A caravana foi soterrada tentando levar o artefato até o templo.', 'victory', 3.5);
   };
 
-  for (const entry of markerData) {
-    const group = new THREE.Group();
-    group.position.set(entry.x, 0, entry.z);
-    scene.add(group);
-
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.55, 0.72, 1.1, 8),
-      new THREE.MeshStandardMaterial({ color: 0x5c4734, roughness: 1 })
-    );
-    base.position.y = 0.55;
-    group.add(base);
-
-    const core = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.28),
-      new THREE.MeshStandardMaterial({
-        color: entry.color,
-        emissive: entry.color,
-        emissiveIntensity: progression.counters[entry.id] ? 2.5 : 0.12,
-      })
-    );
-    core.position.y = 1.35;
-    group.add(core);
-
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.8, 0.95, 24),
-      new THREE.MeshBasicMaterial({
-        color: entry.color,
-        transparent: true,
-        opacity: progression.counters[entry.id] ? 0.9 : 0.28,
-        side: THREE.DoubleSide,
-      })
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.08;
-    group.add(ring);
-
-    const marker = {
-      id: entry.id,
-      group,
-      core,
-      ring,
-      active: !!progression.counters[entry.id],
-    };
-    solarMarkers.push(marker);
-
-    game.interaction.add({
-      pos: group.position,
-      radius: 2.2,
-      height: 2.8,
-      label: () => marker.active ? 'Marco do Sol restaurado' : 'Restaurar ' + entry.name,
-      enabled: () => !marker.active && progression.id === 'markers',
-      onInteract: () => restoreMarker(entry),
-    });
-  }
-
-  if (game.character?.data?.pet?.source === 'desert') {
-    petGranted = true;
-    createPetVisual(game.character.vocation);
-  }
+  game.interaction.add({
+    pos: caravan.position,
+    radius: 2.8,
+    height: 3.2,
+    label: () => progression.id === 'caravan' ? 'Investigar a caravana soterrada' : 'Caravana soterrada',
+    enabled: () => progression.id === 'caravan',
+    onInteract: investigateCaravan,
+  });
 
   const nadir = new NPC(game, {
     name: 'Nadir, Guardião das Dunas',
@@ -295,48 +260,68 @@ export function createArea2(game) {
     facing: Math.PI * 0.75,
     look: { head: 0xe0a26f, body: 0x6b472e, legs: 0xc49a5c, feet: 0x3c2c22 },
     dialogue: () => {
-      if (progression.id === 'markers') {
+      if (progression.id === 'nadir') {
         return {
           lines: [
-            '“Eu sou Nadir, guardião deste último oásis.”',
-            '“Azhur, o Deus Sol, não foi enterrado. Foi selado sob o templo.”',
-            '“Os antigos mantinham o selo através de três Marcos do Sol.”',
-            '“O tempo e a areia apagaram sua força. Se quiser chegar ao Deus Sol, restaure os três.”',
-            '“Um está na Duna Vermelha, outro além do oásis e o último junto às ruínas soterradas.”',
+            '“Você veio pelo portal... então a areia escolheu outro viajante.”',
+            '“O caminho até Azhur não desapareceu. Ele foi enterrado.”',
+            '“Uma caravana tentou levar um Fragmento Solar ao templo e nunca chegou.”',
+            '“Encontre os destroços a oeste do oásis. Se o fragmento ainda existir, traga-o para mim.”',
           ],
+          onDone: () => {
+            progression.advance('caravan');
+            game.ui.banner('NOVA INVESTIGAÇÃO', 'A caravana soterrada está a oeste do oásis.', 'quest', 3);
+          },
+        };
+      }
+      if (progression.id === 'return') {
+        return {
+          lines: [
+            '“Eu senti a luz antes mesmo de você chegar.”',
+            '“Esse Fragmento Solar pertence ao templo. Ele não abre uma porta... revela o que a areia escondeu.”',
+            '“Agora posso despertar um companheiro que sobreviverá ao seu lado no deserto.”',
+          ],
+          onDone: () => {
+            progression.advance('pet');
+            game.ui.banner('O CAMINHO FOI REVELADO', 'Nadir pode despertar seu companheiro.', 'victory', 3);
+          },
         };
       }
       if (progression.id === 'pet') {
         return {
           lines: [
-            '“Você restaurou os três marcos. A areia voltou a obedecer ao antigo juramento.”',
-            '“Mas nenhum guardião atravessa o templo sozinho.”',
-            '“Uma criatura espiritual respondeu ao chamado do seu sangue e da sua vocação.”',
-            '“Aceite sua companhia. Ela conhece os caminhos que o Sol Sepultado tentou apagar.”',
+            '“O espírito já respondeu à sua presença.”',
+            '“Aceite sua companhia. Cada vocação desperta uma criatura diferente.”',
+            '“Leve-o. O deserto é o primeiro lugar onde você vai precisar dele.”',
           ],
           onDone: () => {
             grantDesertPet();
             progression.advance('boss');
-            game.ui.banner('COMPANHEIRO DESPERTADO', petNames[game.character?.vocation] || 'Seu pet', 'victory', 3);
+            game.ui.banner('COMPANHEIRO DESPERTADO', petNames[game.character?.vocation] || 'Seu companheiro', 'victory', 3);
           },
         };
       }
       return {
         lines: [
-          '“Agora o caminho está aberto.”',
-          '“Azhur despertará sob o templo. Não confunda sua luz com salvação.”',
-          '“Derrote o Deus Sol e não deixe que o selo seja quebrado novamente.”',
+          '“O Fragmento revelou a entrada do templo.”',
+          '“Azhur, o Deus Sol, está esperando sob aquelas pedras.”',
+          '“Entre. Derrote-o antes que a luz dele transforme o deserto em um túmulo.”',
         ],
       };
     },
   });
   game.npcs.push(nadir);
-  nadir.setMarker(progression.id === 'pet' ? 0xffd36a : progression.id === 'markers' ? 0xffc34a : null);
 
   progression.on((id) => {
-    nadir.setMarker(id === 'pet' ? 0xffd36a : id === 'markers' ? 0xffc34a : null);
+    nadir.setMarker(id === 'nadir' || id === 'return' || id === 'pet' ? 0xffd36a : null);
+    if (id === 'return') shard.visible = true;
   });
+  nadir.setMarker(progression.id === 'nadir' || progression.id === 'return' || progression.id === 'pet' ? 0xffd36a : null);
 
+  if (game.character?.data?.pet?.source === 'desert') {
+    petGranted = true;
+    createPetVisual(game.character.vocation);
+  }
 
   // ---------- buried temple ----------
   const temple = new THREE.Group();
