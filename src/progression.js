@@ -22,6 +22,14 @@ export class Progression {
     if (this.areaId) this.game.character?.saveProgression(this.areaId, this.index, this.counters);
   }
   get id() { return this.stages[this.index].id; }
+  get target() {
+    const stage = this.stages[this.index];
+    if (!stage?.target) return null;
+    const value = typeof stage.target === 'function' ? stage.target(this.counters) : stage.target;
+    if (!value) return null;
+    if (Array.isArray(value)) return value.find((t) => Number.isFinite(t?.x) && Number.isFinite(t?.z)) || null;
+    return Number.isFinite(value.x) && Number.isFinite(value.z) ? value : null;
+  }
   indexOf(id) { return this.stages.findIndex((s) => s.id === id); }
   reached(id) { return this.index >= this.indexOf(id); }
   on(fn) { this.listeners.push(fn); }
