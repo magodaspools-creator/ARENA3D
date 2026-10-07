@@ -994,6 +994,16 @@ export class Player {
     if (show && this.hp > before) this.game.ui.floatText(V.copy(this.pos).setY(2.3), `+${Math.round(this.hp - before)}`, 'heal', 1.1);
   }
 
+  restoreMana(amount, show = false) {
+    const before = this.mana;
+    this.mana = Math.min(this.maxMana, this.mana + Math.max(0, Number(amount) || 0));
+    const restored = this.mana - before;
+    if (show && restored > 0) {
+      this.game.ui.floatText(V.copy(this.pos).setY(2.55), '+' + Math.round(restored) + ' MANA', 'mana', 1.0);
+    }
+    return restored;
+  }
+
   takeDamage(amount, from) {
     if (this.dead || this.game.state !== 'play') return;
     if (this.invulnerable) { this.game.ui.floatText(V.copy(this.pos).setY(2.2), 'Esquiva!', 'info'); return; }
