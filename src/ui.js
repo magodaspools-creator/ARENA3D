@@ -170,20 +170,57 @@ export class UI {
   updateWorldMap() {
     if (!this.worldMap || !this.game.area || !this.game.player) return;
     const area = this.game.area;
-    const bounds = area.minimap?.bounds;
     const zones = this.game.collision?.zones || [];
-    if (!bounds || !zones.length) return;
+    const obstacles = this.game.collision?.obstacles || [];
+
+    let bounds = area.minimap?.bounds;
+
+    // Se a metadata do minimapa não estiver disponível, derive o mapa
+    // diretamente das zonas reais de colisão.
+    if (!bounds && zones.length) {
+      const xs = [], zs = [];
+      for (const zone of zones) {
+        if (zone.type === 'rect') {
+          xs.push(zone.minX, zone.maxX);
+          zs.push(zone.minZ, zone.maxZ);
+        } else if (zone.type === 'circle') {
+          xs.push(zone.x - zone.r, zone.x + zone.r);
+          zs.push(zone.z - zone.r, zone.z + zone.r);
+        } else if (zone.type === 'polygon' && Array.isArray(zone.points)) {
+          for (const [x, z] of zone.points) {
+            xs.push(x);
+            zs.push(z);
+          }
+        }
+      }
+      if (xs.length) {
+        const pad = 3;
+        bounds = {
+          minX: Math.min(...xs) - pad,
+          maxX: Math.max(...xs) + pad,
+          minZ: Math.min(...zs) - pad,
+          maxZ: Math.max(...zs) + pad,
+        };
+      }
+    }
+
+    // Último fallback: mesmo sem zonas, o overlay continua funcional.
+    if (!bounds) {
+      const x = this.game.player.pos.x;
+      const z = this.game.player.pos.z;
+      bounds = { minX: x - 40, maxX: x + 40, minZ: z - 40, maxZ: z + 40 };
+    }
+
     this.worldMap.setData({
       bounds,
       zones,
-      obstacles: this.game.collision?.obstacles || [],
+      obstacles,
       pois: this._worldMapPois(area),
       entities: this._worldMapEntities(),
       player: { x: this.game.player.pos.x, z: this.game.player.pos.z },
       areaName: area.name || 'Área atual',
     });
   }
-
   openWorldMap() {
     if (!this.worldMap || !this.game.player || this.game.state !== 'play') return;
     this.updateWorldMap();
