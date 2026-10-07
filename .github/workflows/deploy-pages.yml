@@ -2,8 +2,7 @@ name: Deploy ARENA3D to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -18,36 +17,30 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Install Blender and conversion tools
+      - name: Install Blender
         run: |
           sudo apt-get update
           sudo apt-get install -y blender unzip curl
 
       - name: Convert OpenGameArt scorpion to GLB
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/arena-scorpion assets/scorpion
-          curl -L --fail --retry 3 \
-            https://opengameart.org/sites/default/files/scorpion.zip \
-            -o /tmp/arena-scorpion/scorpion.zip
+          curl -L --fail --retry 3 https://opengameart.org/sites/default/files/scorpion.zip -o /tmp/arena-scorpion/scorpion.zip
           unzip -o /tmp/arena-scorpion/scorpion.zip -d /tmp/arena-scorpion/source
           BLEND="$(find /tmp/arena-scorpion/source -type f -iname '*.blend' | head -n 1)"
           test -n "$BLEND"
-          blender -b "$BLEND" --python tools/export_scorpion.py -- \
-            --output "$PWD/assets/scorpion/scorpion.glb"
+          blender -b "$BLEND" --python tools/export_scorpion.py -- --output "$PWD/assets/scorpion/scorpion.glb"
+          test -s assets/scorpion/scorpion.glb
           ls -lh assets/scorpion/scorpion.glb
 
       - name: Add asset attribution
+        shell: bash
         run: |
           cat > assets/scorpion/ATTRIBUTION.txt <<'EOF'
 ARENA3D SCORPION ASSET
@@ -58,10 +51,11 @@ Source: https://opengameart.org/content/scorpion-3d
 License: Creative Commons Attribution-ShareAlike 4.0 International
 License: https://creativecommons.org/licenses/by-sa/4.0/
 
-The original Blender asset was technically converted to GLB for web use
-and integrated into ARENA3D. The source archive is retrieved during the
-GitHub Pages build and is not stored in this repository.
+The Blender source is converted to GLB during the GitHub Pages build.
 EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
@@ -69,5 +63,4 @@ EOF
           path: .
 
       - name: Deploy
-        id: deployment
         uses: actions/deploy-pages@v4
