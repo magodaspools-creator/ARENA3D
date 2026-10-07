@@ -546,7 +546,6 @@ export class Enemy {
     this.game.scene.remove(this.root);
     if (this.scorpion) {
       scorpionInstances.delete(this.model);
-      this.model.sprite?.material?.map?.dispose?.();
     }
     if (this.alive) this.game.ui.removeAnchor(this.bar);
     this.alive = false;
