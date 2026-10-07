@@ -799,46 +799,60 @@ mineGroup.add(exitLight);
 exitLight.userData.baseIntensity = 4.0;
 mineLights.push(exitLight);
 
-// Strong visual exit landmark: a wooden sign, arrow and warm/cyan glow make
-// the return route unmistakable without adding another gameplay collider.
-const exitSignMat = new THREE.MeshStandardMaterial({ color: 0x3b281b, roughness: 0.9, flatShading: true });
-const exitSign = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.05, 0.18), exitSignMat);
-exitSign.position.set(exitX, 2.15, exitZ + 0.38);
-exitSign.castShadow = true;
-mineGroup.add(exitSign);
-
-const exitSignCanvas = document.createElement('canvas');
-exitSignCanvas.width = 512;
-exitSignCanvas.height = 160;
-const exitSignCtx = exitSignCanvas.getContext('2d');
-exitSignCtx.clearRect(0, 0, 512, 160);
-exitSignCtx.fillStyle = '#f4d28a';
-exitSignCtx.font = '900 72px Georgia, serif';
-exitSignCtx.textAlign = 'center';
-exitSignCtx.textBaseline = 'middle';
-exitSignCtx.shadowColor = 'rgba(255,178,72,.85)';
-exitSignCtx.shadowBlur = 18;
-exitSignCtx.fillText('SAÍDA', 256, 80);
-const exitSignTexture = new THREE.CanvasTexture(exitSignCanvas);
-exitSignTexture.colorSpace = THREE.SRGBColorSpace;
-const exitLabel = new THREE.Mesh(
-  new THREE.PlaneGeometry(2.65, 0.83),
-  new THREE.MeshBasicMaterial({ map: exitSignTexture, transparent: true, depthWrite: false, toneMapped: false })
+// Exit landmark: replace the old sign/arrow with a vertical shaft of light.
+// It is purely visual: no gameplay collider is added here.
+const exitBeamMat = new THREE.MeshBasicMaterial({
+  color: 0xbff7ff,
+  transparent: true,
+  opacity: 0.14,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  toneMapped: false,
+  side: THREE.DoubleSide,
+});
+const exitBeam = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.35, 0.48, 7.5, 24, 1, true),
+  exitBeamMat
 );
-exitLabel.position.set(exitX, 2.15, exitZ + 0.285);
-mineGroup.add(exitLabel);
+exitBeam.position.set(exitX, 3.9, exitZ);
+mineGroup.add(exitBeam);
 
-const exitArrowMat = new THREE.MeshBasicMaterial({ color: 0x72d8c4, transparent: true, opacity: 0.92, toneMapped: false });
-const exitArrowStem = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.05, 0.16), exitArrowMat);
-exitArrowStem.position.set(exitX, 0.82, exitZ - 0.92);
-mineGroup.add(exitArrowStem);
-const exitArrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.62, 4), exitArrowMat);
-exitArrowHead.rotation.x = Math.PI;
-exitArrowHead.position.set(exitX, 0.28, exitZ - 0.92);
-mineGroup.add(exitArrowHead);
-const exitMarkerLight = new THREE.PointLight(0x72d8c4, 2.8, 6, 1.8);
-exitMarkerLight.position.set(exitX, 1.15, exitZ - 0.8);
+const exitBeamCoreMat = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.22,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  toneMapped: false,
+  side: THREE.DoubleSide,
+});
+const exitBeamCore = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.38, 0.16, 7.4, 16, 1, true),
+  exitBeamCoreMat
+);
+exitBeamCore.position.set(exitX, 3.88, exitZ);
+mineGroup.add(exitBeamCore);
+
+const exitBeamHalo = new THREE.Mesh(
+  new THREE.CircleGeometry(1.35, 32),
+  new THREE.MeshBasicMaterial({
+    color: 0xd9fbff,
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+  })
+);
+exitBeamHalo.rotation.x = -Math.PI / 2;
+exitBeamHalo.position.set(exitX, 0.08, exitZ);
+mineGroup.add(exitBeamHalo);
+
+const exitMarkerLight = new THREE.PointLight(0xbff7ff, 5.5, 10, 1.6);
+exitMarkerLight.position.set(exitX, 1.15, exitZ);
 mineGroup.add(exitMarkerLight);
+exitMarkerLight.userData.baseIntensity = 5.5;
 mineLights.push(exitMarkerLight);
 
 const undergroundZones = [
