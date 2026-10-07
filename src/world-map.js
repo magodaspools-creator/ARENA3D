@@ -316,6 +316,47 @@ export class WorldMap {
     }
   }
 
+  _drawQuestTarget(ctx, target, p) {
+    if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return;
+    const x = p.x(target.x), y = p.y(target.z);
+    const pulse = 1 + Math.sin(performance.now() * 0.006) * 0.12;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.shadowColor = '#ffd76a';
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = '#ffd76a';
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(0, 0, 13 * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#ffd76a';
+    ctx.beginPath();
+    ctx.rect(-7, -7, 14, 14);
+    ctx.fill();
+    ctx.strokeStyle = '#fff4c7';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.rotate(-Math.PI / 4);
+
+    ctx.fillStyle = '#211a0b';
+    ctx.font = '900 10px "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', 0, 0.5);
+
+    ctx.shadowBlur = 0;
+    ctx.font = '700 10px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#ffe6a3';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('OBJETIVO', 0, -17 * pulse);
+    ctx.restore();
+  }
+
   _drawPlayer(ctx, player, p) {
     if (!player) return;
     const x = p.x(player.x), y = p.y(player.z);
@@ -365,6 +406,7 @@ export class WorldMap {
     for (const poi of data.pois || []) this._drawPoi(ctx, poi, p);
     this._drawEntities(ctx, data.entities, p);
     this._drawPlayer(ctx, data.player, p);
+    this._drawQuestTarget(ctx, data.questTarget, p);
 
     ctx.save();
     ctx.font = '700 25px Georgia, serif';
