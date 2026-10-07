@@ -317,6 +317,8 @@ export function createArea2(game) {
     if (id === 'return') shard.visible = true;
   });
   nadir.setMarker(progression.id === 'nadir' || progression.id === 'return' || progression.id === 'pet' ? 0xffd36a : null);
+  // Restore the mission HUD immediately when Map 2 is entered/reloaded.
+  progression.apply(false);
 
   if (game.character?.data?.pet?.source === 'desert') {
     petGranted = true;
