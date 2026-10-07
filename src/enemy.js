@@ -22,6 +22,25 @@ const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissiv
 const SCORPION_SPRITE_URL = 'https://opengameart.org/sites/default/files/Scorpion_0.png';
 let scorpionTexture = null;
 let scorpionTextureFailed = false;
+const scorpionInstances = new Set();
+
+function attachScorpionSprite(model) {
+  if (!model?.root || !scorpionTexture || model.root.getObjectByName('scorpion-sprite')) return;
+  model.fallback.visible = false;
+  const material = new THREE.SpriteMaterial({
+    map: scorpionTexture,
+    transparent: true,
+    alphaTest: 0.08,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.name = 'scorpion-sprite';
+  sprite.center.set(0.5, 0.08);
+  sprite.scale.set(1.8, 1.35, 1);
+  sprite.position.y = 0.72;
+  model.root.add(sprite);
+}
 
 function loadScorpionTexture() {
   if (scorpionTexture || scorpionTextureFailed) return scorpionTexture;
@@ -35,6 +54,7 @@ function loadScorpionTexture() {
       texture.magFilter = THREE.NearestFilter;
       texture.generateMipmaps = false;
       scorpionTexture = texture;
+      for (const model of scorpionInstances) attachScorpionSprite(model);
     },
     undefined,
     () => { scorpionTextureFailed = true; },
@@ -52,25 +72,11 @@ function createScorpionModel(scale = 1) {
   fallback.position.y = 0.38;
   root.add(fallback);
 
-  const texture = loadScorpionTexture();
-  if (texture) {
-    fallback.visible = false;
-    const material = new THREE.SpriteMaterial({
-      map: texture,
-      transparent: true,
-      alphaTest: 0.08,
-      depthWrite: false,
-      toneMapped: false,
-    });
-    const sprite = new THREE.Sprite(material);
-    sprite.name = 'scorpion-sprite';
-    sprite.center.set(0.5, 0.08);
-    sprite.scale.set(1.8, 1.35, 1);
-    sprite.position.y = 0.72;
-    root.add(sprite);
-  }
+  const model = { root, fallback };
+  scorpionInstances.add(model);
+  attachScorpionSprite(model);
   root.scale.setScalar(scale);
-  return { root, fallback };
+  return model;
 }
 
 function createSpiderModel(scale = 1) {
@@ -466,6 +472,7 @@ export class Enemy {
 
   dispose() {
     this.game.scene.remove(this.root);
+    if (this.scorpion) scorpionInstances.delete(this.model);
     if (this.alive) this.game.ui.removeAnchor(this.bar);
     this.alive = false;
     this.removed = true;
