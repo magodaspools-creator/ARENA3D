@@ -761,13 +761,13 @@ for (const side of [-1, 1]) {
   post.castShadow = true;
   mineGroup.add(post);
 }
-const exitBeam = new THREE.Mesh(
+const exitWoodBeam = new THREE.Mesh(
   new THREE.BoxGeometry(3.7, 0.32, 0.38),
   exitWoodMat
 );
-exitBeam.position.set(exitX, 3.35, exitZ);
-exitBeam.castShadow = true;
-mineGroup.add(exitBeam);
+exitWoodBeam.position.set(exitX, 3.35, exitZ);
+exitWoodBeam.castShadow = true;
+mineGroup.add(exitWoodBeam);
 
 // The rope is deliberately prominent and hangs down toward the player.
 const exitRopeCurve = new THREE.CatmullRomCurve3([
