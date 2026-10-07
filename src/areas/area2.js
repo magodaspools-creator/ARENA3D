@@ -162,6 +162,26 @@ export function createArea2(game) {
   };
 
   let petGranted = false;
+  let desertPetVisual = null;
+  const createPetVisual = (vocation) => {
+    if (desertPetVisual || !game.player?.root) return;
+    const group = new THREE.Group();
+    group.name = 'desert-companion';
+    const mat = new THREE.MeshStandardMaterial({ color: ({ knight:0x6b4936, paladin:0xc7d7e8, sorcerer:0x7b4bb7, druid:0x5b8b50, monk:0xc28a4a }[vocation] || 0xc49a5c), roughness:0.8, emissive: ({ sorcerer:0x3a155f }[vocation] || 0x000000), emissiveIntensity:0.35 });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,8), mat); body.position.y=0.55; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,10,8), mat); head.position.set(0,0.78,0.22); group.add(head);
+    if (vocation === 'paladin') {
+      const wing = new THREE.Mesh(new THREE.ConeGeometry(0.18,0.55,6), mat); wing.rotation.z=Math.PI/2; wing.position.set(0.3,0.7,0); group.add(wing.clone()); wing.position.x=-0.3; group.add(wing);
+    } else if (vocation === 'sorcerer') {
+      const tail = new THREE.Mesh(new THREE.TorusGeometry(0.28,0.055,6,12,Math.PI*1.5), mat); tail.rotation.x=Math.PI/2; tail.position.set(0,-0.02,-0.2); group.add(tail);
+    } else {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.09,0.28,5), mat); ear.position.set(0.14,1.0,0.2); group.add(ear.clone()); ear.position.x=-0.14; group.add(ear);
+    }
+    group.position.set(-0.9,0,0.65);
+    game.player.root.add(group);
+    desertPetVisual = group;
+  };
+
   const grantDesertPet = () => {
     if (petGranted || game.character?.data?.pet) return;
     const vocation = game.character?.vocation;
@@ -175,6 +195,7 @@ export function createArea2(game) {
     };
     game.character.save();
     petGranted = true;
+    createPetVisual(vocation);
     game.ui.toast(pet + ' despertou ao seu lado.');
   };
 
@@ -256,6 +277,11 @@ export function createArea2(game) {
       enabled: () => !marker.active && progression.id === 'markers',
       onInteract: () => restoreMarker(entry),
     });
+  }
+
+  if (game.character?.data?.pet?.source === 'desert') {
+    petGranted = true;
+    createPetVisual(game.character.vocation);
   }
 
   const nadir = new NPC(game, {
@@ -507,6 +533,7 @@ export function createArea2(game) {
         ],
       }, desertBoss.pos);
       game.stats.bossTime = game.time - fightStart;
+      progression.advance('portal');
       exitPortal.rise();
       game.rig.cinematic(exitPortal.pos, 3);
       game.schedule(1.0, () => {
@@ -522,7 +549,7 @@ export function createArea2(game) {
   desertBoss.arena = bossArena;
 
   function startDesertBoss() {
-    if (bossCooldown > 0 || desertBoss.state !== 'dormant' || !exitPortal) return;
+    if (bossCooldown > 0 || desertBoss.state !== 'dormant' || !exitPortal || !progression.reached('boss')) return;
     fightStart = game.time;
     desertBoss.awaken();
     game.rig.cinematic(new THREE.Vector3(desertBoss.pos.x, 0, desertBoss.pos.z + 3), 2.4);
@@ -606,6 +633,7 @@ export function createArea2(game) {
       desertBoss.anim.revive();
       exitPortal.restoreActive();
       game.ui.hideBoss();
+      progression.advance('portal');
     },
 
     onRespawn() {
@@ -661,7 +689,7 @@ export function createArea2(game) {
       if (game.state !== 'play' || game.player?.dead) return;
 
       const p = game.player;
-      if (bossCooldown <= 0 && desertBoss.state === 'dormant' && p.pos.z > 32 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
+      if (bossCooldown <= 0 && progression.reached('boss') && desertBoss.state === 'dormant' && p.pos.z > 32 && p.pos.z < 43 && Math.abs(p.pos.x - ORIGIN.x) < 7) {
         startDesertBoss();
         return;
       }
