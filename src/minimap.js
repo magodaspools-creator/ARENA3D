@@ -1,4 +1,63 @@
 // src/minimap.js — ARENA3D
+const minimapHash = (x, z) => {
+  const value = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+};
+
+const minimapNoise2 = (x, z) => {
+  const xi = Math.floor(x), zi = Math.floor(z);
+  const xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = zf * zf * (3 - 2 * zf);
+  const a = minimapHash(xi, zi);
+  const b = minimapHash(xi + 1, zi);
+  const c = minimapHash(xi, zi + 1);
+  const d = minimapHash(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+};
+
+const minimapFbm = (x, z) => {
+  let sum = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+  let total = 0;
+
+  for (let octave = 0; octave < 4; octave++) {
+    sum += minimapNoise2(x * frequency, z * frequency) * amplitude;
+    total += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
+  }
+
+  return sum / total;
+};
+
+const minimapRamp = (value) => {
+  const stops = [
+    [0.00, [0x16, 0x24, 0x18]],
+    [0.34, [0x2f, 0x49, 0x2c]],
+    [0.60, [0x67, 0x68, 0x3e]],
+    [0.78, [0x9a, 0x82, 0x4d]],
+    [1.00, [0x7b, 0x7d, 0x74]],
+  ];
+
+  for (let i = 1; i < stops.length; i++) {
+    if (value <= stops[i][0]) {
+      const [a, ca] = stops[i - 1];
+      const [b, cb] = stops[i];
+      const t = (value - a) / Math.max(0.0001, b - a);
+      const smooth = t * t * (3 - 2 * t);
+      return [
+        ca[0] + (cb[0] - ca[0]) * smooth,
+        ca[1] + (cb[1] - ca[1]) * smooth,
+        ca[2] + (cb[2] - ca[2]) * smooth,
+      ];
+    }
+  }
+
+  return stops[stops.length - 1][1];
+};
+
 // Miniatura orgânica do mundo: o mapa-base é construído uma vez em canvas
 // offscreen de baixa resolução. Durante o jogo, render() apenas desloca essa
 // textura ao redor do jogador e desenha os overlays dinâmicos.
@@ -46,106 +105,49 @@ export class Minimap {
     if (!opts.canvas) this._style();
   }
 
-  _makeGroundMinimapTexture(W, H, bounds, S, buildKey, offX = 0, offZ = 0) {
-    // A textura agora é calculada em coordenadas do MUNDO, não em pixels.
-    // Assim, quando render() desloca o mapCanvas, o mesmo ponto do terreno
-    // mantém a mesma cor/altura visual.
-    if (this.groundMinimapCache?.has(buildKey)) {
-      return this.groundMinimapCache.get(buildKey);
-    }
+  _makeGroundMinimapTexture(bounds, field, noise2, fbm, ramp, buildKey) {
+    if (this.groundMinimapCache.has(buildKey)) return this.groundMinimapCache.get(buildKey);
 
-    const canvas = typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(W, H)
-      : document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
+    // Diâmetro do círculo = dimensão diagonal do bounding box.
+    const diag = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
+    const radius = Math.ceil(diag / 2);
+    const size = radius * 2;
 
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const image = ctx.createImageData(W, H);
-    const data = image.data;
-    const heightData = new Float32Array(W * H);
-
-    const hash = (x, z) => {
-      const value = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
-      return value - Math.floor(value);
-    };
-
-    const noise2 = (x, z) => {
-      const xi = Math.floor(x), zi = Math.floor(z);
-      const xf = x - xi, zf = z - zi;
-      const u = xf * xf * (3 - 2 * xf);
-      const v = zf * zf * (3 - 2 * zf);
-      const a = hash(xi, zi);
-      const b = hash(xi + 1, zi);
-      const c = hash(xi, zi + 1);
-      const d = hash(xi + 1, zi + 1);
-      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-    };
-
-    // Quatro escalas principais. A primeira tem período ~15 unidades de
-    // mundo; as seguintes refinam o campo sem criar manchas em blocos.
-    const fbm = (x, z) => {
-      let sum = 0;
-      let amplitude = 0.5;
-      let frequency = 1;
-      let total = 0;
-
-      for (let octave = 0; octave < 4; octave++) {
-        sum += noise2(x * frequency, z * frequency) * amplitude;
-        total += amplitude;
-        amplitude *= 0.5;
-        frequency *= 2;
-      }
-
-      return sum / total;
-    };
-
-    // Rampa contínua: não existem cores por zona. A cor depende somente do
-    // campo escalar de terreno calculado naquele ponto do mundo.
-    const stops = [
-      [0.00, [0x16, 0x24, 0x18]], // verde-escuro
-      [0.34, [0x2f, 0x49, 0x2c]], // verde musgo
-      [0.60, [0x67, 0x68, 0x3e]], // musgo/oliva
-      [0.78, [0x9a, 0x82, 0x4d]], // ocre
-      [1.00, [0x7b, 0x7d, 0x74]], // cinza-pedra
-    ];
-
-    const ramp = (value) => {
-      for (let i = 1; i < stops.length; i++) {
-        if (value <= stops[i][0]) {
-          const [a, ca] = stops[i - 1];
-          const [b, cb] = stops[i];
-          const t = (value - a) / Math.max(0.0001, b - a);
-          const smooth = t * t * (3 - 2 * t);
-          return [
-            ca[0] + (cb[0] - ca[0]) * smooth,
-            ca[1] + (cb[1] - ca[1]) * smooth,
-            ca[2] + (cb[2] - ca[2]) * smooth,
-          ];
-        }
-      }
-      return stops[stops.length - 1][1];
-    };
-
-    const period = 15;
-    const grainPeriod = 3;
+    const imageData = ctx.createImageData(size, size);
+    const data = imageData.data;
 
     const centerX = (bounds.minX + bounds.maxX) * 0.5;
     const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+    const S = 1 / diag;
 
-    for (let py = 0; py < W; py++) {
-      const z = centerZ - (py - W * 0.5) / S;
-      for (let px = 0; px < W; px++) {
-        const x = centerX + (px - W * 0.5) / S;
+    const heightData = new Float32Array(size * size);
 
-        const broad = fbm(x / period, z / period);
-        // O grão fino tem amplitude máxima de 6% do campo total.
-        const grain = noise2(x / grainPeriod, z / grainPeriod) - 0.5;
-        const field = Math.max(0, Math.min(1, broad + grain * 0.12));
-        heightData[py * W + px] = field;
+    for (let py = 0; py < size; py++) {
+      for (let px = 0; px < size; px++) {
+        // Coordenadas polares: distância e ângulo do centro.
+        const dx = (px - radius) / radius;
+        const dz = (py - radius) / radius;
+        const r = Math.sqrt(dx * dx + dz * dz);
 
-        const color = ramp(field);
-        const i = (py * W + px) * 4;
+        // Só desenha dentro do círculo.
+        if (r > 1) continue;
+
+        // Coordenadas do mundo — campo contínuo, sem emendas.
+        const x = centerX + dx * diag * 0.5;
+        const z = centerZ + dz * diag * 0.5;
+
+        // Campo suave e contínuo.
+        const broad = fbm(x / 30, z / 30);
+        const grain = noise2(x / 6, z / 6) - 0.5;
+        const fieldValue = Math.max(0, Math.min(1, broad + grain * 0.12));
+        heightData[py * size + px] = fieldValue;
+
+        const i = (py * size + px) * 4;
+        const color = ramp(fieldValue);
         data[i] = Math.round(color[0]);
         data[i + 1] = Math.round(color[1]);
         data[i + 2] = Math.round(color[2]);
@@ -153,13 +155,14 @@ export class Minimap {
       }
     }
 
-    ctx.putImageData(image, 0, 0);
+    ctx.putImageData(imageData, 0, 0);
 
     const result = {
       canvas,
-      heightField: { data: heightData, width: W, height: H },
-      width: W,
-      height: H,
+      heightField: { data: heightData, width: size, height: size },
+      width: size,
+      height: size,
+      radius
     };
 
     if (!this.groundMinimapCache) this.groundMinimapCache = new Map();
@@ -424,33 +427,14 @@ export class Minimap {
 
 
   _drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey, offX, offZ) {
-    const terrain = this._makeGroundMinimapTexture(W, W, bounds, S, buildKey, offX, offZ);
+    if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds, offX, offZ)) return;
 
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
 
-    if (!this._buildTerrainMask(zones, wx, wz, S, W, bounds, offX, offZ)) return;
-
-    // Textura e curvas vêm do mesmo campo escalar. As curvas são desenhadas
-    // antes da máscara para que jamais apareçam fora da área caminhável.
-    c.save();
-    c.globalCompositeOperation = 'source-over';
-    c.drawImage(terrain.canvas, 0, 0, W, W);
-    this._drawContours(c, terrain.heightField, S);
-
-    // A máscara raster única recorta textura + curvas de uma só vez.
-    c.globalCompositeOperation = 'destination-in';
-    c.drawImage(this.terrainMask, 0, 0, W, W);
-    c.restore();
-
-    // Variação atmosférica única sobre toda a superfície, sem divisões.
-    c.save();
-    c.globalAlpha = 0.07;
-    c.fillStyle = '#3a5540';
-    c.fillRect(0, 0, W, W);
-    c.restore();
+    // A máscara continua disponível para o mapa-base legado, mas a textura
+    // circular do terreno é renderizada diretamente em render().
   }
-
 
   _drawWallPath(c, obstacle, wx, wz, S) {
     if (!obstacle.enabled) return;
@@ -588,6 +572,7 @@ export class Minimap {
     const buildKey = [bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ].join('|');
 
     c.clearRect(0, 0, W, W);
+    this._makeGroundMinimapTexture(bounds, null, minimapNoise2, minimapFbm, minimapRamp, buildKey);
     this._drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey, offX, offZ);
     this._drawObstacleBlobs(c, obstacles, wx, wz, S);
 
@@ -649,31 +634,35 @@ export class Minimap {
     const cy = this.size * 0.5;
     const radius = this.size * 0.5 - 1;
 
-    // A máscara circular é aplicada antes de qualquer desenho do frame.
-    // Nada consegue escapar da área do minimapa.
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.clip();
-
+    // Fundo
     ctx.fillStyle = '#0b100d';
     ctx.fillRect(0, 0, this.size, this.size);
 
-    const pxPerUnit = this.size / this.viewWorld;
-    const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
-    const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
-    const dx = (this.player.x - centerX) * pxPerUnit;
-    const dz = (this.player.z - centerZ) * pxPerUnit;
-    const drawSize = this._span * pxPerUnit;
+    // Desenha a textura circular centralizada e deslocada pelo jogador.
+    const tex = this.groundMinimapCache.get(this.buildKey);
+    if (tex) {
+      const cx = this.size / 2;
+      const cy = this.size / 2;
+      const scale = this.size / (tex.radius * 2);
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(
-      this.mapCanvas,
-      cx - dx - drawSize * 0.5,
-      cy - dz - drawSize * 0.5,
-      drawSize,
-      drawSize
-    );
+      const centerX = (this.bounds.minX + this.bounds.maxX) * 0.5;
+      const centerZ = (this.bounds.minZ + this.bounds.maxZ) * 0.5;
+      const dx = (this.player.x - centerX) * scale;
+      const dz = (this.player.z - centerZ) * scale;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, this.size / 2 - 1, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        tex.canvas,
+        cx - tex.radius * scale - dx,
+        cy - tex.radius * scale - dz,
+        tex.radius * scale * 2,
+        tex.radius * scale * 2
+      );
+      ctx.restore();
+    }
 
     // Mobs/NPCs continuam dinâmicos e ficam sempre por cima da miniatura.
     for (const e of this.entities) {
