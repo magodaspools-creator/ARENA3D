@@ -235,12 +235,12 @@ export function createArea2(game) {
   // one investigation in a buried caravan, followed by a return to Nadir.
   // There are no repeated "activate three points" objectives here.
   const progression = new Progression(game, [
-    { id: 'nadir', text: 'Fale com Nadir, o Guardião das Dunas', hint: 'Ele sabe por que o caminho do templo desapareceu.', timeline: 'Falar com Nadir' },
-    { id: 'caravan', text: 'Investigue a caravana soterrada', hint: 'Procure os destroços a oeste do oásis.', timeline: 'Investigar a caravana' },
-    { id: 'return', text: 'Volte ao oásis e fale com Nadir', hint: 'Você encontrou o Fragmento Solar.', timeline: 'Voltar ao oásis' },
-    { id: 'pet', text: 'Desperte seu companheiro do deserto', hint: 'Nadir pode revelar o espírito que respondeu a você.', timeline: 'Despertar companheiro' },
-    { id: 'boss', text: 'Entre no Templo do Sol e enfrente Azhur', hint: 'O Fragmento Solar revelou a entrada soterrada.', timeline: 'Enfrentar Azhur' },
-    { id: 'portal', text: 'Atravesse o portal do templo', hint: 'Azhur foi derrotado. O caminho adiante está aberto.', timeline: 'Atravessar o portal' },
+    { id: 'nadir', text: 'Fale com Nadir, o Guardião das Dunas', hint: 'Ele sabe por que o caminho do templo desapareceu.', timeline: 'Falar com Nadir', target: { x: 142, z: 0, label: 'Nadir' } },
+    { id: 'caravan', text: 'Investigue a caravana soterrada', hint: 'Procure os destroços a oeste do oásis.', timeline: 'Investigar a caravana', target: { x: 171, z: -30, label: 'Caravana soterrada' } },
+    { id: 'return', text: 'Volte ao oásis e fale com Nadir', hint: 'Você encontrou o Fragmento Solar.', timeline: 'Voltar ao oásis', target: { x: 142, z: 0, label: 'Nadir' } },
+    { id: 'pet', text: 'Desperte seu companheiro do deserto', hint: 'Nadir pode revelar o espírito que respondeu a você.', timeline: 'Despertar companheiro', target: { x: 142, z: 0, label: 'Nadir' } },
+    { id: 'boss', text: 'Entre no Templo do Sol e enfrente Azhur', hint: 'O Fragmento Solar revelou a entrada soterrada.', timeline: 'Enfrentar Azhur', target: () => ({ x: bossArena.x, z: bossArena.z, label: 'Azhur' }) },
+    { id: 'portal', text: 'Atravesse o portal do templo', hint: 'Azhur foi derrotado. O caminho adiante está aberto.', timeline: 'Atravessar o portal', target: () => ({ x: exitPortal.pos.x, z: exitPortal.pos.z, label: 'Portal' }) },
   ], 'area2');
   progression.load();
 
