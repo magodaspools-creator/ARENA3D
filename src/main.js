@@ -97,6 +97,13 @@ class Game {
       }
       if (this.mapEditor.active && this.mapEditor.handleKey(e)) return;
       if (e.code === 'Escape' && this.state === 'map-editor') { e.preventDefault(); this.mapEditor.toggle(false); return; }
+      if (e.code === 'KeyM' && (this.state === 'play' || this.state === 'world-map')) {
+        e.preventDefault();
+        if (this.state === 'world-map') this.closeWorldMap();
+        else this.openWorldMap();
+        return;
+      }
+      if (e.code === 'Escape' && this.state === 'world-map') { e.preventDefault(); this.closeWorldMap(); return; }
       if (e.code === 'Escape' && this.state === 'play') { e.preventDefault(); this.pauseGame(); return; }
       if (e.code === 'Escape' && this.state === 'pause-controls') { e.preventDefault(); this.showPauseMenu(); return; }
       if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resumeGame(); return; }
@@ -515,6 +522,20 @@ class Game {
     return used;
   }
 
+  openWorldMap() {
+    if (this.state !== 'play' || this.inputLocked || !this.player) return;
+    this.state = 'world-map';
+    this.inputLocked = true;
+    this.ui.openWorldMap();
+  }
+
+  closeWorldMap() {
+    if (this.state !== 'world-map') return;
+    this.ui.closeWorldMap();
+    this.state = 'play';
+    this.inputLocked = false;
+  }
+
   pauseGame() {
     if (this.state !== 'play') return;
     this.state = 'pause';
@@ -555,6 +576,7 @@ class Game {
     this.ui.hideInventory();
     this.ui.hideProfile();
     this.ui.hideShop();
+    this.ui.closeWorldMap?.();
     this.state = 'select';
     this.inputLocked = false;
     this.player?.dispose();
