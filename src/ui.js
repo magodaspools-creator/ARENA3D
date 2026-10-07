@@ -211,11 +211,14 @@ export class UI {
       bounds = { minX: x - 40, maxX: x + 40, minZ: z - 40, maxZ: z + 40 };
     }
 
+    const questTarget = area.progression?.target || null;
+
     this.worldMap.setData({
       bounds,
       zones,
       obstacles,
       pois: this._worldMapPois(area),
+      questTarget,
       entities: this._worldMapEntities(),
       player: { x: this.game.player.pos.x, z: this.game.player.pos.z },
       areaName: area.name || 'Área atual',
