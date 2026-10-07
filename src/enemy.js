@@ -21,7 +21,7 @@ const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissiv
 // The repository serves the GLB directly from raw.githubusercontent.com, which
 // supports cross-origin loading from GitHub Pages. No local asset is required.
 // Source: SimonDev's Chrome Dinosaur Game 3D / DesertPack.
-const SCORPION_GLB_URL = 'https://raw.githubusercontent.com/simondevyoutube/Tutorial_ChromeDinosaurGame3D/main/resources/DesertPack/GLTF/Scorpion.glb';
+const SCORPION_GLB_URL = new URL('../assets/scorpion/scorpion.glb', import.meta.url).href;
 const scorpionLoader = new GLTFLoader();
 let scorpionGltfPromise = null;
 const scorpionInstances = new Set();
@@ -52,8 +52,9 @@ function attachScorpionModel(model, gltf) {
       ? obj.material.map((m) => m.clone())
       : obj.material.clone();
   });
-  // The source model's longitudinal axis is X; Arena enemies face +Z.
-  visual.rotation.y = -Math.PI / 2;
+  // The converted OpenGameArt asset keeps its native glTF orientation.
+  // Arena rotates the enemy root toward its movement direction.
+  visual.rotation.y = 0;
   visual.scale.setScalar(1.0);
 
   model.root.add(visual);
@@ -307,6 +308,7 @@ export class Enemy {
     this.state = 'dead';
     this.stateT = 0;
     this.anim?.die();
+    if (this.scorpion) this.playScorpionAction('death');
     this.game.ui.removeAnchor(this.bar);
     const fx = this.game.fx;
     const c = this.type === 'wisp' ? 0xc07aff : (this.spider ? 0xb85b55 : (this.scorpion ? 0xd58a3f : 0x8affd8));
@@ -466,14 +468,38 @@ export class Enemy {
     const keys = Object.keys(m.scorpionActions || {});
     if (!keys.length) return;
 
-    const wanted = kind === 'attack'
-      ? keys.find((k) => /(attack|sting|strike|stab|hit)/i.test(k))
-      : keys.find((k) => /(walk|run|move|locomotion)/i.test(k));
+    let wanted = null;
+    if (kind === 'attack') {
+      wanted = keys.find((k) => /(attack|sting|strike|stab|hit)/i.test(k));
+    } else if (kind === 'walk') {
+      wanted = keys.find((k) => /(walk|run|move|locomotion)/i.test(k));
+    } else if (kind === 'death') {
+      wanted = keys.find((k) => /(die|death|dead|collapse)/i.test(k));
+    } else {
+      wanted = keys.find((k) => /(idle|stand|rest)/i.test(k));
+    }
 
     if (!wanted) return;
     const action = m.scorpionActions[wanted];
-    if (m.scorpionAction && m.scorpionAction !== action) m.scorpionAction.fadeOut(0.12);
-    action.reset().fadeIn(0.12).play();
+
+    // Never restart the same clip every frame. That was the source of the
+    // old "stiff/sliding" feeling when the locomotion clip was continuously
+    // reset from animateScorpion().
+    if (m.scorpionAction === action && action.isRunning()) return;
+
+    if (m.scorpionAction && m.scorpionAction !== action) {
+      m.scorpionAction.fadeOut(0.12);
+    }
+
+    action.reset();
+    action.setLoop(
+      kind === 'attack' || kind === 'death'
+        ? THREE.LoopOnce
+        : THREE.LoopRepeat,
+      kind === 'attack' || kind === 'death' ? 1 : Infinity
+    );
+    action.clampWhenFinished = kind === 'death';
+    action.fadeIn(0.12).play();
     m.scorpionAction = action;
   }
 
@@ -485,10 +511,10 @@ export class Enemy {
     const moving = stride > 0.05 && this.state !== 'windup';
     if (m.scorpionMixer) m.scorpionMixer.update(dt);
 
-    // If the GLB contains its own locomotion clip, use it instead of sliding.
     if (moving) this.playScorpionAction('walk');
+    else if (this.state !== 'windup' && this.state !== 'dead') this.playScorpionAction('idle');
 
-    // Fallback for static GLBs: articulate separately named legs.
+    // Fallback for assets without usable baked locomotion.
     if (!m.scorpionMixer && m.scorpionLegs.length) {
       const phase = this.t * 11;
       m.scorpionLegs.forEach((leg, i) => {
@@ -500,14 +526,15 @@ export class Enemy {
       });
     }
 
-    // Tail strike: lift the tail before impact, then whip the stinger forward.
+    // The OpenGameArt scorpion already has two attack clips. Prefer the baked
+    // attack, which moves the claws/tail naturally, instead of a knight slash.
     if (this.state === 'windup' && m.scorpionTail.length) {
       const p = THREE.MathUtils.clamp(this.stateT / Math.max(0.001, this.def.windup), 0, 1);
       const wind = p < 0.55 ? p / 0.55 : 1 - (p - 0.55) / 0.45;
       m.scorpionTail.forEach((part, i) => {
         const weight = (i + 1) / m.scorpionTail.length;
-        part.rotation.x = -0.15 - wind * (0.45 + weight * 0.65);
-        part.rotation.z = Math.sin(p * Math.PI) * 0.18 * weight;
+        part.rotation.x = -0.10 - wind * (0.30 + weight * 0.45);
+        part.rotation.z = Math.sin(p * Math.PI) * 0.12 * weight;
       });
     }
 
