@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator, mesh, mat } from './models.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { rollLoot } from './loot.js';
 
 // Regular enemies. Two archetypes share one state machine:
@@ -17,82 +15,97 @@ const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughn
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
 
-// Remote 3D scorpion model hosted on GitHub.
-// The repository serves the GLB directly from raw.githubusercontent.com, which
-// supports cross-origin loading from GitHub Pages. No local asset is required.
-// Source: SimonDev's Chrome Dinosaur Game 3D / DesertPack.
-const SCORPION_GLB_URL = 'https://raw.githubusercontent.com/simondevyoutube/Tutorial_ChromeDinosaurGame3D/main/resources/DesertPack/GLTF/Scorpion.glb';
-const scorpionLoader = new GLTFLoader();
-let scorpionGltfPromise = null;
+// Local CC0 scorpion sprite sheet. The source package includes real walk
+// and attack artwork; we keep the PNG inside ARENA3D so GitHub Pages never
+// depends on a third-party CDN.
+const SCORPION_SPRITE_URL = new URL('../assets/scorpion/scorpion.png', import.meta.url).href;
+const SCORPION_SHEET_COLS = 4;
+const SCORPION_SHEET_ROWS = 3;
+// The source sheet is arranged as one attack pose in cell 0 plus the walk
+// poses in cells 4,5,6,8,9,10,11.
+const SCORPION_WALK_FRAMES = [4, 5, 6, 8, 9, 10, 11];
+const SCORPION_IDLE_FRAME = 4;
+const SCORPION_ATTACK_FRAMES = [0, 4, 0, 4, 0];
+const scorpionTextureLoader = new THREE.TextureLoader();
+let scorpionTexture = null;
+let scorpionTexturePromise = null;
 const scorpionInstances = new Set();
 
-function loadScorpionModel() {
-  if (!scorpionGltfPromise) {
-    scorpionGltfPromise = scorpionLoader.loadAsync(SCORPION_GLB_URL).then((gltf) => {
-      if (!gltf?.scene) throw new Error('Scorpion GLB sem scene.');
-      return gltf;
-    }).catch((error) => {
-      console.error('[ARENA] Falha ao carregar o scorpion GLB:', error);
-      scorpionGltfPromise = null;
-      return null;
-    });
-  }
-  return scorpionGltfPromise;
+function setScorpionFrame(model, frame) {
+  const texture = model?.sprite?.material?.map;
+  if (!texture) return;
+  const col = frame % SCORPION_SHEET_COLS;
+  const row = Math.floor(frame / SCORPION_SHEET_COLS);
+  texture.repeat.set(1 / SCORPION_SHEET_COLS, 1 / SCORPION_SHEET_ROWS);
+  texture.offset.set(col / SCORPION_SHEET_COLS, 1 - (row + 1) / SCORPION_SHEET_ROWS);
 }
 
-function attachScorpionModel(model, gltf) {
-  if (!model?.root || !gltf?.scene || model.scorpionVisual) return;
-  const visual = SkeletonUtils.clone(gltf.scene);
-  visual.name = 'scorpion-3d';
-  visual.traverse((obj) => {
-    if (!obj.isMesh) return;
-    obj.castShadow = true;
-    obj.receiveShadow = true;
-    if (obj.material) obj.material = Array.isArray(obj.material)
-      ? obj.material.map((m) => m.clone())
-      : obj.material.clone();
+function attachScorpionSprite(model) {
+  if (!model?.root || !scorpionTexture || model.sprite) return;
+  const material = new THREE.SpriteMaterial({
+    map: scorpionTexture,
+    transparent: true,
+    alphaTest: 0.04,
+    depthWrite: false,
+    toneMapped: false,
   });
-  // The source model's longitudinal axis is X; Arena enemies face +Z.
-  visual.rotation.y = -Math.PI / 2;
-  visual.scale.setScalar(1.0);
+  const sprite = new THREE.Sprite(material);
+  sprite.name = 'scorpion-sprite';
+  sprite.center.set(0.5, 0.08);
+  sprite.scale.set(2.45, 1.38, 1);
+  sprite.position.y = 0.69;
+  model.root.add(sprite);
+  model.sprite = sprite;
+  setScorpionFrame(model, SCORPION_IDLE_FRAME);
+}
 
-  model.root.add(visual);
-  model.scorpionVisual = visual;
-  model.scorpionMixer = gltf.animations?.length ? new THREE.AnimationMixer(visual) : null;
-  model.scorpionActions = {};
-  if (model.scorpionMixer) {
-    for (const clip of gltf.animations) {
-      const key = clip.name.toLowerCase();
-      model.scorpionActions[key] = model.scorpionMixer.clipAction(clip);
-    }
-  }
+function loadScorpionTexture() {
+  if (scorpionTexture) return Promise.resolve(scorpionTexture);
+  if (scorpionTexturePromise) return scorpionTexturePromise;
 
-  // Keep references to articulated parts when the asset exposes them.
-  model.scorpionLegs = [];
-  model.scorpionTail = [];
-  visual.traverse((obj) => {
-    const n = String(obj.name || '').toLowerCase();
-    if (/(^|[_ .-])(leg|leg[0-9]|frontleg|backleg|leftleg|rightleg)([_ .-]|$)/i.test(n) || /leg/i.test(n)) {
-      model.scorpionLegs.push(obj);
-    }
-    if (/(tail|stinger|sting|cauda)/i.test(n)) model.scorpionTail.push(obj);
+  scorpionTexturePromise = new Promise((resolve, reject) => {
+    scorpionTextureLoader.load(
+      SCORPION_SPRITE_URL,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+        texture.generateMipmaps = false;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        scorpionTexture = texture;
+        for (const model of scorpionInstances) attachScorpionSprite(model);
+        console.info('[ARENA] scorpion sprite loaded:', SCORPION_SPRITE_URL);
+        resolve(texture);
+      },
+      (xhr) => {
+        if (xhr?.total) console.info('[ARENA] scorpion sprite loading:', Math.round((xhr.loaded / xhr.total) * 100) + '%');
+      },
+      (error) => {
+        console.warn('[ARENA] scorpion sprite failed to load, using fallback', error);
+        reject(error);
+      },
+    );
+  }).catch((error) => {
+    scorpionTexturePromise = null;
+    return null;
   });
+  return scorpionTexturePromise;
 }
 
 function createScorpionModel(scale = 1) {
   const root = new THREE.Group();
   const model = {
     root,
-    scorpionVisual: null,
-    scorpionMixer: null,
-    scorpionActions: {},
-    scorpionLegs: [],
-    scorpionTail: [],
-    scorpionAction: null,
+    sprite: null,
+    spriteFrame: SCORPION_IDLE_FRAME,
+    spriteFrameT: 0,
+    spriteAttackT: 0,
   };
   scorpionInstances.add(model);
+  loadScorpionTexture();
+  attachScorpionSprite(model);
   root.scale.setScalar(scale);
-  loadScorpionModel().then((gltf) => attachScorpionModel(model, gltf));
   return model;
 }
 
@@ -423,6 +436,10 @@ export class Enemy {
     if (spd > 0) g.collision.move(this.pos, mvx * spd * dt, mvz * spd * dt, this.radius, 0.9);
     if (face !== null) this.facing = lerpAngle(this.facing, face, 1 - Math.exp(-10 * dt));
     this.root.rotation.y = this.facing;
+    if (this.scorpion && typeof g.collision.groundHeight === 'function') {
+      const terrainY = g.collision.groundHeight(this.pos.x, this.pos.z);
+      if (Number.isFinite(terrainY)) this.pos.y = terrainY;
+    }
 
     if (this.anim) {
       this.anim.update(dt, spd / def.speed);
@@ -442,7 +459,12 @@ export class Enemy {
     this.state = 'windup';
     this.stateT = 0;
     if (this.anim) this.anim.attack('slash', this.def.windup / 0.5);
-    if (this.scorpion) this.playScorpionAction('attack');
+    if (this.scorpion) {
+      this.model.spriteAttackT = 0;
+      this.model.spriteFrameT = 0;
+      this.model.spriteFrame = SCORPION_ATTACK_FRAMES[0];
+      setScorpionFrame(this.model, this.model.spriteFrame);
+    }
   }
 
   animateSpider(dt, stride = 0) {
@@ -460,65 +482,42 @@ export class Enemy {
     });
   }
 
-  playScorpionAction(kind) {
-    const m = this.model;
-    if (!m) return;
-    const keys = Object.keys(m.scorpionActions || {});
-    if (!keys.length) return;
-
-    const wanted = kind === 'attack'
-      ? keys.find((k) => /(attack|sting|strike|stab|hit)/i.test(k))
-      : keys.find((k) => /(walk|run|move|locomotion)/i.test(k));
-
-    if (!wanted) return;
-    const action = m.scorpionActions[wanted];
-    if (m.scorpionAction && m.scorpionAction !== action) m.scorpionAction.fadeOut(0.12);
-    action.reset().fadeIn(0.12).play();
-    m.scorpionAction = action;
-  }
-
   animateScorpion(dt, stride = 0) {
     const m = this.model;
-    const visual = m?.scorpionVisual;
-    if (!visual) return;
+    if (!m?.sprite) return;
 
     const moving = stride > 0.05 && this.state !== 'windup';
-    if (m.scorpionMixer) m.scorpionMixer.update(dt);
+    const speedRatio = THREE.MathUtils.clamp(stride, 0.3, 3);
 
-    // If the GLB contains its own locomotion clip, use it instead of sliding.
-    if (moving) this.playScorpionAction('walk');
-
-    // Fallback for static GLBs: articulate separately named legs.
-    if (!m.scorpionMixer && m.scorpionLegs.length) {
-      const phase = this.t * 11;
-      m.scorpionLegs.forEach((leg, i) => {
-        const side = i % 2 ? -1 : 1;
-        const row = Math.floor(i / 2);
-        const swing = moving ? Math.sin(phase + row * 0.9) * 0.18 : 0;
-        leg.rotation.z = side * swing;
-        leg.rotation.x = moving ? Math.cos(phase + row * 0.9) * 0.07 : 0;
-      });
+    if (this.state === 'windup') {
+      m.spriteAttackT += dt;
+      const attackDuration = Math.max(0.18, this.def.windup);
+      const p = THREE.MathUtils.clamp(m.spriteAttackT / attackDuration, 0, 0.999);
+      const index = Math.min(SCORPION_ATTACK_FRAMES.length - 1, Math.floor(p * SCORPION_ATTACK_FRAMES.length));
+      const frame = SCORPION_ATTACK_FRAMES[index];
+      if (frame !== m.spriteFrame) {
+        m.spriteFrame = frame;
+        setScorpionFrame(m, frame);
+      }
+      m.sprite.scale.x = 2.52 + Math.sin(p * Math.PI) * 0.12;
+      m.sprite.scale.y = 1.42 + Math.sin(p * Math.PI) * 0.06;
+      m.sprite.position.y = 0.70 + Math.sin(p * Math.PI) * 0.035;
+      return;
     }
 
-    // Tail strike: lift the tail before impact, then whip the stinger forward.
-    if (this.state === 'windup' && m.scorpionTail.length) {
-      const p = THREE.MathUtils.clamp(this.stateT / Math.max(0.001, this.def.windup), 0, 1);
-      const wind = p < 0.55 ? p / 0.55 : 1 - (p - 0.55) / 0.45;
-      m.scorpionTail.forEach((part, i) => {
-        const weight = (i + 1) / m.scorpionTail.length;
-        part.rotation.x = -0.15 - wind * (0.45 + weight * 0.65);
-        part.rotation.z = Math.sin(p * Math.PI) * 0.18 * weight;
-      });
+    const frames = moving ? SCORPION_WALK_FRAMES : [SCORPION_IDLE_FRAME];
+    const frameRate = moving ? 10.5 * speedRatio : 2.2;
+    m.spriteFrameT += dt * frameRate;
+    const frameIndex = Math.floor(m.spriteFrameT) % frames.length;
+    const frame = frames[frameIndex];
+    if (frame !== m.spriteFrame) {
+      m.spriteFrame = frame;
+      setScorpionFrame(m, frame);
     }
 
-    if (!moving && this.state !== 'windup' && m.scorpionTail.length) {
-      m.scorpionTail.forEach((part) => {
-        part.rotation.x *= Math.exp(-10 * dt);
-        part.rotation.z *= Math.exp(-10 * dt);
-      });
-    }
-
-    visual.position.y = moving ? Math.sin(this.t * 10) * 0.018 : 0;
+    m.sprite.scale.x = moving ? 2.45 : 2.38;
+    m.sprite.scale.y = moving ? 1.38 : 1.34;
+    m.sprite.position.y = 0.69 + Math.sin(this.t * (moving ? 10 : 3)) * (moving ? 0.018 : 0.008);
   }
 
   animateWisp(dt) {
@@ -545,7 +544,10 @@ export class Enemy {
 
   dispose() {
     this.game.scene.remove(this.root);
-    if (this.scorpion) scorpionInstances.delete(this.model);
+    if (this.scorpion) {
+      scorpionInstances.delete(this.model);
+      this.model.sprite?.material?.map?.dispose?.();
+    }
     if (this.alive) this.game.ui.removeAnchor(this.bar);
     this.alive = false;
     this.removed = true;
