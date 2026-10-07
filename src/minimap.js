@@ -421,8 +421,8 @@ export class Minimap {
   }
 
 
-  _drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey) {
-    const terrain = this._makeGroundMinimapTexture(W, W, bounds, S, buildKey);
+  _drawTerrain(c, zones, wx, wz, S, W, bounds, buildKey, offX, offZ) {
+    const terrain = this._makeGroundMinimapTexture(W, W, bounds, S, buildKey, offX, offZ);
 
     c.fillStyle = '#18261b';
     c.fillRect(0, 0, W, W);
