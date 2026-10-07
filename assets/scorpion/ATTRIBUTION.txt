@@ -1,0 +1,9 @@
+ARENA3D SCORPION SPRITE
+
+Original work: "Scorpy Scorp - Side-Scroller Enemy"
+Author: Diane Mueller "madameberry"
+Source: https://opengameart.org/content/scorpy-scorp-side-scroller-enemy
+Mirror: https://github.com/gianghl1983/free-game-art-sideview
+License: Public Domain / CC0
+
+The source package contains scorpion attack and walk animations and PNG spritesheets.
