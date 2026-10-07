@@ -474,7 +474,7 @@ export function createArea2(game) {
   entryPortal.rise();
   // The north portal is the reward for defeating the desert boss.
   // It stays hidden until the fight is complete.
-  const exitPortal = createPortal(game, ORIGIN.x, 45);
+  const exitPortal = createPortal(game, ORIGIN.x, 35);
 
   const portalStone = new THREE.Group();
   portalStone.position.set(ORIGIN.x,0,-45);
@@ -597,6 +597,7 @@ export function createArea2(game) {
       ],
       arena: { x: bossArena.x, z: bossArena.z, r: bossArena.r },
       portal: { x: ORIGIN.x, z: -45 },
+      bossPortal: { x: ORIGIN.x, z: 35 },
     },
 
     onStart() {
