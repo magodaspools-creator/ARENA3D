@@ -70,8 +70,12 @@ export class SunGodBoss {
     this.nextDecision = 0.8;
     // Watchdog: guarantees the boss cannot remain in an inactive combat state.
     this.combatStallT = 0;
-    this.attackCooldowns = { dawn: 1.8, orb: 3.2, rain: 5.0 };
+    this.attackCooldowns = { dawn: 1.8, orb: 3.2, rain: 5.0, eclipse: 6.0, pillars: 9.0 };
     this.phase1BoundaryShown = false;
+    this.phase = 1;
+    this.eclipseAngle = 0;
+    this.eclipseDuration = 0;
+    this.pillarTargets = [];
     this.wakeFx = false;
     this.root.rotation.y = 0;
     this.root.visible = true;
@@ -111,6 +115,18 @@ export class SunGodBoss {
     this.flash = crit ? 1 : 0.6;
     this.game.ui.setBoss(this.hp / this.maxHp, false);
     if (this.hp <= 0) return this.die();
+    if (this.hp <= this.maxHp * 0.68 && this.phase === 1) {
+      this.phase = 2;
+      this.game.ui.toast('Azhur cobre o templo com um eclipse. A luta mudou.');
+      this.attackCooldowns.eclipse = 0;
+      this.attackCooldowns.pillars = 3.0;
+    }
+    if (this.hp <= this.maxHp * 0.34 && this.phase === 2) {
+      this.phase = 3;
+      this.game.ui.toast('O Sol Sepultado entra em colapso. Cuidado com os pilares solares.');
+      this.attackCooldowns.eclipse = 2.0;
+      this.attackCooldowns.pillars = 0;
+    }
     if (this.hp <= this.maxHp * 0.65 && !this.phase1BoundaryShown) {
       this.phase1BoundaryShown = true;
       this.game.ui.toast('Azhur enfraquece, mas o Sol ainda não foi eclipsado.');
@@ -165,6 +181,8 @@ export class SunGodBoss {
     if (this.attackCooldowns.dawn <= 0) ready.push('dawn', 'dawn');
     if (this.attackCooldowns.orb <= 0) ready.push('orb', 'orb');
     if (this.attackCooldowns.rain <= 0) ready.push('rain');
+    if (this.phase >= 2 && this.attackCooldowns.eclipse <= 0) ready.push('eclipse', 'eclipse');
+    if (this.phase >= 3 && this.attackCooldowns.pillars <= 0) ready.push('pillars');
     if (!ready.length) return null;
     let pick = ready[Math.floor(Math.random() * ready.length)];
     if (pick === this.lastAttack && ready.length > 1) {
@@ -198,6 +216,24 @@ export class SunGodBoss {
     } else if (name === 'orb') {
       this.attackCooldowns.orb = 5.0;
       this.anim.attack('cast', 0.9);
+    } else if (name === 'eclipse') {
+      this.attackCooldowns.eclipse = this.phase >= 3 ? 10.0 : 8.0;
+      this.eclipseAngle = Math.atan2(this.game.player.pos.z - this.pos.z, this.game.player.pos.x - this.pos.x);
+      this.eclipseDuration = 2.0;
+      this.eclipseHit = false;
+      this.anim.attack('cast', 1.1);
+      this.tele.push(this.game.fx.telegraphLine(new THREE.Vector3(this.arena.x,0.12,this.arena.z), new THREE.Vector3(this.arena.x + Math.cos(this.eclipseAngle)*this.arena.r,0.12,this.arena.z + Math.sin(this.eclipseAngle)*this.arena.r), 2.0, 0xffe26a));
+    } else if (name === 'pillars') {
+      this.attackCooldowns.pillars = 12.0;
+      this.pillarTargets = [];
+      const safe = Math.floor(Math.random() * 4);
+      for (let i=0;i<4;i++) {
+        const a = i*Math.PI*0.5 + Math.PI*0.25, rr = 4.7;
+        const target = new THREE.Vector3(this.arena.x + Math.cos(a)*rr, 0, this.arena.z + Math.sin(a)*rr);
+        this.pillarTargets.push({ pos: target, safe: i === safe });
+        this.tele.push(this.game.fx.telegraphCircle(target, 1.15, 2.0, i === safe ? 0x66e0ff : 0xff7a18));
+      }
+      this.anim.attack('cast', 1.2);
     } else if (name === 'rain') {
       this.attackCooldowns.rain = 7.0;
       this.anim.attack('cast', 1.0);
@@ -264,6 +300,30 @@ export class SunGodBoss {
     this.rainTargets = [];
   }
 
+
+  resolveEclipse() {
+    const g = this.game;
+    const cx = this.arena.x, cz = this.arena.z, len = this.arena.r;
+    const a = this.eclipseAngle;
+    const ex = cx + Math.cos(a) * len, ez = cz + Math.sin(a) * len;
+    g.fx.beam(new THREE.Vector3(cx,0.18,cz), 0xffe26a, len, 0.3, 0.3);
+    g.fx.emit(new THREE.Vector3(ex,1,ez), { count:30, color:0xffd45c, speed:5, up:2, life:0.6, size:0.45 });
+    if (distancePointToSegment(g.player.pos.x,g.player.pos.z,cx,cz,ex,ez) < g.player.radius + 0.8)
+      g.player.takeDamage(g.combat.roll([55,72],0).amount,this.pos);
+  }
+
+  resolvePillars() {
+    const g = this.game;
+    for (const p of this.pillarTargets) {
+      g.fx.beam(new THREE.Vector3(p.pos.x,0,p.pos.z), p.safe ? 0x66e0ff : 0xff7a18, 5.5, 0.28, 0.28);
+      g.fx.emit(new THREE.Vector3(p.pos.x,1.5,p.pos.z), { count:35, color:p.safe ? 0x66e0ff : 0xffd45c, speed:6, up:2, life:0.7, size:0.5 });
+    }
+    const safe = this.pillarTargets.find(p => p.safe);
+    if (safe && Math.hypot(g.player.pos.x-safe.pos.x,g.player.pos.z-safe.pos.z) > 1.5)
+      g.player.takeDamage(g.combat.roll([85,110],0).amount,safe.pos);
+    this.pillarTargets = [];
+  }
+
   updateHazards(dt) {
     const g = this.game;
     for (const h of this.burnZones) {
@@ -326,6 +386,8 @@ export class SunGodBoss {
     this.attackCooldowns.dawn -= dt;
     this.attackCooldowns.orb -= dt;
     this.attackCooldowns.rain -= dt;
+    this.attackCooldowns.eclipse -= dt;
+    this.attackCooldowns.pillars -= dt;
     this.updateHazards(dt);
 
     const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z;
@@ -396,6 +458,21 @@ export class SunGodBoss {
         this.facing = lerpAngle(this.facing || 0, toPlayer, 1 - Math.exp(-5 * dt));
         if (this.stateT >= 0.75 && !this.struck) { this.struck = true; this.fireSolarOrb(); }
         if (this.stateT > 1.15) this.finishAttack();
+        break;
+
+      case 'eclipse':
+        this.pos.y = 1.2;
+        this.facing = lerpAngle(this.facing || 0, toPlayer, 1 - Math.exp(-5 * dt));
+        this.eclipseAngle += (this.phase >= 3 ? 0.85 : 0.55) * dt;
+        if (this.stateT >= 0.95 && !this.struck) { this.struck = true; this.resolveEclipse(); }
+        if (this.stateT > this.eclipseDuration) this.finishAttack();
+        break;
+
+      case 'pillars':
+        this.pos.y = 1.2;
+        this.facing = lerpAngle(this.facing || 0, toPlayer, 1 - Math.exp(-5 * dt));
+        if (this.stateT >= 1.15 && !this.struck) { this.struck = true; this.resolvePillars(); }
+        if (this.stateT > 1.45) this.finishAttack();
         break;
 
       case 'rain':
