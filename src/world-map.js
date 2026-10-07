@@ -375,26 +375,52 @@ export class WorldMap {
     ctx.fillStyle = '#8f9a8a';
     ctx.fillText(this.subtitle || '', 36, 53);
 
+    // Legenda fixa na lateral: os marcadores do mapa permanecem sem texto.
     const legend = [
       ['#ff6b6b', 'Você'],
-      ['#e45d58', 'Inimigos'],
-      ['#f0c86b', 'NPC'],
+      ['#e45d58', 'Monstros'],
+      ['#f0c86b', 'NPCs'],
       ['#b77aff', 'Boss'],
       ['#d6a04f', 'Ponto de interesse'],
     ];
-    let lx = this.renderW - 36;
-    ctx.textAlign = 'right';
-    ctx.font = '700 14px "Segoe UI", sans-serif';
-    for (const [color, label] of legend) {
-      const textWidth = ctx.measureText(label).width;
+    const legendX = this.renderW - 190;
+    const legendY = 92;
+    const legendW = 154;
+    const legendH = 286;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(7,12,9,.92)';
+    ctx.strokeStyle = 'rgba(232,199,122,.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(legendX, legendY, legendW, legendH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ead9ad';
+    ctx.font = '700 15px Georgia, serif';
+    ctx.fillText('LEGENDA', legendX + 18, legendY + 29);
+
+    ctx.fillStyle = '#7f8b7b';
+    ctx.font = '10px "Segoe UI", sans-serif';
+    ctx.fillText('O que cada marcador representa', legendX + 18, legendY + 47);
+
+    legend.forEach(([color, label], index) => {
+      const y = legendY + 82 + index * 38;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 7;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(lx - textWidth - 11, 30, 5, 0, Math.PI * 2);
+      ctx.arc(legendX + 28, y, 7, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#c3c8bb';
-      ctx.fillText(label, lx, 35);
-      lx -= textWidth + 86;
-    }
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = '#d8ddcf';
+      ctx.font = '600 13px "Segoe UI", sans-serif';
+      ctx.fillText(label, legendX + 48, y + 5);
+    });
+    ctx.restore();
 
     ctx.fillStyle = '#697465';
     ctx.font = '10px "Segoe UI", sans-serif';
