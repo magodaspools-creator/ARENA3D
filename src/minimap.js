@@ -696,7 +696,7 @@ export class Minimap {
     ctx.fillStyle = '#ff6b6b';
     ctx.fill();
     ctx.restore();
-
+  }
 
   entColor(type) {
     return ({ enemy: '#ff4757', ally: '#2ed573', item: '#ffd32a', npc: '#a29bfe' })[type] || '#fff';
