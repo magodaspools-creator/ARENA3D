@@ -125,6 +125,189 @@ export function createArea2(game) {
 
   collision.addCircle(ORIGIN.x, ORIGIN.z, 6.5, { projectiles:false });
 
+  // ---------- desert guide / pre-boss quest ----------
+  // Nadir is the first contact in Map 2. He explains why the Sun God is
+  // sealed and gives the player a concrete task before the temple can be
+  // approached.
+  const progression = new Progression(game, [
+    {
+      id: 'markers',
+      text: 'Restaure os 3 Marcos do Sol',
+      hint: 'Encontre os marcos espalhados pelo deserto.',
+    },
+    {
+      id: 'pet',
+      text: 'Fale com Nadir e desperte seu companheiro',
+      hint: 'Os três marcos foram restaurados.',
+    },
+    {
+      id: 'boss',
+      text: 'Encontre Azhur, o Deus Sol',
+      hint: 'O selo do templo está enfraquecido.',
+    },
+    {
+      id: 'portal',
+      text: 'Atravesse o portal do templo',
+      hint: 'Azhur foi derrotado.',
+    },
+  ], 'area2');
+  progression.load();
+
+  const petNames = {
+    knight: 'Lobo Guardião',
+    paladin: 'Falcão do Deserto',
+    sorcerer: 'Escorpião Arcano',
+    druid: 'Cervo da Miragem',
+    monk: 'Macaco das Dunas',
+  };
+
+  let petGranted = false;
+  const grantDesertPet = () => {
+    if (petGranted || game.character?.data?.pet) return;
+    const vocation = game.character?.vocation;
+    const pet = petNames[vocation];
+    if (!pet) return;
+    game.character.data.pet = {
+      id: vocation + '_desert',
+      name: pet,
+      vocation,
+      source: 'desert',
+    };
+    game.character.save();
+    petGranted = true;
+    game.ui.toast(pet + ' despertou ao seu lado.');
+  };
+
+  const markerData = [
+    { id: 'dune', x: 126, z: -18, name: 'Marco da Duna Vermelha', color: 0xffb84d },
+    { id: 'oasis', x: 141, z: 7, name: 'Marco do Oásis Perdido', color: 0x6dd7d0 },
+    { id: 'ruins', x: 176, z: 22, name: 'Marco das Ruínas Soterradas', color: 0xffd66b },
+  ];
+  const solarMarkers = [];
+
+  const restoreMarker = (entry) => {
+    if (progression.counters[entry.id]) return;
+    progression.setCounter(entry.id, 1);
+    const restored = solarMarkers.find((m) => m.id === entry.id);
+    if (restored) {
+      restored.active = true;
+      restored.core.material.emissiveIntensity = 2.5;
+      restored.ring.material.opacity = 0.9;
+      game.fx.ring(restored.group.position, entry.color, 1.6, 0.8);
+      game.ui.toast(entry.name + ' restaurado.');
+    }
+    const total = markerData.filter((m) => progression.counters[m.id]).length;
+    if (total >= 3) {
+      progression.advance('pet');
+      game.ui.banner('OS TRÊS MARCOS RESPONDEM', 'Volte ao oásis e fale com Nadir.', 'victory', 3);
+    }
+  };
+
+  for (const entry of markerData) {
+    const group = new THREE.Group();
+    group.position.set(entry.x, 0, entry.z);
+    scene.add(group);
+
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.72, 1.1, 8),
+      new THREE.MeshStandardMaterial({ color: 0x5c4734, roughness: 1 })
+    );
+    base.position.y = 0.55;
+    group.add(base);
+
+    const core = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.28),
+      new THREE.MeshStandardMaterial({
+        color: entry.color,
+        emissive: entry.color,
+        emissiveIntensity: progression.counters[entry.id] ? 2.5 : 0.12,
+      })
+    );
+    core.position.y = 1.35;
+    group.add(core);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.8, 0.95, 24),
+      new THREE.MeshBasicMaterial({
+        color: entry.color,
+        transparent: true,
+        opacity: progression.counters[entry.id] ? 0.9 : 0.28,
+        side: THREE.DoubleSide,
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.08;
+    group.add(ring);
+
+    const marker = {
+      id: entry.id,
+      group,
+      core,
+      ring,
+      active: !!progression.counters[entry.id],
+    };
+    solarMarkers.push(marker);
+
+    game.interaction.add({
+      pos: group.position,
+      radius: 2.2,
+      height: 2.8,
+      label: () => marker.active ? 'Marco do Sol restaurado' : 'Restaurar ' + entry.name,
+      enabled: () => !marker.active && progression.id === 'markers',
+      onInteract: () => restoreMarker(entry),
+    });
+  }
+
+  const nadir = new NPC(game, {
+    name: 'Nadir, Guardião das Dunas',
+    x: 142,
+    z: 0,
+    facing: Math.PI * 0.75,
+    look: { head: 0xe0a26f, body: 0x6b472e, legs: 0xc49a5c, feet: 0x3c2c22 },
+    dialogue: () => {
+      if (progression.id === 'markers') {
+        return {
+          lines: [
+            '“Eu sou Nadir, guardião deste último oásis.”',
+            '“Azhur, o Deus Sol, não foi enterrado. Foi selado sob o templo.”',
+            '“Os antigos mantinham o selo através de três Marcos do Sol.”',
+            '“O tempo e a areia apagaram sua força. Se quiser chegar ao Deus Sol, restaure os três.”',
+            '“Um está na Duna Vermelha, outro além do oásis e o último junto às ruínas soterradas.”',
+          ],
+        };
+      }
+      if (progression.id === 'pet') {
+        return {
+          lines: [
+            '“Você restaurou os três marcos. A areia voltou a obedecer ao antigo juramento.”',
+            '“Mas nenhum guardião atravessa o templo sozinho.”',
+            '“Uma criatura espiritual respondeu ao chamado do seu sangue e da sua vocação.”',
+            '“Aceite sua companhia. Ela conhece os caminhos que o Sol Sepultado tentou apagar.”',
+          ],
+          onDone: () => {
+            grantDesertPet();
+            progression.advance('boss');
+            game.ui.banner('COMPANHEIRO DESPERTADO', petNames[game.character?.vocation] || 'Seu pet', 'victory', 3);
+          },
+        };
+      }
+      return {
+        lines: [
+          '“Agora o caminho está aberto.”',
+          '“Azhur despertará sob o templo. Não confunda sua luz com salvação.”',
+          '“Derrote o Deus Sol e não deixe que o selo seja quebrado novamente.”',
+        ],
+      };
+    },
+  });
+  game.npcs.push(nadir);
+  nadir.setMarker(progression.id === 'pet' ? 0xffd36a : progression.id === 'markers' ? 0xffc34a : null);
+
+  progression.on((id) => {
+    nadir.setMarker(id === 'pet' ? 0xffd36a : id === 'markers' ? 0xffc34a : null);
+  });
+
+
   // ---------- buried temple ----------
   const temple = new THREE.Group();
   temple.name = 'buried-sun-temple';
