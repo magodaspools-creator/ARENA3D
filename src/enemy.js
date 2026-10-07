@@ -483,7 +483,7 @@ export class Enemy {
       const e = this.state === 'windup' ? 7 : 3;
       for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
     } else if (this.spider) this.animateSpider(dt, spd / def.speed);
-    else if (this.scorpion) this.animateScorpion(dt, spd / def.speed);
+    else if (this.scorpion) this.animateScorpion(dt, spd);
     else this.animateWisp(dt);
 
     this.barT -= dt;
@@ -519,12 +519,11 @@ export class Enemy {
     });
   }
 
-  animateScorpion(dt, stride = 0) {
+  animateScorpion(dt, speed = 0) {
     const m = this.model;
     if (!m?.sprite) return;
 
-    const moving = stride > 0.05 && this.state !== 'windup';
-    const speedRatio = THREE.MathUtils.clamp(stride, 0.3, 3);
+    const moving = speed > 0.05 && this.state !== 'windup';
 
     if (this.state === 'windup') {
       m.spriteAttackT += dt;
@@ -543,7 +542,16 @@ export class Enemy {
     }
 
     const frames = moving ? SCORPION_WALK_FRAMES : [SCORPION_IDLE_FRAME];
-    const frameRate = moving ? 10.5 * speedRatio : 2.2;
+
+    // One complete authored walk cycle is calibrated to about 1.2 world
+    // units. Recalibrate this value if a foot visibly slides: increase it if
+    // the legs move too fast for the ground distance, decrease it if they
+    // move too slowly. The accumulator uses real dt, so animation speed is
+    // independent of the browser/render FPS.
+    const strideLength = 1.2;
+    const frameRate = moving
+      ? THREE.MathUtils.clamp(speed * SCORPION_WALK_FRAMES.length / strideLength, 4, 24)
+      : 2.2;
     m.spriteFrameT += dt * frameRate;
     const frameIndex = Math.floor(m.spriteFrameT) % frames.length;
     const frame = frames[frameIndex];
