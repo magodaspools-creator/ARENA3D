@@ -165,6 +165,8 @@ export function createArea2(game) {
   let desertPetVisual = null;
   const createPetVisual = (vocation) => {
     if (desertPetVisual || !game.player?.root) return;
+    const existing = game.player.root.getObjectByName('desert-companion');
+    if (existing) { desertPetVisual = existing; return; }
     const group = new THREE.Group();
     group.name = 'desert-companion';
     const mat = new THREE.MeshStandardMaterial({ color: ({ knight:0x6b4936, paladin:0xc7d7e8, sorcerer:0x7b4bb7, druid:0x5b8b50, monk:0xc28a4a }[vocation] || 0xc49a5c), roughness:0.8, emissive: ({ sorcerer:0x3a155f }[vocation] || 0x000000), emissiveIntensity:0.35 });
