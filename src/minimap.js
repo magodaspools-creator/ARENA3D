@@ -46,7 +46,7 @@ export class Minimap {
     if (!opts.canvas) this._style();
   }
 
-  _makeGroundMinimapTexture(w, h, bounds, S, buildKey, offX = 0, offZ = 0) {
+  _makeGroundMinimapTexture(W, H, bounds, S, buildKey, offX = 0, offZ = 0) {
     // A textura agora é calculada em coordenadas do MUNDO, não em pixels.
     // Assim, quando render() desloca o mapCanvas, o mesmo ponto do terreno
     // mantém a mesma cor/altura visual.
@@ -55,15 +55,15 @@ export class Minimap {
     }
 
     const canvas = typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(w, h)
+      ? new OffscreenCanvas(W, H)
       : document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = W;
+    canvas.height = H;
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const image = ctx.createImageData(w, h);
+    const image = ctx.createImageData(W, H);
     const data = image.data;
-    const heightData = new Float32Array(w * h);
+    const heightData = new Float32Array(W * H);
 
     const hash = (x, z) => {
       const value = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
@@ -142,10 +142,10 @@ export class Minimap {
         // O grão fino tem amplitude máxima de 6% do campo total.
         const grain = noise2(x / grainPeriod, z / grainPeriod) - 0.5;
         const field = Math.max(0, Math.min(1, broad + grain * 0.12));
-        heightData[py * w + px] = field;
+        heightData[py * W + px] = field;
 
         const color = ramp(field);
-        const i = (py * w + px) * 4;
+        const i = (py * W + px) * 4;
         data[i] = Math.round(color[0]);
         data[i + 1] = Math.round(color[1]);
         data[i + 2] = Math.round(color[2]);
@@ -158,8 +158,8 @@ export class Minimap {
     const result = {
       canvas,
       heightField: { data: heightData, width: w, height: h },
-      width: w,
-      height: h,
+      width: W,
+      height: H,
     };
 
     if (!this.groundMinimapCache) this.groundMinimapCache = new Map();
