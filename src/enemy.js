@@ -31,19 +31,47 @@ let scorpionTexture = null;
 let scorpionTexturePromise = null;
 const scorpionInstances = new Set();
 
-function setScorpionFrame(model, frame) {
+function setScorpionFrame(model, frame, flipped = model?.spriteFlipped ?? false) {
   const texture = model?.sprite?.material?.map;
   if (!texture) return;
   const col = frame % SCORPION_SHEET_COLS;
   const row = Math.floor(frame / SCORPION_SHEET_COLS);
-  texture.repeat.set(1 / SCORPION_SHEET_COLS, 1 / SCORPION_SHEET_ROWS);
-  texture.offset.set(col / SCORPION_SHEET_COLS, 1 - (row + 1) / SCORPION_SHEET_ROWS);
+  const tileW = 1 / SCORPION_SHEET_COLS;
+  const tileH = 1 / SCORPION_SHEET_ROWS;
+  const u0 = col * tileW;
+  const u1 = u0 + tileW;
+
+  // The atlas is shared by the source image, but each sprite gets its own
+  // Texture wrapper so repeat/offset can differ without changing another
+  // scorpion. Flipping is confined to this tile: repeat.x=-tileW and
+  // offset.x=u1 reverses only the current frame, with no atlas bleed.
+  texture.repeat.set(flipped ? -tileW : tileW, tileH);
+  texture.offset.set(flipped ? u1 : u0, 1 - (row + 1) * tileH);
+  texture.needsUpdate = true;
+}
+
+function setScorpionScreenDirection(model, mvx, mvz, camera) {
+  if (!model?.sprite || !camera) return;
+  const lenSq = mvx * mvx + mvz * mvz;
+  if (lenSq <= 1e-8) return;
+
+  // Camera local +X is screen-right. Project it onto XZ so camera pitch does
+  // not affect the left/right decision.
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  right.y = 0;
+  if (right.lengthSq() <= 1e-8) return;
+  right.normalize();
+
+  const movingRight = mvx * right.x + mvz * right.z > 0;
+  if (movingRight === model.spriteFlipped) return;
+  model.spriteFlipped = movingRight;
+  setScorpionFrame(model, model.spriteFrame, model.spriteFlipped);
 }
 
 function attachScorpionSprite(model) {
   if (!model?.root || !scorpionTexture || model.sprite) return;
   const material = new THREE.SpriteMaterial({
-    map: scorpionTexture,
+    map: scorpionTexture.clone(),
     transparent: true,
     alphaTest: 0.04,
     depthWrite: false,
@@ -56,7 +84,11 @@ function attachScorpionSprite(model) {
   sprite.position.y = 0.69;
   model.root.add(sprite);
   model.sprite = sprite;
-  setScorpionFrame(model, SCORPION_IDLE_FRAME);
+  model.spriteFlipped = false;
+  const spriteMap = material.map;
+  spriteMap.wrapS = THREE.RepeatWrapping;
+  spriteMap.wrapT = THREE.ClampToEdgeWrapping;
+  setScorpionFrame(model, SCORPION_IDLE_FRAME, false);
 }
 
 function loadScorpionTexture() {
@@ -101,6 +133,7 @@ function createScorpionModel(scale = 1) {
     spriteFrame: SCORPION_IDLE_FRAME,
     spriteFrameT: 0,
     spriteAttackT: 0,
+    spriteFlipped: false,
   };
   scorpionInstances.add(model);
   loadScorpionTexture();
@@ -435,7 +468,11 @@ export class Enemy {
 
     if (spd > 0) g.collision.move(this.pos, mvx * spd * dt, mvz * spd * dt, this.radius, 0.9);
     if (face !== null) this.facing = lerpAngle(this.facing, face, 1 - Math.exp(-10 * dt));
-    this.root.rotation.y = this.facing;
+    // THREE.Sprite already billboards toward the camera. A scorpion must not
+    // inherit the enemy's world-facing rotation, or its screen-space sprite
+    // direction becomes coupled to camera/world yaw.
+    if (!this.scorpion) this.root.rotation.y = this.facing;
+    if (this.scorpion) setScorpionScreenDirection(this.model, mvx, mvz, g.camera);
     if (this.scorpion && typeof g.collision.groundHeight === 'function') {
       const terrainY = g.collision.groundHeight(this.pos.x, this.pos.z);
       if (Number.isFinite(terrainY)) this.pos.y = terrainY;
@@ -463,7 +500,7 @@ export class Enemy {
       this.model.spriteAttackT = 0;
       this.model.spriteFrameT = 0;
       this.model.spriteFrame = SCORPION_ATTACK_FRAMES[0];
-      setScorpionFrame(this.model, this.model.spriteFrame);
+      setScorpionFrame(this.model, this.model.spriteFrame, this.model.spriteFlipped);
     }
   }
 
