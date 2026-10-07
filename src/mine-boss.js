@@ -1,3 +1,4 @@
+// Cache-bust: keep GitHub Pages from serving a stale 503 for the boss module.
 import * as THREE from 'three';
 import { uniqueMaterials, applyFlash, mesh, mat, glow } from './models.js';
 
