@@ -219,8 +219,14 @@ export class Enemy {
     }
     this.mats = uniqueMaterials(this.root);
     this.pos = this.root.position;
-    this.pos.set(x, 0, z);
-    this.home = new THREE.Vector3(x, 0, z);
+    // Area 2 can have several meters of procedural dune height. Enemies must
+    // spawn on the same terrain surface as the player instead of starting at
+    // world Y=0 and becoming buried inside a dune.
+    const groundY = Number.isFinite(game.collision.groundHeight?.(x, z))
+      ? game.collision.groundHeight(x, z)
+      : 0;
+    this.pos.set(x, groundY, z);
+    this.home = new THREE.Vector3(x, groundY, z);
     this.facing = Math.random() * Math.PI * 2;
     game.scene.add(this.root);
 
