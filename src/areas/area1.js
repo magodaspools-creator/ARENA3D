@@ -799,6 +799,48 @@ mineGroup.add(exitLight);
 exitLight.userData.baseIntensity = 4.0;
 mineLights.push(exitLight);
 
+// Strong visual exit landmark: a wooden sign, arrow and warm/cyan glow make
+// the return route unmistakable without adding another gameplay collider.
+const exitSignMat = new THREE.MeshStandardMaterial({ color: 0x3b281b, roughness: 0.9, flatShading: true });
+const exitSign = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.05, 0.18), exitSignMat);
+exitSign.position.set(exitX, 2.15, exitZ + 0.38);
+exitSign.castShadow = true;
+mineGroup.add(exitSign);
+
+const exitSignCanvas = document.createElement('canvas');
+exitSignCanvas.width = 512;
+exitSignCanvas.height = 160;
+const exitSignCtx = exitSignCanvas.getContext('2d');
+exitSignCtx.clearRect(0, 0, 512, 160);
+exitSignCtx.fillStyle = '#f4d28a';
+exitSignCtx.font = '900 72px Georgia, serif';
+exitSignCtx.textAlign = 'center';
+exitSignCtx.textBaseline = 'middle';
+exitSignCtx.shadowColor = 'rgba(255,178,72,.85)';
+exitSignCtx.shadowBlur = 18;
+exitSignCtx.fillText('SAÍDA', 256, 80);
+const exitSignTexture = new THREE.CanvasTexture(exitSignCanvas);
+exitSignTexture.colorSpace = THREE.SRGBColorSpace;
+const exitLabel = new THREE.Mesh(
+  new THREE.PlaneGeometry(2.65, 0.83),
+  new THREE.MeshBasicMaterial({ map: exitSignTexture, transparent: true, depthWrite: false, toneMapped: false })
+);
+exitLabel.position.set(exitX, 2.15, exitZ + 0.285);
+mineGroup.add(exitLabel);
+
+const exitArrowMat = new THREE.MeshBasicMaterial({ color: 0x72d8c4, transparent: true, opacity: 0.92, toneMapped: false });
+const exitArrowStem = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.05, 0.16), exitArrowMat);
+exitArrowStem.position.set(exitX, 0.82, exitZ - 0.92);
+mineGroup.add(exitArrowStem);
+const exitArrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.62, 4), exitArrowMat);
+exitArrowHead.rotation.x = Math.PI;
+exitArrowHead.position.set(exitX, 0.28, exitZ - 0.92);
+mineGroup.add(exitArrowHead);
+const exitMarkerLight = new THREE.PointLight(0x72d8c4, 2.8, 6, 1.8);
+exitMarkerLight.position.set(exitX, 1.15, exitZ - 0.8);
+mineGroup.add(exitMarkerLight);
+mineLights.push(exitMarkerLight);
+
 const undergroundZones = [
   // Entrance / north shaft
   [[103, 98], [103, 84], [107, 81], [116, 82], [118, 98], [114, 102], [106, 102]],
@@ -889,11 +931,12 @@ const perimeter = [
   [78, 94, 91, 87],
   [91, 87, 104, 80],
 ];
-for (const segment of perimeter) mineWall(...segment, 8.0, { collide: false });
+// The visible perimeter rocks are real obstacles. The outer polygon still defines
+// the playable boundary; these colliders make the rock faces themselves solid.
+for (const segment of perimeter) mineWall(...segment, 8.0, { collide: true });
 
-// Worked-mine walls now follow the actual playable branches. They are
-// visual geometry only: the polygon zones above are the single source of truth
-// for navigation, which avoids recreating the invisible-wall bug.
+// Worked-mine walls follow the actual playable branches. Their visible rock
+// masses are solid, while the polygon zones remain the authoritative boundary.
 for (const segment of [
   // north shaft
   [103, 84, 103, 98], [117, 83, 117, 98],
@@ -913,7 +956,7 @@ for (const segment of [
   [126, 115, 144, 115], [147, 123, 143, 130],
   // south spine
   [103, 115, 103, 128], [124, 115, 130, 121],
-]) mineWall(...segment, 7.0, { collide: false });
+]) mineWall(...segment, 7.0, { collide: true });
 
 // Doorways are intentionally wider than the player's radius and remain open.
 
@@ -1018,6 +1061,62 @@ mineGroup.add(shaftVoid);
 for (const [x, z, rot] of [[107.9,109,0],[112.1,109,0],[110,106.9,Math.PI/2],[110,111.1,Math.PI/2]]) {
   mineRock(x, z, 0.65, 1.35, 0.65, rot, mineRockDarkMat);
 }
+
+// ---------- central altar charm ----------
+// The four stones are the focal point of the hub. Give them a restrained
+// ancient-magic identity: rune rings, four crystals and a soft breathing glow.
+const mineAltarGroup = new THREE.Group();
+mineAltarGroup.position.set(110, 0.12, 109);
+mineGroup.add(mineAltarGroup);
+
+const altarRuneMat = new THREE.MeshBasicMaterial({
+  color: 0x72c9bd,
+  transparent: true,
+  opacity: 0.72,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  toneMapped: false,
+});
+const altarRing = new THREE.Mesh(new THREE.RingGeometry(2.75, 2.9, 48), altarRuneMat);
+altarRing.rotation.x = -Math.PI / 2;
+mineAltarGroup.add(altarRing);
+const altarInnerRing = new THREE.Mesh(new THREE.RingGeometry(1.45, 1.58, 36), altarRuneMat);
+altarInnerRing.rotation.x = -Math.PI / 2;
+mineAltarGroup.add(altarInnerRing);
+
+const altarCrystalMat = new THREE.MeshStandardMaterial({
+  color: 0x6fa7a3,
+  emissive: 0x3cc9bd,
+  emissiveIntensity: 1.5,
+  roughness: 0.28,
+  metalness: 0.1,
+  flatShading: true,
+});
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+  const crystal = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), altarCrystalMat);
+  crystal.position.set(Math.cos(a) * 2.15, 0.55, Math.sin(a) * 2.15);
+  crystal.scale.set(0.72, 1.8, 0.72);
+  crystal.rotation.y = a;
+  crystal.castShadow = false;
+  mineAltarGroup.add(crystal);
+}
+
+const altarCoreMat = new THREE.MeshBasicMaterial({
+  color: 0xffc96b,
+  transparent: true,
+  opacity: 0.9,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  toneMapped: false,
+});
+const altarCore = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 8), altarCoreMat);
+altarCore.position.y = 0.48;
+mineAltarGroup.add(altarCore);
+const altarLight = new THREE.PointLight(0x5ee0d0, 4.8, 8, 1.8);
+altarLight.position.set(110, 1.2, 109);
+mineGroup.add(altarLight);
+mineLights.push(altarLight);
 
 // Collapsed gallery in the south-east pocket. The debris is decorative and
 // leaves the safe walkable lane along the western side of the pocket.
@@ -2489,6 +2588,13 @@ const leaveMine = () => {
       braziers.forEach((b) => b.update(dt, t));
       gate.update(dt, t);
       secretGate.update(dt, t);
+      if (mine.active && !mine.loading) {
+        const pulse = 0.82 + Math.sin(t * 2.4) * 0.18;
+        altarLight.intensity = 4.8 * pulse;
+        altarCore.scale.setScalar(0.9 + pulse * 0.16);
+        altarRing.rotation.z = t * 0.16;
+        altarInnerRing.rotation.z = -t * 0.24;
+      }
       secretLever.update(t);
       const p = game.player;
       // Area updates are normally gated by Game.loop, but keep Area 1 safe
