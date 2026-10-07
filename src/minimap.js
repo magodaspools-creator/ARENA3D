@@ -132,9 +132,12 @@ export class Minimap {
 
     for (let py = 0; py < h; py++) {
       for (let px = 0; px < w; px++) {
-        // Conversão exigida: o pixel aponta para uma posição real do mundo.
-        const x = bounds.minX + (px + 0.5) / S;
-        const z = bounds.minZ + (py + 0.5) / S;
+        // O canvas cresce para baixo; o eixo Z do mundo precisa ser invertido
+        // para manter a orientação do minimapa coerente com o render().
+        const centerX = (bounds.minX + bounds.maxX) * 0.5;
+        const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+        const x = centerX + (px - w * 0.5) / S;
+        const z = centerZ - (py - h * 0.5) / S;
 
         const broad = fbm(x / period, z / period);
         // O grão fino tem amplitude máxima de 6% do campo total.
