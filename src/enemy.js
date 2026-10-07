@@ -19,7 +19,7 @@ const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissiv
 // https://opengameart.org/content/scorpy-scorp-side-scroller-enemy
 // The image is used as a billboard so the desert enemy reads as a 2D sprite
 // inside the otherwise 3D world.
-const SCORPION_SPRITE_URL = 'https://opengameart.org/sites/default/files/Scorpion.png';
+const SCORPION_SPRITE_URL = './assets/scorpion.svg';
 let scorpionTexture = null;
 let scorpionTextureFailed = false;
 const scorpionInstances = new Set();
