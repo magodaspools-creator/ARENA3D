@@ -100,9 +100,8 @@ function attachZombieSprite(model) {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <map_fragment>',
       `#include <map_fragment>
-      float zombieGreenKey = step(0.34, diffuseColor.g)
-        * step(diffuseColor.r * 1.4, diffuseColor.g)
-        * step(diffuseColor.b * 1.4, diffuseColor.g);
+      float zombieGreenExcess = diffuseColor.g - max(diffuseColor.r, diffuseColor.b);
+      float zombieGreenKey = step(0.12, diffuseColor.g) * step(0.11, zombieGreenExcess);
       if (zombieGreenKey > 0.5) discard;`,
     );
   };
