@@ -336,18 +336,18 @@ class Game {
     const hemi = new THREE.HemisphereLight(
       0x52706a,
       0x14211d,
-      isMinima ? 1.15 : isLeve ? 0.82 : 0.48
+      isMinima ? 0.60 : isLeve ? 0.60 : 0.48
     );
     this.scene.add(hemi);
 
     if (isMinima) {
-      this.scene.add(new THREE.AmbientLight(0x78958c, 0.85));
+      this.scene.add(new THREE.AmbientLight(0x78958c, 0.25));
     }
 
     // LEVE: one non-shadow directional. MINIMA: Ambient + Hemisphere only.
     const moon = new THREE.DirectionalLight(
       0x8caea2,
-      isMinima ? 0.0 : isLeve ? 0.62 : 0.82
+      isMinima ? 0.0 : isLeve ? 0.25 : 0.82
     );
     moon.castShadow = !!this.qualityConfig.shadows;
     if (isLeve) moon.castShadow = false;
@@ -375,11 +375,9 @@ class Game {
       for (const m of mats) {
         if (!m) continue;
         if (m.map) m.map.anisotropy = 1;
-        if (m.emissive) {
-          const base = m.color?.clone?.() || new THREE.Color(0xffffff);
-          m.emissive.copy(base);
-          m.emissiveIntensity = 0.34;
-        }
+        // Keep the original GLTF emissive exactly as authored. KayKit's
+        // floor/character materials do not use emissive; injecting it here
+        // makes the whole low-quality scene look washed out.
         m.needsUpdate = true;
       }
       o.castShadow = false;
