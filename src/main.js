@@ -30,13 +30,15 @@ const USE_GLTF_PLAYER = MODEL_MODE !== 'procedural';
 import { MapEditor } from './map-editor.js';
 
 const FOG = 0x080b12;
+const LOW_QUALITY_FOG = 0x10201d;
 
 const QUALITY_CONFIG = {
   minima: { antialias: false, pixelRatio: 1, scale: 0.75, shadows: false, bloom: false, fog: 0, simpleMaterials: true, particleScale: 0.2, maxAnimatedEnemies: 4, maxAnimatedEnemyDistance: 16, renderCap: 30 },
+  leve:   { antialias: false, pixelRatio: 1, scale: 0.85, shadows: false, bloom: false, fog: 0.0045, simpleMaterials: true, particleScale: 0.25, maxAnimatedEnemies: 5, maxAnimatedEnemyDistance: 18, renderCap: 45 },
   baixa:  { antialias: false, pixelRatio: 1, scale: 1, shadows: false, bloom: false, fog: 0.006, simpleMaterials: false, particleScale: 0.5, maxAnimatedEnemies: 7, maxAnimatedEnemyDistance: 20, renderCap: 60 },
   media:  { antialias: false, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.28, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 12, maxAnimatedEnemyDistance: 28, renderCap: 60 },
-  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, maxAnimatedEnemies: 999, maxAnimatedEnemyDistance: 40, renderCap: 60 },
-};
+  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 999, maxAnimatedEnemyDistance: 40, renderCap: 60 },
+}
 
 function detectGpuRenderer() {
   try {
@@ -317,10 +319,9 @@ class Game {
   }
 
   setupLights() {
-    // MINIMA/LEVE deliberately use broad, cheap illumination so KayKit
-    // materials never fall into unreadable black areas.
     const isMinima = this.qualityName === 'minima';
     const isLeve = this.qualityName === 'leve';
+
     const hemi = new THREE.HemisphereLight(
       0x52706a,
       0x14211d,
@@ -329,13 +330,13 @@ class Game {
     this.scene.add(hemi);
 
     if (isMinima) {
-      const ambient = new THREE.AmbientLight(0x78958c, 0.85);
-      this.scene.add(ambient);
+      this.scene.add(new THREE.AmbientLight(0x78958c, 0.85));
     }
 
+    // LEVE: one non-shadow directional. MINIMA: Ambient + Hemisphere only.
     const moon = new THREE.DirectionalLight(
-      isMinima ? 0x8caea2 : 0x8195c4,
-      isMinima ? 0.32 : isLeve ? 0.62 : 0.82
+      0x8caea2,
+      isMinima ? 0.0 : isLeve ? 0.62 : 0.82
     );
     moon.castShadow = !!this.qualityConfig.shadows;
     if (isLeve) moon.castShadow = false;
