@@ -67,7 +67,7 @@ export function createArea1(game) {
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
 
-  const decor = new Decor();
+  const decor = new Decor({ spriteMode: true });
 
   // ---------- forest ring (instanced pines) ----------
   const trees = [];
