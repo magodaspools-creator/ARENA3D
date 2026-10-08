@@ -261,6 +261,16 @@ export class Decor {
     else this.blocks.add(x + 1.4, 0.35, z + 0.6, 0.9, 0.7, 1.4, r() * 3, 0x5f6167);
   }
   build(scene) {
+    // Sprite-mode decorations are created as real THREE.Sprite objects during
+    // pine()/rock(). They must be attached to the scene here; previously they
+    // were only stored in spriteObjects, which made every replacement sprite
+    // effectively invisible.
+    if (this.spriteMode) {
+      for (const sprite of this.spriteObjects) {
+        if (sprite.parent !== scene) scene.add(sprite);
+      }
+      return;
+    }
     this.trunks.build(scene);
     this.leaves.forEach((b) => b.build(scene));
     for (const b of [this.rocks, this.grass, this.stems, this.caps, this.blocks, this.columns, this.tiles]) b.build(scene);
