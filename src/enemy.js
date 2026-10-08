@@ -77,10 +77,15 @@ function setZombieScreenDirection(model, mvx, mvz, camera) {
   if (right.lengthSq() <= 1e-8) return;
   right.normalize();
 
-  const movingRight = mvx * right.x + mvz * right.z > 0;
-  // The authored zombie poses face screen-left. Mirror when moving right
+  const horizontal = mvx * right.x + mvz * right.z;
+  // Ignore nearly screen-vertical movement. Without this dead zone, tiny
+  // projection changes can rapidly alternate between front/back.
+  if (Math.abs(horizontal) < 0.12) return;
+
+  const movingRight = horizontal > 0;
+  // The authored zombie poses face screen-right. Mirror when moving left
   // so the face follows the actual travel direction.
-  const flipped = movingRight;
+  const flipped = !movingRight;
   if (flipped === model.spriteFlipped) return;
   model.spriteFlipped = flipped;
   setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
@@ -165,7 +170,7 @@ function createZombieSpriteModel(scale = 1) {
     spriteFrameT: 0,
     spriteWalkDistance: 0,
     spriteActionT: 0,
-    spriteFlipped: false,
+    spriteFlipped: true,
     spriteAction: 'locomotion',
     spriteActionDuration: 0,
   };
