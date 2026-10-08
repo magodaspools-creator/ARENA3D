@@ -21,7 +21,7 @@ import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
-import { KayKitEnvironment } from './kaykit-assets.js';
+import { KayKitEnvironment, preloadKayKitEnemyAssets, loadKayKitEnemyRig } from './kaykit-assets.js';
 
 const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 // The published game uses the finalized vocation GLTFs by default.
@@ -223,7 +223,11 @@ class Game {
 
     this.area = createArea1(this);
     this.kaykitEnvironment = new KayKitEnvironment(this);
-    this.kaykitEnvironment.rebuild().catch((error) => console.warn('[ARENA] KayKit environment unavailable.', error));
+    this.kaykitEnvironmentReady = this.kaykitEnvironment.rebuild().catch((error) => {
+      console.warn('[ARENA] KayKit environment unavailable.', error);
+      return null;
+    });
+    this.graphicsReady = false;
     this.returnArea = null;
     this.startArea = this.area;
     this.player = null;
@@ -283,9 +287,16 @@ class Game {
       if (e.code === 'Escape' && this.state === 'shop') this.closeShop();
     });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+    this.ui.setStartLoading?.(true);
+    this.ui.setAssetLoadingProgress?.(0, 'Preparando gráficos...');
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
     this.applyQualityToObject(this.scene);
     this.maxAnimatedEnemyDistance = quality.maxAnimatedEnemyDistance;
+    this.prepareGraphics().catch((error) => {
+      console.warn('[ARENA] Graphics preparation failed; gameplay can still use fallbacks.', error);
+      this.graphicsReady = true;
+      this.ui.setStartLoading?.(false);
+    });
 
     document.getElementById('again-btn').onclick = () => location.reload();
     document.getElementById('stay-btn').onclick = () => {
@@ -431,8 +442,39 @@ class Game {
     this.previewVocation = id;
   }
 
+  async prepareGraphics() {
+    // Environment and enemy assets are the only KayKit models used by Area 1.
+    // They load once into the shared GLTF cache; no repeated downloads per enemy.
+    await this.kaykitEnvironmentReady;
+    this.ui.setAssetLoadingProgress?.(35, 'Cenário carregado');
+
+    await preloadKayKitEnemyAssets();
+    this.ui.setAssetLoadingProgress?.(70, 'Inimigos carregados');
+
+    // Warm up the exact low-quality material programs before gameplay.
+    // compileAsync is intentionally skipped for the expensive high tiers here.
+    if (this.qualityName === 'minima' || this.qualityName === 'leve') {
+      this.camera.updateMatrixWorld(true);
+      this.scene.updateMatrixWorld(true);
+      await this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
+      for (const type of ['zombie', 'wisp', 'scorpion', 'hollow']) {
+        try {
+          const rig = await loadKayKitEnemyRig(type, 2);
+          rig.root.updateMatrixWorld(true);
+          await this.renderer.compileAsync(rig.root, this.camera, this.scene).catch(() => {});
+        } catch (error) {
+          console.warn('[ARENA] Enemy shader warmup skipped:', type, error);
+        }
+      }
+    }
+
+    this.graphicsReady = true;
+    this.ui.setAssetLoadingProgress?.(100, 'Gráficos prontos');
+    this.ui.setStartLoading?.(false);
+  }
+
   async start(id) {
-    if (!id || this.player || this.startingPlayer) return;
+    if (!id || this.player || this.startingPlayer || !this.graphicsReady) return;
 
     this.startingPlayer = true;
     this.inputLocked = true;
@@ -455,6 +497,9 @@ class Game {
       // The player is instantiated exactly once, after the final rig exists.
       this.character = new CharacterState(id);
       this.player = new Player(this, id, finalRig);
+      this.camera.updateMatrixWorld(true);
+      this.scene.updateMatrixWorld(true);
+      await this.renderer.compileAsync(finalRig.root, this.camera, this.scene).catch(() => {});
 
     const saved = this.loadWorldState();
     if (saved?.area === 'area2') {
