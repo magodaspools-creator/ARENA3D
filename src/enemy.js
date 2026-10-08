@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator, mesh, mat } from './models.js';
 import { rollLoot } from './loot.js';
-import { createEnvironmentSprite, setAtlasFrame, ENV_SPRITES } from './sprite-atlas.js';
 
 // Regular enemies. Two archetypes share one state machine:
 //   hollow — undead melee brute, telegraphs an overhead chop
@@ -15,13 +14,6 @@ const SPIDER_LEG_MAT = new THREE.MeshStandardMaterial({ color: 0x211816, roughne
 const SPIDER_BODY_MAT = new THREE.MeshStandardMaterial({ color: 0x4a2d27, roughness: 0.92, flatShading: true });
 const SPIDER_ABDOMEN_MAT = new THREE.MeshStandardMaterial({ color: 0x2c2020, roughness: 1, flatShading: true });
 const SPIDER_EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x6b1518, emissive: 0x3a080b, emissiveIntensity: 1.6, roughness: 0.8 });
-
-const WISP_IDLE_FRAMES = [0, 1, 2, 3, 4, 5];
-const WISP_MOVE_FRAMES = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-const WISP_CHARGE_FRAMES = [20, 21, 22, 23, 24, 25];
-const WISP_ATTACK_FRAMES = [30, 31, 32, 33];
-const WISP_HURT_FRAMES = [34, 35, 36, 37];
-const WISP_DEATH_FRAMES = [40, 41, 42, 43, 44, 45, 46, 47, 48, 49];
 
 // Local CC0 scorpion sprite sheet. The source package includes real walk
 // and attack artwork; we keep the PNG inside ARENA3D so GitHub Pages never
@@ -418,115 +410,6 @@ function createScorpionModel(scale = 1) {
   return model;
 }
 
-function createWispSpriteModel(scale = 1) {
-  const root = new THREE.Group();
-  const model = {
-    root,
-    sprite: null,
-    spriteFrame: WISP_IDLE_FRAMES[0],
-    spriteFrameT: 0,
-    spriteWalkDistance: 0,
-    spriteAction: 'locomotion',
-    spriteActionT: 0,
-    spriteActionDuration: 0,
-    scale,
-  };
-  const sprite = createEnvironmentSprite('wisp', {
-    frame: WISP_IDLE_FRAMES[0],
-    scale: 1.8 * scale,
-    height: 2.15 * scale,
-    centerY: 0.04,
-    name: 'wisp-sprite',
-  });
-  sprite.position.y = 0.02;
-  root.add(sprite);
-  model.sprite = sprite;
-  root.scale.setScalar(1);
-  return model;
-}
-
-function createWispSpriteAnimator(model, def) {
-  return {
-    update(dt, stride = 0) {
-      if (!model?.sprite) return;
-      model.spriteActionT += dt;
-      let frames = WISP_IDLE_FRAMES;
-      let fps = 5;
-
-      if (model.spriteAction === 'death') {
-        frames = WISP_DEATH_FRAMES;
-        fps = 8;
-      } else if (model.spriteAction === 'attack') {
-        frames = WISP_ATTACK_FRAMES;
-        fps = Math.max(8, frames.length / Math.max(0.18, def.windup));
-        if (model.spriteActionT >= model.spriteActionDuration) {
-          model.spriteAction = 'locomotion';
-          model.spriteActionT = 0;
-          model.spriteFrameT = 0;
-        }
-      } else if (model.spriteAction === 'hurt') {
-        frames = WISP_HURT_FRAMES;
-        fps = 12;
-        if (model.spriteActionT >= 0.32) {
-          model.spriteAction = 'locomotion';
-          model.spriteActionT = 0;
-          model.spriteFrameT = 0;
-        }
-      } else if (model.spriteAction === 'charge') {
-        frames = WISP_CHARGE_FRAMES;
-        fps = Math.max(7, frames.length / Math.max(0.2, def.windup));
-      } else if (stride > 0.05) {
-        frames = WISP_MOVE_FRAMES;
-        const strideLength = 1.0;
-        model.spriteWalkDistance = (model.spriteWalkDistance + def.speed * stride * dt) % strideLength;
-        const phase = (model.spriteWalkDistance / strideLength) * frames.length;
-        model.spriteFrameT = phase;
-        fps = 0;
-      }
-
-      if (fps > 0) model.spriteFrameT += dt * fps;
-      const index = Math.floor(model.spriteFrameT) % frames.length;
-      const frame = frames[index];
-      if (frame !== model.spriteFrame) {
-        model.spriteFrame = frame;
-        setAtlasFrame(model.sprite, frame, ENV_SPRITES.wisp.cols, ENV_SPRITES.wisp.rows);
-      }
-    },
-    hit() {
-      if (model.spriteAction === 'death') return;
-      model.spriteAction = 'hurt';
-      model.spriteActionT = 0;
-      model.spriteFrameT = 0;
-      model.spriteFrame = WISP_HURT_FRAMES[0];
-      setAtlasFrame(model.sprite, model.spriteFrame, ENV_SPRITES.wisp.cols, ENV_SPRITES.wisp.rows);
-    },
-    attack() {
-      if (model.spriteAction === 'death') return;
-      model.spriteAction = 'attack';
-      model.spriteActionT = 0;
-      model.spriteActionDuration = Math.max(0.18, def.windup);
-      model.spriteFrameT = 0;
-      model.spriteFrame = WISP_ATTACK_FRAMES[0];
-      setAtlasFrame(model.sprite, model.spriteFrame, ENV_SPRITES.wisp.cols, ENV_SPRITES.wisp.rows);
-    },
-    charge() {
-      if (model.spriteAction === 'death') return;
-      model.spriteAction = 'charge';
-      model.spriteActionT = 0;
-      model.spriteFrameT = 0;
-      model.spriteFrame = WISP_CHARGE_FRAMES[0];
-      setAtlasFrame(model.sprite, model.spriteFrame, ENV_SPRITES.wisp.cols, ENV_SPRITES.wisp.rows);
-    },
-    die() {
-      model.spriteAction = 'death';
-      model.spriteActionT = 0;
-      model.spriteFrameT = 0;
-      model.spriteFrame = WISP_DEATH_FRAMES[0];
-      setAtlasFrame(model.sprite, model.spriteFrame, ENV_SPRITES.wisp.cols, ENV_SPRITES.wisp.rows);
-    },
-  };
-}
-
 function createSpiderModel(scale = 1) {
   const root = new THREE.Group();
   const body = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 0), SPIDER_BODY_MAT);
@@ -624,9 +507,8 @@ export class Enemy {
     this.lootTable = [...(this.def.loot ?? [])];
     this.group = opts.group ?? null;
     if (type === 'wisp') {
-      this.model = createWispSpriteModel();
+      this.model = createWispModel();
       this.root = this.model.root;
-      this.anim = createWispSpriteAnimator(this.model, this.def);
     } else if (type === 'scorpion') {
       this.model = createScorpionModel();
       this.root = this.model.root;
@@ -746,7 +628,6 @@ export class Enemy {
       return;
     }
     if (this.def.ranged) {
-      if (this.type === 'wisp') this.anim?.attack();
       const dir = V.set(p.pos.x - this.pos.x, 0, p.pos.z - this.pos.z).normalize().clone();
       g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 0.6), dir, speed: 9, range: 14, damage: this.def.damage, damageType: 'magic', visual: 'orb', color: 0xc07aff, radius: 0.35 });
     } else {
@@ -862,7 +743,7 @@ export class Enemy {
       if (this.rig?.eyes) for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
     } else if (this.spider) this.animateSpider(dt, spd / def.speed);
     else if (this.scorpion) this.animateScorpion(dt, spd);
-    else if (this.type === 'wisp') this.animateWisp(dt);
+    else this.animateWisp(dt);
 
     this.barT -= dt;
     const showBar = this.barT > 0 || this.state === 'chase' || this.state === 'windup';
@@ -873,9 +754,7 @@ export class Enemy {
   startWindup() {
     this.state = 'windup';
     this.stateT = 0;
-    if (this.rig?.attack) this.anim.attack('slash', this.def.windup / 0.5);
-    if (this.zombieSprite) this.anim.attack();
-    if (this.type === 'wisp') this.anim.charge();
+    if (this.anim) this.anim.attack('slash', this.def.windup / 0.5);
     if (this.scorpion) {
       this.model.spriteAttackT = 0;
       this.model.spriteFrameT = 0;
