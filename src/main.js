@@ -355,44 +355,22 @@ class Game {
 
   applyQualityToObject(root) {
     if (!root || !this.qualityConfig.simpleMaterials) return;
-    const visibleColor = (m) => {
-      const c = m?.color?.clone?.() || new THREE.Color(0xffffff);
-      // Some GLTF materials become effectively black when their normal/env
-      // lighting path is removed. Keep a readable base even without a map.
-      if (!m?.map && c.getHSL({ h: 0, s: 0, l: 0 }).l < 0.035) c.set(0x53645e);
-      return c;
-    };
+    // Keep the original GLTF material. KayKit uses an atlas and animated
+    // characters are SkinnedMesh objects; swapping material classes here was
+    // the main low-quality visual regression.
     root.traverse((o) => {
       if (!o.isMesh || !o.material) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
-      o.material = mats.map((m) => {
-        if (!m) return m;
-        const color = visibleColor(m);
-        if (m.isMeshBasicMaterial || m.isMeshLambertMaterial) {
-          if (m.isMeshLambertMaterial && (this.qualityName === 'minima' || this.qualityName === 'leve')) {
-            m.color.copy(color);
-            m.emissive = color.clone().multiplyScalar(0.38);
-            m.emissiveIntensity = 1;
-          }
-          return m;
-        }
-        const next = new THREE.MeshLambertMaterial({
-          color,
-          map: m.map || null,
-          transparent: !!m.transparent,
-          opacity: m.opacity ?? 1,
-          alphaTest: m.alphaTest ?? 0,
-          side: m.side,
-          emissive: color.clone().multiplyScalar(0.38),
-          emissiveMap: m.emissiveMap || null,
-          emissiveIntensity: 1,
-          flatShading: !!m.flatShading,
-        });
+      for (const m of mats) {
+        if (!m) continue;
         if (m.map) m.map.anisotropy = 1;
-        next.normalMap = null;
-        next.envMap = null;
-        return next;
-      });
+        if (m.emissive) {
+          const base = m.color?.clone?.() || new THREE.Color(0xffffff);
+          m.emissive.copy(base);
+          m.emissiveIntensity = 0.34;
+        }
+        m.needsUpdate = true;
+      }
       o.castShadow = false;
       o.receiveShadow = false;
     });
