@@ -31,6 +31,225 @@ let scorpionTexture = null;
 let scorpionTexturePromise = null;
 const scorpionInstances = new Set();
 
+const ZOMBIE_SPRITE_URL = new URL('../uploads/zombie.jpeg', import.meta.url).href;
+const ZOMBIE_SHEET_COLS = 10;
+const ZOMBIE_SHEET_ROWS = 4;
+const ZOMBIE_IDLE_FRAMES = [0, 1, 2, 3];
+const ZOMBIE_WALK_FRAMES = [10, 11, 12, 13, 14, 15, 16, 17, 18];
+const ZOMBIE_ATTACK_FRAMES = [20, 21, 22, 23, 24, 25, 26];
+const ZOMBIE_HURT_FRAMES = [30, 31, 32, 33];
+const ZOMBIE_DEATH_FRAMES = [34, 35, 36, 37, 38, 39];
+const zombieTextureLoader = new THREE.TextureLoader();
+let zombieTexture = null;
+let zombieTexturePromise = null;
+const zombieInstances = new Set();
+
+function setZombieFrame(model, frame, flipped = model?.spriteFlipped ?? false) {
+  const texture = model?.sprite?.material?.map;
+  if (!texture) return;
+
+  const col = frame % ZOMBIE_SHEET_COLS;
+  const row = Math.floor(frame / ZOMBIE_SHEET_COLS);
+  const tileW = 1 / ZOMBIE_SHEET_COLS;
+  const tileH = 1 / ZOMBIE_SHEET_ROWS;
+
+  // Keep the UV region just inside the authored cell so the black grid
+  // lines between frames never become part of the sprite.
+  const epsX = 2 / 1376;
+  const epsY = 2 / 768;
+  const u0 = col * tileW + epsX;
+  const u1 = (col + 1) * tileW - epsX;
+  const v0 = 1 - (row + 1) * tileH + epsY;
+  const v1 = 1 - row * tileH - epsY;
+
+  texture.repeat.set(flipped ? -(u1 - u0) : (u1 - u0), v1 - v0);
+  texture.offset.set(flipped ? u1 : u0, v0);
+  texture.needsUpdate = true;
+}
+
+function setZombieScreenDirection(model, mvx, mvz, camera) {
+  if (!model?.sprite || !camera) return;
+  const lenSq = mvx * mvx + mvz * mvz;
+  if (lenSq <= 1e-8) return;
+
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  right.y = 0;
+  if (right.lengthSq() <= 1e-8) return;
+  right.normalize();
+
+  const movingRight = mvx * right.x + mvz * right.z > 0;
+  if (movingRight === model.spriteFlipped) return;
+  model.spriteFlipped = movingRight;
+  setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+}
+
+function attachZombieSprite(model) {
+  if (!model?.root || !zombieTexture || model.sprite) return;
+
+  const material = new THREE.SpriteMaterial({
+    map: zombieTexture.clone(),
+    transparent: true,
+    alphaTest: 0.01,
+    depthWrite: false,
+    toneMapped: false,
+  });
+
+  // The source is a JPEG with a bright green background. Key only the
+  // strongly saturated green; the zombie's darker olive/gray pixels remain.
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+      float zombieGreenKey = step(0.34, diffuseColor.g)
+        * step(diffuseColor.r * 1.4, diffuseColor.g)
+        * step(diffuseColor.b * 1.4, diffuseColor.g);
+      if (zombieGreenKey > 0.5) discard;`,
+    );
+  };
+
+  const sprite = new THREE.Sprite(material);
+  sprite.name = 'zombie-sprite';
+  sprite.center.set(0.5, 0.02);
+  sprite.scale.set(1.65, 2.05, 1);
+  sprite.position.y = 0.02;
+  model.root.add(sprite);
+  model.sprite = sprite;
+  model.spriteFlipped = false;
+  const spriteMap = material.map;
+  spriteMap.wrapS = THREE.RepeatWrapping;
+  spriteMap.wrapT = THREE.ClampToEdgeWrapping;
+  setZombieFrame(model, ZOMBIE_IDLE_FRAMES[0], false);
+}
+
+function loadZombieTexture() {
+  if (zombieTexture) return Promise.resolve(zombieTexture);
+  if (zombieTexturePromise) return zombieTexturePromise;
+
+  zombieTexturePromise = new Promise((resolve, reject) => {
+    zombieTextureLoader.load(
+      ZOMBIE_SPRITE_URL,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+        texture.generateMipmaps = false;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        zombieTexture = texture;
+        for (const model of zombieInstances) attachZombieSprite(model);
+        console.info('[ARENA] zombie sprite loaded:', ZOMBIE_SPRITE_URL);
+        resolve(texture);
+      },
+      undefined,
+      (error) => {
+        console.warn('[ARENA] zombie sprite failed to load, using fallback', error);
+        reject(error);
+      },
+    );
+  }).catch((error) => {
+    zombieTexturePromise = null;
+    return null;
+  });
+
+  return zombieTexturePromise;
+}
+
+function createZombieSpriteModel(scale = 1) {
+  const root = new THREE.Group();
+  const model = {
+    root,
+    sprite: null,
+    spriteFrame: ZOMBIE_IDLE_FRAMES[0],
+    spriteFrameT: 0,
+    spriteActionT: 0,
+    spriteFlipped: false,
+    spriteAction: 'locomotion',
+    spriteActionDuration: 0,
+  };
+  zombieInstances.add(model);
+  loadZombieTexture();
+  attachZombieSprite(model);
+  root.scale.setScalar(scale);
+  return model;
+}
+
+function createZombieSpriteAnimator(model, def) {
+  return {
+    update(dt, stride = 0) {
+      if (!model?.sprite) return;
+      model.spriteActionT += dt;
+
+      let frames = ZOMBIE_IDLE_FRAMES;
+      let fps = 2.5;
+
+      if (model.spriteAction === 'death') {
+        frames = ZOMBIE_DEATH_FRAMES;
+        fps = 7;
+      } else if (model.spriteAction === 'attack') {
+        frames = ZOMBIE_ATTACK_FRAMES;
+        fps = Math.max(7, frames.length / Math.max(0.18, def.windup));
+        if (model.spriteActionT >= model.spriteActionDuration) {
+          model.spriteAction = 'locomotion';
+          model.spriteActionT = 0;
+          model.spriteFrameT = 0;
+        }
+      } else if (model.spriteAction === 'hurt') {
+        frames = ZOMBIE_HURT_FRAMES;
+        fps = 12;
+        if (model.spriteActionT >= 0.32) {
+          model.spriteAction = 'locomotion';
+          model.spriteActionT = 0;
+          model.spriteFrameT = 0;
+        }
+      } else if (stride > 0.05) {
+        frames = ZOMBIE_WALK_FRAMES;
+        const strideLength = 1.15;
+        fps = THREE.MathUtils.clamp(def.speed * stride * frames.length / strideLength, 4, 20);
+      }
+
+      const frameIndex = Math.min(frames.length - 1, Math.floor(model.spriteFrameT)) % frames.length;
+      const frame = frames[frameIndex];
+      if (frame !== model.spriteFrame) {
+        model.spriteFrame = frame;
+        setZombieFrame(model, frame, model.spriteFlipped);
+      }
+      model.spriteFrameT += dt * fps;
+
+      if (model.spriteAction === 'death') {
+        model.spriteFrameT = Math.min(model.spriteFrameT, ZOMBIE_DEATH_FRAMES.length - 1);
+      }
+    },
+
+    hit() {
+      if (model.spriteAction === 'death') return;
+      model.spriteAction = 'hurt';
+      model.spriteActionT = 0;
+      model.spriteFrameT = 0;
+      model.spriteFrame = ZOMBIE_HURT_FRAMES[0];
+      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+    },
+
+    attack() {
+      if (model.spriteAction === 'death') return;
+      model.spriteAction = 'attack';
+      model.spriteActionT = 0;
+      model.spriteActionDuration = Math.max(0.18, def.windup);
+      model.spriteFrameT = 0;
+      model.spriteFrame = ZOMBIE_ATTACK_FRAMES[0];
+      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+    },
+
+    die() {
+      model.spriteAction = 'death';
+      model.spriteActionT = 0;
+      model.spriteFrameT = 0;
+      model.spriteFrame = ZOMBIE_DEATH_FRAMES[0];
+      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+    },
+  };
+}
+
+
 function setScorpionFrame(model, frame, flipped = model?.spriteFlipped ?? false) {
   const texture = model?.sprite?.material?.map;
   if (!texture) return;
@@ -250,37 +469,27 @@ export class Enemy {
       this.model = createSpiderModel(spiderScale);
       this.root = this.model.root;
       this.spider = true;
+    } else if (type === 'zombie') {
+      this.model = createZombieSpriteModel();
+      this.root = this.model.root;
+      this.anim = createZombieSpriteAnimator(this.model, this.def);
+      this.zombieSprite = true;
     } else {
-      const isZombie = type === 'zombie';
       this.rig = createHumanoid({
-        skin: isZombie ? 0x64755c : 0x7d8a78,
-        body: isZombie ? 0x394238 : 0x33302c,
-        legs: isZombie ? 0x252a24 : 0x2a2724,
-        accent: isZombie ? 0x59684f : 0x4a4540,
-        boots: isZombie ? 0x171b18 : 0x1c1a18,
-        eyes: isZombie ? POISON_GREEN : 0x8affd8,
+        skin: 0x7d8a78,
+        body: 0x33302c,
+        legs: 0x2a2724,
+        accent: 0x4a4540,
+        boots: 0x1c1a18,
+        eyes: 0x8affd8,
         bareArms: true,
         rags: true,
       });
-      this.rig.torso.rotation.x = isZombie ? 0.58 : 0.35;
-      if (isZombie) {
-        this.rig.root.scale.set(1.12, 1.08, 1.12);
-        this.rig.armL.rotation.x = -0.65;
-        this.rig.armR.rotation.x = -0.85;
-        this.rig.head.rotation.x = 0.28;
-        // Distinct undead silhouette: hood, exposed jaw and bone-like hands.
-        this.rig.head.add(mesh(new THREE.SphereGeometry(0.265, 7, 5), mat(0x263026, { side: THREE.DoubleSide }), 0, 0.02, -0.035));
-        this.rig.head.add(mesh(new THREE.BoxGeometry(0.19, 0.08, 0.12), mat(0x3a3d35), 0, -0.08, 0.18));
-        this.rig.handL.add(mesh(new THREE.BoxGeometry(0.055, 0.20, 0.055), mat(0xb8b39a), 0, -0.05, 0));
-        this.rig.handR.add(mesh(new THREE.BoxGeometry(0.055, 0.20, 0.055), mat(0xb8b39a), 0, -0.05, 0));
-        this.rig.armL.scale.set(1.0, 1.15, 1.0);
-        this.rig.armR.scale.set(1.0, 1.15, 1.0);
-      } else {
-        this.rig.handR.add(createWeapon('blade'));
-      }
+      this.rig.torso.rotation.x = 0.35;
+      this.rig.handR.add(createWeapon('blade'));
       this.root = this.rig.root;
       this.anim = new HumanoidAnimator(this.rig);
-      if (!isZombie) this.root.scale.setScalar(1.05);
+      this.root.scale.setScalar(1.05);
     }
     this.mats = uniqueMaterials(this.root);
     this.pos = this.root.position;
@@ -471,8 +680,9 @@ export class Enemy {
     // THREE.Sprite already billboards toward the camera. A scorpion must not
     // inherit the enemy's world-facing rotation, or its screen-space sprite
     // direction becomes coupled to camera/world yaw.
-    if (!this.scorpion) this.root.rotation.y = this.facing;
+    if (!this.scorpion && !this.zombieSprite) this.root.rotation.y = this.facing;
     if (this.scorpion) setScorpionScreenDirection(this.model, mvx, mvz, g.camera);
+    if (this.zombieSprite) setZombieScreenDirection(this.model, mvx, mvz, g.camera);
     if (this.scorpion && typeof g.collision.groundHeight === 'function') {
       const terrainY = g.collision.groundHeight(this.pos.x, this.pos.z);
       if (Number.isFinite(terrainY)) this.pos.y = terrainY;
@@ -481,7 +691,7 @@ export class Enemy {
     if (this.anim) {
       this.anim.update(dt, spd / def.speed);
       const e = this.state === 'windup' ? 7 : 3;
-      for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
+      if (this.rig?.eyes) for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
     } else if (this.spider) this.animateSpider(dt, spd / def.speed);
     else if (this.scorpion) this.animateScorpion(dt, spd);
     else this.animateWisp(dt);
@@ -591,6 +801,9 @@ export class Enemy {
     this.game.scene.remove(this.root);
     if (this.scorpion) {
       scorpionInstances.delete(this.model);
+    }
+    if (this.zombieSprite) {
+      zombieInstances.delete(this.model);
     }
     if (this.alive) this.game.ui.removeAnchor(this.bar);
     this.alive = false;
