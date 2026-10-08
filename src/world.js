@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mat, glow, mesh } from './models.js';
+import { createEnvironmentSprite, ENV_SPRITES, randomAtlasFrame } from './sprite-atlas.js';
 
 // Reusable world-building blocks. Area files (src/areas/*) compose these
 // into a level; nothing here knows about a specific map.
@@ -172,7 +173,9 @@ const LEAF_COLORS = [0x1c3a2a, 0x224532, 0x1a332e, 0x2a4a30, 0x19302a];
 
 /** Everything decorative that can be instanced lives here. */
 export class Decor {
-  constructor() {
+  constructor({ spriteMode = false } = {}) {
+    this.spriteMode = spriteMode;
+    this.spriteObjects = [];
     this.trunks = new Batch(PINE.trunk, mat(0x3b2a1e));
     this.leaves = [PINE.t1, PINE.t2, PINE.t3].map((g) => new Batch(g, mat(0xffffff)));
     this.rocks = new Batch(new THREE.DodecahedronGeometry(1, 0), mat(0xffffff));
@@ -184,12 +187,45 @@ export class Decor {
     this.tiles = new Batch(new THREE.BoxGeometry(1, 1, 1), mat(0xffffff), { shadow: false });
   }
   pine(x, y, z, s, r) {
+    if (this.spriteMode) {
+      // The forest atlas has four authored rows. Keep most trees in the dark
+      // ancient/mossy rows so the Area 1 palette stays coherent.
+      const row = r() < 0.62 ? 1 : (r() < 0.82 ? 3 : 2);
+      const frame = randomAtlasFrame(r, ENV_SPRITES.trees.cols, ENV_SPRITES.trees.rows, row);
+      const sprite = createEnvironmentSprite('trees', {
+        frame,
+        scale: 2.2 * s,
+        height: 4.4 * s,
+        centerY: 0.015,
+        name: 'environment-tree-sprite',
+      });
+      sprite.position.set(x, y, z);
+      sprite.renderOrder = 2;
+      sprite.userData.environmentSprite = true;
+      this.spriteObjects.push(sprite);
+      return;
+    }
     const ry = r() * Math.PI * 2;
     this.trunks.add(x, y, z, s, s, s, ry);
     const col = LEAF_COLORS[Math.floor(r() * LEAF_COLORS.length)];
     for (const b of this.leaves) b.add(x, y, z, s, s * (0.9 + r() * 0.25), s, ry, col);
   }
   rock(x, y, z, s, r, color = 0x55585c) {
+    if (this.spriteMode) {
+      const frame = Math.floor(r() * ENV_SPRITES.stones.cols);
+      const sprite = createEnvironmentSprite('stones', {
+        frame,
+        scale: 1.55 * s,
+        height: 1.15 * s,
+        centerY: 0.02,
+        name: 'environment-rock-sprite',
+      });
+      sprite.position.set(x, y, z);
+      sprite.renderOrder = 1;
+      sprite.userData.environmentSprite = true;
+      this.spriteObjects.push(sprite);
+      return;
+    }
     this.rocks.add(x, y + s * 0.3, z, s * (0.8 + r() * 0.6), s * (0.5 + r() * 0.5), s * (0.8 + r() * 0.6), r() * 6, color, r() * 0.5, r() * 0.5);
   }
   tuft(x, y, z, r) {
