@@ -188,7 +188,7 @@ export async function cloneKayKit(key) {
       o.receiveShadow = true;
     }
   });
-  if (globalThis.game?.qualityName === 'minima') {
+  if (globalThis.game?.qualityName === 'minima' || globalThis.game?.qualityName === 'leve') {
     simplifyKayKitMaterials(model);
     addMinimaCharacterHalo(model, 1.45);
   }
@@ -379,7 +379,7 @@ export class KayKitEnvironment {
       }
     }
 
-    if (this.game.qualityName === 'minima') simplifyKayKitMaterials(this.root);
+    if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') simplifyKayKitMaterials(this.root);
     this.ready = true;
     console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length, torchLights: this.torchLights.length });
   }
