@@ -114,6 +114,17 @@ export class Combat {
     pr.mesh.position.copy(pr.pos);
     pr.mesh.lookAt(V.copy(pr.pos).add(pr.vel));
     this.game.scene.add(pr.mesh);
+    // A brief muzzle/core burst makes every skill projectile read immediately,
+    // without changing projectile physics or damage timing.
+    this.game.fx.skillBurst(pr.pos, p.color, {
+      count: p.visual === 'arrow' ? 5 : 9,
+      speed: p.visual === 'arrow' ? 2.5 : 3.5,
+      up: 0.4,
+      life: 0.22,
+      size: p.visual === 'arrow' ? 0.16 : 0.22,
+      gravity: 0,
+      drag: 4,
+    });
     this.projectiles.push(pr);
     return pr;
   }
@@ -123,6 +134,15 @@ export class Combat {
     const fx = this.game.fx;
     const big = p.splash > 0;
     fx.emit(p.pos, { count: big ? 34 : 12, color: p.color, speed: big ? 7 : 4, life: big ? 0.6 : 0.35, size: big ? 0.5 : 0.3, drag: 3 });
+    fx.skillBurst(p.pos, p.color, {
+      count: big ? 18 : 7,
+      speed: big ? 6 : 3.5,
+      up: big ? 1.8 : 0.8,
+      life: big ? 0.5 : 0.28,
+      size: big ? 0.28 : 0.18,
+      gravity: big ? 3 : 1,
+      drag: 3,
+    });
     if (big) {
       fx.ring(p.pos, p.color, p.splash * 1.2, 0.35);
       fx.emit(p.pos, { count: 10, color: 0x552211, speed: 2, up: 1.5, life: 1.2, size: 0.8, drag: 1 });

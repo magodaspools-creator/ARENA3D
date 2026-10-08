@@ -120,11 +120,39 @@ export class Effects {
     const count = crit ? 26 : 14;
     this.emit(pos, { count, color: palette.accent, speed: crit ? 8 : 6, life: crit ? 0.5 : 0.32, size: crit ? 0.36 : 0.25, drag: 4 });
     this.emit(pos, { count: crit ? 8 : 4, color: palette.core, speed: crit ? 3 : 2, life: 0.22, size: crit ? 0.55 : 0.42 });
-    if (type === 'magic') this.ring(pos, palette.accent, crit ? 1.25 : 0.8, crit ? 0.42 : 0.25, 0.35);
+    if (type === 'magic') {
+      this.ring(pos, palette.accent, crit ? 1.25 : 0.8, crit ? 0.42 : 0.25, 0.35);
+      this.skillBurst(pos, palette.accent, { count: crit ? 16 : 8, speed: crit ? 5.5 : 4, up: 1.2, life: 0.42, size: 0.24 });
+    } else {
+      this.impactDebris(pos, { count: crit ? 12 : 6, speed: crit ? 4.5 : 3, life: 0.5 });
+    }
     if (crit) {
       this.ring(pos, 0xffd45c, 1.5, 0.5, 0.4);
       this.emit(pos, { count: 10, color: 0xffd45c, speed: 5, up: 2, life: 0.55, size: 0.3, gravity: 3, drag: 3 });
     }
+  }
+
+  /** Short radial particle burst used by casts, skill impacts and spell cores. */
+  skillBurst(pos, color, {
+    count = 18, speed = 5, up = 0.8, life = 0.5, size = 0.28, gravity = 1.5, drag = 3
+  } = {}) {
+    this.emit(pos, {
+      count, color, speed, up, life, size, gravity, drag,
+      spread: 0.06,
+    });
+  }
+
+  /** Small earthy fragments layered under physical hits and heavy impacts. */
+  impactDebris(pos, { count = 8, speed = 3.5, life = 0.55 } = {}) {
+    this.emit(pos, {
+      count, color: 0x8b7762, speed, up: 1.1, life, size: 0.22,
+      gravity: 4.5, drag: 2.5, spread: 0.05,
+    });
+    this.emit(pos, {
+      count: Math.max(2, Math.floor(count * 0.45)), color: 0x5b5148,
+      speed: speed * 0.7, up: 0.6, life: life * 1.25, size: 0.32,
+      gravity: 3, drag: 1.5, spread: 0.04,
+    });
   }
 
   add(obj, life, update) {
