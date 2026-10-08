@@ -159,7 +159,7 @@ function buildGltfRig(asset, look = {}, vocation = null) {
 
   const root = new THREE.Group();
   root.add(model);
-  if (globalThis.game?.qualityName === 'minima') addMinimaPlayerHalo(root);
+  if (globalThis.game?.qualityName === 'minima' || globalThis.game?.qualityName === 'leve') addMinimaPlayerHalo(root);
 
   // These seven nodes are compatibility anchors for the old procedural rig API.
   // They MUST stay outside the GLTF model/skeleton: gameplay code may rotate or
