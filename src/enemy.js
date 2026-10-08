@@ -207,6 +207,7 @@ function createZombieSpriteAnimator(model, def) {
     update(dt, stride = 0) {
       if (!model?.sprite) return;
       model.spriteActionT += dt;
+      if (model.dirHold > 0) model.dirHold = Math.max(0, model.dirHold - 1);
 
       let frames = ZOMBIE_IDLE_FRAMES;
       let fps = 2.5;
@@ -253,8 +254,7 @@ function createZombieSpriteAnimator(model, def) {
         }
       }
 
-          if (model.dirHold > 0) model.dirHold = Math.max(0, model.dirHold - 1);
-      }
+          }
 
       if (fps > 0) {
         const frameIndex = Math.min(frames.length - 1, Math.floor(model.spriteFrameT)) % frames.length;
