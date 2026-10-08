@@ -276,7 +276,6 @@ export class KayKitEnvironment {
     const floorCenter = floorBox.getCenter(new THREE.Vector3());
     const stepX = Math.max(0.1, floorSize.x);
     const stepZ = Math.max(0.1, floorSize.z);
-    const floorBottomOffset = floorBox.min.y;
     const gridMinX = Math.floor(bounds.minX / stepX) * stepX;
     const gridMinZ = Math.floor(bounds.minZ / stepZ) * stepZ;
     console.info('[ARENA] KayKit floor tile footprint:', {
@@ -316,7 +315,7 @@ export class KayKitEnvironment {
         if (!collision.inside(gx, gz, 0)) continue;
 
         const tile = SkeletonUtils.clone(floor.scene);
-        tile.position.set(gx - floorCenter.x, this.groundY(gx, gz) - floorBottomOffset, gz - floorCenter.z);
+        tile.position.set(gx - floorCenter.x, this.groundY(gx, gz), gz - floorCenter.z);
         this.root.add(tile);
         placed++;
 
