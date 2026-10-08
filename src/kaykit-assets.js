@@ -25,6 +25,61 @@ const PATHS = {
 
 const loader = new GLTFLoader();
 
+let minimaHaloTexture = null;
+let minimaTorchGlowTexture = null;
+
+function makeRadialTexture(innerColor) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+  g.addColorStop(0, innerColor);
+  g.addColorStop(0.38, innerColor.replace(/rgba\\(([^,]+),([^,]+),([^,]+),[^)]+\\)/, 'rgba($1,$2,$3,0.32)'));
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function getMinimaHaloTexture() {
+  return minimaHaloTexture || (minimaHaloTexture = makeRadialTexture('rgba(120,220,190,0.52)'));
+}
+
+function getMinimaTorchGlowTexture() {
+  return minimaTorchGlowTexture || (minimaTorchGlowTexture = makeRadialTexture('rgba(255,122,50,0.85)'));
+}
+
+export function addMinimaCharacterHalo(root, scale = 1.55) {
+  if (!root || root.userData.minimaHalo) return;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: getMinimaHaloTexture(), color: 0x8de0c8, transparent: true, opacity: 0.72,
+    depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, toneMapped: false,
+  }));
+  sprite.name = 'MinimaCharacterHalo';
+  sprite.position.set(0, 1.0, 0);
+  sprite.scale.set(scale, scale, 1);
+  sprite.renderOrder = -1;
+  root.add(sprite);
+  root.userData.minimaHalo = sprite;
+}
+
+export function addMinimaTorchGlow(root, scale = 2.4) {
+  if (!root || root.userData.minimaTorchGlow) return;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: getMinimaTorchGlowTexture(), color: 0xff8a40, transparent: true, opacity: 0.9,
+    depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false,
+  }));
+  sprite.name = 'MinimaTorchGlow';
+  sprite.position.set(0, 0.85, 0);
+  sprite.scale.set(scale, scale, 1);
+  sprite.renderOrder = -2;
+  root.add(sprite);
+  root.userData.minimaTorchGlow = sprite;
+}
+
 // Cache por URL: cada .glb tem UMA Promise de carregamento compartilhada por todos
 // os inimigos/objetos. O modelo resultante é clonado com SkeletonUtils.clone().
 const loadPromises = new Map();
@@ -89,17 +144,29 @@ export function simplifyKayKitMaterials(root) {
     if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     o.material = mats.map((m) => {
-      if (!m || m.isMeshBasicMaterial || m.isMeshLambertMaterial) return m;
+      if (!m) return m;
+      const color = m.color?.clone?.() || new THREE.Color(0xffffff);
+      if (!m.map && color.getHSL({ h: 0, s: 0, l: 0 }).l < 0.035) color.set(0x53645e);
+      if (m.isMeshBasicMaterial) return m;
+      if (m.isMeshLambertMaterial) {
+        m.color.copy(color);
+        m.emissive = color.clone().multiplyScalar(0.38);
+        m.emissiveIntensity = 1;
+        m.normalMap = null;
+        m.envMap = null;
+        if (m.map) m.map.anisotropy = 1;
+        return m;
+      }
       const next = new THREE.MeshLambertMaterial({
-        color: m.color?.clone?.() || 0xffffff,
+        color,
         map: m.map || null,
         transparent: !!m.transparent,
         opacity: m.opacity ?? 1,
         alphaTest: m.alphaTest ?? 0,
         side: m.side,
-        emissive: m.emissive?.clone?.() || 0x000000,
+        emissive: color.clone().multiplyScalar(0.38),
         emissiveMap: m.emissiveMap || null,
-        emissiveIntensity: m.emissiveIntensity ?? 1,
+        emissiveIntensity: 1,
         flatShading: !!m.flatShading,
       });
       next.normalMap = null;
@@ -121,7 +188,10 @@ export async function cloneKayKit(key) {
       o.receiveShadow = true;
     }
   });
-  if (globalThis.game?.qualityName === 'minima') simplifyKayKitMaterials(model);
+  if (globalThis.game?.qualityName === 'minima') {
+    simplifyKayKitMaterials(model);
+    addMinimaCharacterHalo(model, 1.45);
+  }
   model.updateMatrixWorld(true);
   return { model, animations: asset.animations || [] };
 }
@@ -161,11 +231,13 @@ export class KayKitEnvironment {
     this.ready = false;
     this.torchLights = [];
     this.torchPhase = Math.random() * 10;
+    this.floorUnderlay = null;
   }
 
   clear() {
     while (this.root.children.length) this.root.remove(this.root.children[0]);
     this.torchLights.length = 0;
+    this.floorUnderlay = null;
   }
 
   update(dt, t) {
@@ -203,6 +275,24 @@ export class KayKitEnvironment {
     this.clear();
     const bounds = this.bounds(collision.zones);
     const step = 4;
+
+    // MINIMA/LEVE: continuous cheap underlay prevents black cracks between
+    // imported floor tiles without touching gameplay collision.
+    if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
+      const width = Math.max(4, bounds.maxX - bounds.minX + 8);
+      const depth = Math.max(4, bounds.maxZ - bounds.minZ + 8);
+      const centerX = (bounds.minX + bounds.maxX) * 0.5;
+      const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+      const underlay = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, depth),
+        new THREE.MeshBasicMaterial({ color: 0x18342d, side: THREE.DoubleSide })
+      );
+      underlay.rotation.x = -Math.PI * 0.5;
+      underlay.position.set(centerX, this.groundY(centerX, centerZ) - 0.18, centerZ);
+      underlay.renderOrder = -5;
+      this.root.add(underlay);
+      this.floorUnderlay = underlay;
+    }
     let placed = 0;
     const maxTiles = 700;
 
@@ -264,13 +354,18 @@ export class KayKitEnvironment {
             t.rotation.y = w.rotation.y;
             this.root.add(t);
 
+            if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
+              addMinimaTorchGlow(t, 2.5);
+            }
+
             // Warm local illumination: the torch model itself is emissive,
             // while this point light gives the surrounding dungeon the ARPG
             // torch-lit look. Only a subset casts shadows to keep the pass cheap.
-            if (this.torchLights.length < 14) {
-              const light = new THREE.PointLight(0xff7a32, 8.5, 10, 1.8);
+            const maxTorchLights = this.game.qualityName === 'minima' ? 0 : this.game.qualityName === 'leve' ? 2 : 14;
+            if (this.torchLights.length < maxTorchLights) {
+              const light = new THREE.PointLight(0xff7a32, this.game.qualityName === 'leve' ? 6.5 : 8.5, 10, 1.8);
               light.position.set(gx, this.groundY(gx, gz) + 1.9, gz);
-              light.castShadow = this.torchLights.length < 5;
+              light.castShadow = false;
               if (light.castShadow) {
                 light.shadow.mapSize.set(256, 256);
                 light.shadow.bias = -0.001;
