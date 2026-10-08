@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const textureLoader = new THREE.TextureLoader();
 const cache = new Map();
+const cloneMaps = new Map();
 
 function loadTexture(url) {
   if (cache.has(url)) return cache.get(url);
@@ -12,6 +13,11 @@ function loadTexture(url) {
     texture.generateMipmaps = false;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
+    const clones = cloneMaps.get(url) || [];
+    for (const clone of clones) {
+      clone.image = texture.image;
+      clone.needsUpdate = true;
+    }
     texture.needsUpdate = true;
   });
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -50,7 +56,12 @@ export function createAtlasSprite({
   alphaTest = 0.01,
   name = 'atlas-sprite',
 } = {}) {
-  const texture = loadTexture(url).clone();
+  const sourceTexture = loadTexture(url);
+  const texture = sourceTexture.clone();
+  const clones = cloneMaps.get(url) || [];
+  clones.push(texture);
+  cloneMaps.set(url, clones);
+  if (sourceTexture.image) texture.image = sourceTexture.image;
   texture.needsUpdate = true;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
