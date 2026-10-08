@@ -124,6 +124,18 @@ class Game {
     this.inputLocked = false;
     this.stats = { kills: 0, deaths: 0, damage: 0, start: 0, bossTime: 0 };
 
+    // Optional lightweight FPS monitor; inactive unless ?fps=1 is present.
+    this.fpsEnabled = new URLSearchParams(location.search).get('fps') === '1';
+    this.fpsFrames = 0;
+    this.fpsElapsed = 0;
+    this.fpsEl = null;
+    if (this.fpsEnabled) {
+      this.fpsEl = document.createElement('div');
+      this.fpsEl.id = 'fps-counter';
+      this.fpsEl.textContent = 'FPS: --';
+      document.getElementById('ui')?.appendChild(this.fpsEl);
+    }
+
     this.input = new Input(renderer.domElement);
     this.ui = new UI(this);
     this.rig = new CameraRig(this.camera);
@@ -956,6 +968,18 @@ class Game {
     if (this.hitstop > 0) { this.hitstop -= dt; dt *= 0.08; }
     this.time += dt;
     this.frame++;
+
+    if (this.fpsEnabled) {
+      this.fpsFrames++;
+      this.fpsElapsed += dt;
+      if (this.fpsElapsed >= 0.5) {
+        const fps = this.fpsFrames / this.fpsElapsed;
+        this.fpsFrames = 0;
+        this.fpsElapsed = 0;
+        if (this.fpsEl) this.fpsEl.textContent = 'FPS: ' + Math.round(fps);
+      }
+    }
+
     if (this.atmospherePass) this.atmospherePass.uniforms.uTime.value = this.time;
 
     for (let i = this.timers.length - 1; i >= 0; i--) {

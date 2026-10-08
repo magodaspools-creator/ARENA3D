@@ -1526,3 +1526,21 @@ button:hover { filter: brightness(1.1); }
   }
   .world-map-close { top: 9px; right: 9px; }
 }
+
+
+/* ---------- optional FPS counter ---------- */
+#fps-counter {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 9999;
+  pointer-events: none;
+  padding: 3px 6px;
+  border: 1px solid rgba(232,199,122,.28);
+  border-radius: 4px;
+  background: rgba(0,0,0,.55);
+  color: #d9d3c4;
+  font: 700 11px/1.2 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .3px;
+  text-shadow: 0 1px 2px #000;
+}
