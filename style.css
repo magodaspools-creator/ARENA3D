@@ -1561,4 +1561,5 @@ button:hover { filter: brightness(1.1); }
   text-shadow: 0 1px 2px #000;
 }
 #quality-indicator { top: 8px; }
-#debug-counter { top: 27px; max-width: min(60vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#fps-counter { top: 27px; }
+#debug-counter { top: 46px; max-width: min(60vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
