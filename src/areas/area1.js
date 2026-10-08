@@ -8,7 +8,6 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createEnvironmentSprite, ENV_SPRITES } from '../sprite-atlas.js';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
@@ -68,7 +67,7 @@ export function createArea1(game) {
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
 
-  const decor = new Decor({ spriteMode: true });
+  const decor = new Decor();
 
   // ---------- forest ring (instanced pines) ----------
   const trees = [];
@@ -1368,65 +1367,6 @@ for (const [x, z, len, rot] of [
 ]) {
   mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot, { colliderRadius: 0.34 });
 }
-
-// ---------- sprite dressing: environmental atlas ----------
-// These are visual-only props. Their pivots sit on the floor and they do not
-// add collision, so they cannot create another invisible-wall problem.
-const addEnvSprite = (kind, frame, x, z, scale, height, y = 0.02, name = kind) => {
-  const sprite = createEnvironmentSprite(kind, {
-    frame,
-    scale,
-    height,
-    centerY: 0.02,
-    name: `environment-${name}`,
-  });
-  sprite.position.set(x, y, z);
-  sprite.renderOrder = 2;
-  scene.add(sprite);
-  return sprite;
-};
-
-// Cemetery: gravestones/ossuary props from the authored dungeon sheet.
-for (const [frame, x, z, s, h] of [
-  [0, -35.0, 50.0, 1.35, 2.1],
-  [1, -29.0, 48.0, 1.25, 2.2],
-  [2, -25.0, 53.0, 1.45, 2.3],
-  [3, -21.0, 46.5, 1.35, 1.8],
-  [4, -32.0, 44.0, 1.15, 1.5],
-  [5, -27.0, 40.0, 1.10, 1.45],
-]) addEnvSprite('props', frame, x, z, s, h, 0.02, 'cemetery-prop');
-
-// Mine: crates, barrels, lamps, crystals, ore and signs around the existing
-// landmarks. They remain decoration; the current mine collision stays intact.
-for (const [frame, x, z, s, h] of [
-  [6, 98.0, 101.0, 0.9, 1.15],
-  [7, 100.0, 102.0, 0.82, 1.0],
-  [8, 125.0, 107.0, 0.85, 1.15],
-  [9, 127.0, 108.0, 0.82, 1.0],
-  [12, 102.0, 96.0, 0.75, 1.5],
-  [13, 118.0, 96.0, 0.75, 1.5],
-  [14, 124.0, 111.0, 0.9, 1.25],
-  [15, 132.0, 126.0, 0.9, 1.25],
-  [18, 96.0, 121.0, 0.95, 1.0],
-  [19, 126.0, 116.0, 0.95, 1.0],
-  [24, 91.5, 106.0, 0.9, 1.3],
-  [25, 136.5, 105.0, 0.9, 1.4],
-  [28, 129.0, 129.0, 1.15, 1.25],
-]) addEnvSprite('props', frame, x, z, s, h, 0.02, 'mine-prop');
-
-// Underground flora: bushes/mushrooms/roots are used as small clusters around
-// cave edges, never in the center of the navigation lanes.
-for (const [frame, x, z, s, h] of [
-  [0, 86.0, 132.0, 0.7, 0.8],
-  [2, 93.0, 138.0, 0.75, 0.85],
-  [8, 90.0, 108.0, 0.55, 0.75],
-  [9, 141.0, 116.0, 0.65, 0.85],
-  [16, 78.5, 126.0, 0.8, 1.0],
-  [17, 148.0, 134.0, 0.75, 1.0],
-  [24, 106.0, 141.0, 0.8, 0.85],
-  [25, 116.0, 145.0, 0.8, 0.85],
-  [27, 133.0, 148.0, 0.9, 1.0],
-]) addEnvSprite('plants', frame, x, z, s, h, 0.02, 'mine-flora');
 
 // ---------- sprite dressing: spider colony ----------
 // Real transparent sprite sheets replace the old idea of procedural line webs.
