@@ -746,6 +746,7 @@ export class Enemy {
       return;
     }
     if (this.def.ranged) {
+      if (this.type === 'wisp') this.anim?.attack();
       const dir = V.set(p.pos.x - this.pos.x, 0, p.pos.z - this.pos.z).normalize().clone();
       g.combat.spawn({ team: 'enemy', pos: V.copy(this.pos).addScaledVector(dir, 0.6), dir, speed: 9, range: 14, damage: this.def.damage, damageType: 'magic', visual: 'orb', color: 0xc07aff, radius: 0.35 });
     } else {
@@ -872,9 +873,9 @@ export class Enemy {
   startWindup() {
     this.state = 'windup';
     this.stateT = 0;
-    if (this.anim && !this.zombieSprite) this.anim.attack('slash', this.def.windup / 0.5);
+    if (this.rig?.attack) this.anim.attack('slash', this.def.windup / 0.5);
     if (this.zombieSprite) this.anim.attack();
-    if (this.model?.sprite && this.type === 'wisp') this.anim.charge();
+    if (this.type === 'wisp') this.anim.charge();
     if (this.scorpion) {
       this.model.spriteAttackT = 0;
       this.model.spriteFrameT = 0;
