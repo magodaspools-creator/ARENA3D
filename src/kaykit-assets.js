@@ -24,21 +24,64 @@ const PATHS = {
 };
 
 const loader = new GLTFLoader();
-const cache = new Map();
+
+// Cache por URL: cada .glb tem UMA Promise de carregamento compartilhada por todos
+// os inimigos/objetos. O modelo resultante é clonado com SkeletonUtils.clone().
+const loadPromises = new Map();
+const LOAD_ATTEMPTS = 4; // 1 tentativa inicial + até 3 retries
+const RETRY_DELAYS = [500, 1000, 2000];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function loadWithRetry(url) {
+  let lastError = null;
+  for (let attempt = 0; attempt < LOAD_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(RETRY_DELAYS[attempt - 1]);
+    try {
+      if (attempt > 0) {
+        console.warn('[ARENA] Retrying KayKit GLB (' + attempt + '/' + (LOAD_ATTEMPTS - 1) + '): ' + url);
+      }
+      return await loader.loadAsync(url);
+    } catch (error) {
+      lastError = error;
+      console.warn('[ARENA] KayKit GLB load failed (attempt ' + (attempt + 1) + '/' + LOAD_ATTEMPTS + '): ' + url, error);
+    }
+  }
+  throw lastError;
+}
 
 export function kaykitPath(key) { return PATHS[key] || null; }
 
-export async function loadKayKitAsset(key) {
+export function loadKayKitAsset(key) {
   const url = kaykitPath(key);
-  if (!url) throw new Error('[ARENA] Unknown KayKit asset: ' + key);
-  if (!cache.has(key)) {
-    cache.set(key, loader.loadAsync(url).catch((error) => {
-      cache.delete(key);
-      throw error;
-    }));
+  if (!url) return Promise.reject(new Error('[ARENA] Unknown KayKit asset: ' + key));
+
+  if (!loadPromises.has(url)) {
+    const promise = loadWithRetry(url);
+    loadPromises.set(url, promise);
   }
-  return cache.get(key);
+  return loadPromises.get(url);
 }
+
+export async function preloadKayKitEnemyAssets() {
+  const keys = ['skeletonMinion', 'skeletonMage', 'skeletonRogue', 'skeletonWarrior'];
+  const results = await Promise.allSettled(keys.map((key) => loadKayKitAsset(key)));
+  const failed = results
+    .map((result, index) => result.status === 'rejected' ? keys[index] : null)
+    .filter(Boolean);
+
+  if (failed.length) {
+    console.warn('[ARENA] Some KayKit enemy visuals could not be preloaded:', failed);
+  } else {
+    console.info('[ARENA] KayKit enemy GLBs preloaded:', keys);
+  }
+
+  return results;
+}
+
+// Começa o preload assim que este módulo é carregado, antes dos Enemy serem criados.
+// A Promise fica no mesmo cache usado pelos inimigos, portanto não há segundo download.
+const kayKitEnemyPreload = preloadKayKitEnemyAssets();
 
 export async function cloneKayKit(key) {
   const asset = await loadKayKitAsset(key);
