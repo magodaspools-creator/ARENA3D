@@ -443,8 +443,15 @@ class Game {
   }
 
   async prepareGraphics() {
-    // Environment and enemy assets are the only KayKit models used by Area 1.
-    // They load once into the shared GLTF cache; no repeated downloads per enemy.
+    // MEDIA/ALTA keep their existing loading path untouched.
+    if (this.qualityName !== 'minima' && this.qualityName !== 'leve') {
+      this.graphicsReady = true;
+      this.ui.setAssetLoadingProgress?.(100, 'Gráficos prontos');
+      this.ui.setStartLoading?.(false);
+      return;
+    }
+
+    // LOW tiers: Area 1 environment + its four KayKit enemy rigs are loaded once.
     await this.kaykitEnvironmentReady;
     this.ui.setAssetLoadingProgress?.(35, 'Cenário carregado');
 
@@ -497,9 +504,11 @@ class Game {
       // The player is instantiated exactly once, after the final rig exists.
       this.character = new CharacterState(id);
       this.player = new Player(this, id, finalRig);
-      this.camera.updateMatrixWorld(true);
-      this.scene.updateMatrixWorld(true);
-      await this.renderer.compileAsync(finalRig.root, this.camera, this.scene).catch(() => {});
+      if (this.qualityName === 'minima' || this.qualityName === 'leve') {
+        this.camera.updateMatrixWorld(true);
+        this.scene.updateMatrixWorld(true);
+        await this.renderer.compileAsync(finalRig.root, this.camera, this.scene).catch(() => {});
+      }
 
     const saved = this.loadWorldState();
     if (saved?.area === 'area2') {
