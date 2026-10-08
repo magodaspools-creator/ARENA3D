@@ -22,6 +22,8 @@ export class UI {
       vignette: $('vignette'), death: $('death'), fade: $('fade'), help: $('help'),
       skAttack: $('sk-attack'), skAbility: $('sk-ability'), skDash: $('sk-dash'), skUltimate: $('sk-ultimate'),
       inventory: $('inventory'), inventoryGrid: $('inventory-grid'), equipmentGrid: $('equipment-grid'), inventoryCount: $('inventory-count'),
+      hpOrbFill: $('hp-orb')?.querySelector('.orb-fill'), hpOrbText: $('hp-orb-text'),
+      manaOrbFill: $('mana-orb')?.querySelector('.orb-fill'), manaOrbText: $('mana-orb-text'),
       profile: $('profile'), profileBody: $('profile-body'),
       actionBar: $('action-bar'),
       minimap: $('minimap-canvas'),
@@ -739,17 +741,23 @@ export class UI {
   }
 
   setHP(hp, max) {
-    this.el.hpFill.style.width = `${(hp / max) * 100}%`;
-    this.el.hpText.textContent = `${Math.ceil(hp)} / ${max}`;
-    this.el.vignette.classList.toggle('low', hp > 0 && hp / max < 0.3);
+    const pct = Math.max(0, Math.min(100, (hp / Math.max(1, max)) * 100));
+    this.el.hpFill.style.width = pct + '%';
+    this.el.hpText.textContent = Math.ceil(hp) + ' / ' + max;
+    if (this.el.hpOrbFill) this.el.hpOrbFill.style.height = pct + '%';
+    if (this.el.hpOrbText) this.el.hpOrbText.textContent = Math.ceil(hp);
+    this.el.vignette.classList.toggle('low', hp > 0 && hp / Math.max(1, max) < 0.3);
   }
 
   setMana(mana, max) {
     if (!this.el.manaFill || !this.el.manaText) return;
     const safeMax = Math.max(1, Number(max) || 1);
     const safeMana = Math.max(0, Math.min(safeMax, Number(mana) || 0));
-    this.el.manaFill.style.width = `${(safeMana / safeMax) * 100}%`;
-    this.el.manaText.textContent = `${Math.ceil(safeMana)} / ${safeMax}`;
+    const pct = (safeMana / safeMax) * 100;
+    this.el.manaFill.style.width = pct + '%';
+    this.el.manaText.textContent = Math.ceil(safeMana) + ' / ' + safeMax;
+    if (this.el.manaOrbFill) this.el.manaOrbFill.style.height = pct + '%';
+    if (this.el.manaOrbText) this.el.manaOrbText.textContent = Math.ceil(safeMana);
   }
   setCooldown(which, frac) {
     const el = { attack: this.el.skAttack, ability: this.el.skAbility, dash: this.el.skDash }[which];
