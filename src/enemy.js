@@ -556,6 +556,7 @@ export class Enemy {
       this.kaykitRig = rig;
       this.anim = animator;
       this.mats = uniqueMaterials(this.root);
+    g.applyQualityToObject?.(this.root);
       this.kaykitVisual = true;
       this.zombieSprite = false;
       this.scorpion = false;
@@ -762,8 +763,13 @@ export class Enemy {
       if (Number.isFinite(terrainY)) this.pos.y = terrainY;
     }
 
+    const player = g.player;
+    const pdx = player ? this.pos.x - player.pos.x : 0;
+    const pdz = player ? this.pos.z - player.pos.z : 0;
+    const distToPlayer = player ? Math.hypot(pdx, pdz) : Infinity;
+    const animateEnemy = distToPlayer <= (g.qualityConfig?.maxAnimatedEnemyDistance || 22);
     if (this.anim) {
-      this.anim.update(dt, spd / def.speed);
+      if (animateEnemy) this.anim.update(dt, spd / def.speed);
       const e = this.state === 'windup' ? 7 : 3;
       if (this.rig?.eyes) for (const eye of this.rig.eyes) eye.material.emissiveIntensity = this.flash > 0.01 ? eye.material.emissiveIntensity : e;
     } else if (this.spider) this.animateSpider(dt, spd / def.speed);

@@ -1544,3 +1544,21 @@ button:hover { filter: brightness(1.1); }
   letter-spacing: .3px;
   text-shadow: 0 1px 2px #000;
 }
+
+
+/* ---------- performance indicators ---------- */
+#quality-indicator, #debug-counter {
+  position: fixed;
+  right: 8px;
+  z-index: 9999;
+  pointer-events: none;
+  padding: 3px 6px;
+  border: 1px solid rgba(232,199,122,.24);
+  border-radius: 4px;
+  background: rgba(0,0,0,.55);
+  color: #cfc8b8;
+  font: 700 10px/1.2 "Segoe UI", system-ui, sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+#quality-indicator { top: 8px; }
+#debug-counter { top: 27px; max-width: min(60vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

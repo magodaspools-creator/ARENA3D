@@ -30,6 +30,40 @@ const USE_GLTF_PLAYER = MODEL_MODE !== 'procedural';
 import { MapEditor } from './map-editor.js';
 
 const FOG = 0x080b12;
+
+const QUALITY_CONFIG = {
+  minima: { antialias: false, pixelRatio: 1, scale: 0.75, shadows: false, bloom: false, fog: 0, simpleMaterials: true, particleScale: 0.2, maxAnimatedEnemies: 4, renderCap: 30 },
+  baixa:  { antialias: false, pixelRatio: 1, scale: 1, shadows: false, bloom: false, fog: 0.006, simpleMaterials: false, particleScale: 0.5, maxAnimatedEnemies: 7, renderCap: 60 },
+  media:  { antialias: false, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.28, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 12, renderCap: 60 },
+  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, maxAnimatedEnemies: 999, renderCap: 60 },
+};
+
+function detectGpuRenderer() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2', { powerPreference: 'high-performance' }) ||
+      canvas.getContext('webgl', { powerPreference: 'high-performance' });
+    if (!gl) return 'unknown';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'unknown') : String(gl.getParameter(gl.RENDERER) || 'unknown');
+  } catch { return 'unknown'; }
+}
+
+function isWeakGpu(name) {
+  return /(intel.*(hd|uhd)|intel.*graphics|iris.*(old|xe-less)|mali-[456]|adreno 3|adreno 4|geforce 6|geforce 7|radeon (hd|r[3-6]))/i.test(name);
+}
+
+function resolveQuality() {
+  const params = new URLSearchParams(location.search);
+  const requested = String(params.get('qualidade') || '').toLowerCase();
+  if (QUALITY_CONFIG[requested]) return { name: requested, explicit: true, reason: 'URL' };
+  const mobile = matchMedia('(max-width: 800px)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+  const gpu = detectGpuRenderer();
+  if (isWeakGpu(gpu)) return { name: 'minima', explicit: false, reason: 'GPU fraca' };
+  if (mobile) return { name: 'baixa', explicit: false, reason: 'celular' };
+  return { name: 'media', explicit: false, reason: 'padrão' };
+}
+
 const DARK_FANTASY_PASS = {
   uniforms: {
     tDiffuse: { value: null },
@@ -91,30 +125,48 @@ const DARK_FANTASY_PASS = {
 class Game {
   constructor() {
     const container = document.getElementById('game');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.shadowMap.enabled = true;
+    const qualityState = resolveQuality();
+    const quality = QUALITY_CONFIG[qualityState.name];
+    this.qualityName = qualityState.name;
+    this.qualityConfig = quality;
+    this.qualityExplicit = qualityState.explicit;
+    this.gpuRenderer = detectGpuRenderer();
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: quality.antialias,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(quality.pixelRatio);
+    renderer.setSize(innerWidth * quality.scale, innerHeight * quality.scale, false);
+    renderer.shadowMap.enabled = quality.shadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(FOG);
-    this.scene.fog = new THREE.FogExp2(FOG, 0.0105);
+    this.scene.fog = quality.fog > 0 ? new THREE.FogExp2(FOG, quality.fog) : null;
     this.camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 220);
 
     this.setupLights();
 
-    this.composer = new EffectComposer(renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.62, 0.48, 0.82);
-    this.composer.addPass(this.bloom);
-    this.atmospherePass = new ShaderPass(DARK_FANTASY_PASS);
-    this.composer.addPass(this.atmospherePass);
-    this.composer.addPass(new OutputPass());
+    this.composer = null;
+    this.bloom = null;
+    this.atmospherePass = null;
+    if (quality.bloom) {
+      this.composer = new EffectComposer(renderer);
+      this.composer.setPixelRatio(Math.min(quality.pixelRatio, 1.5));
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), quality.bloomStrength, 0.48, 0.82);
+      this.composer.addPass(this.bloom);
+      this.atmospherePass = new ShaderPass(DARK_FANTASY_PASS);
+      this.composer.addPass(this.atmospherePass);
+      this.composer.addPass(new OutputPass());
+    }
 
     this.time = 0;
     this.frame = 0;
@@ -129,6 +181,22 @@ class Game {
     this.fpsFrames = 0;
     this.fpsElapsed = 0;
     this.fpsEl = null;
+    this.qualityEl = document.createElement('div');
+    this.qualityEl.id = 'quality-indicator';
+    this.qualityEl.textContent = 'Qualidade: ' + this.qualityName.toUpperCase();
+    document.getElementById('ui')?.appendChild(this.qualityEl);
+
+    this.debugEnabled = new URLSearchParams(location.search).get('debug') === '1';
+    this.debugEl = null;
+    if (this.debugEnabled) {
+      this.debugEl = document.createElement('div');
+      this.debugEl.id = 'debug-counter';
+      document.getElementById('ui')?.appendChild(this.debugEl);
+    }
+
+    this.autoPerfElapsed = 0;
+    this.autoPerfFrames = 0;
+    this.autoPerfDone = this.qualityExplicit;
     if (this.fpsEnabled) {
       this.fpsEl = document.createElement('div');
       this.fpsEl.id = 'fps-counter';
@@ -141,6 +209,7 @@ class Game {
     this.rig = new CameraRig(this.camera);
     this.collision = new Collision();
     this.fx = new Effects(this);
+    this.fx.setQuality?.(this.qualityName);
     this.combat = new Combat(this);
     this.interaction = new Interaction(this);
     this.dialogue = new Dialogue(this);
@@ -212,6 +281,7 @@ class Game {
     });
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
+    this.applyQualityToObject(this.scene);
 
     document.getElementById('again-btn').onclick = () => location.reload();
     document.getElementById('stay-btn').onclick = () => {
@@ -245,24 +315,61 @@ class Game {
   }
 
   setupLights() {
-    this.scene.add(new THREE.HemisphereLight(0x202942, 0x070906, 0.48));
-    const moon = new THREE.DirectionalLight(0x8195c4, 0.82);
-    moon.castShadow = true;
-    moon.shadow.mapSize.set(2048, 2048);
-    const s = moon.shadow.camera;
-    s.left = -28; s.right = 28; s.top = 28; s.bottom = -28; s.near = 1; s.far = 90;
-    moon.shadow.bias = -0.0008;
-    moon.shadow.normalBias = 0.03;
+    this.scene.add(new THREE.HemisphereLight(0x202942, 0x070906, this.qualityName === 'minima' ? 0.62 : 0.48));
+    const moon = new THREE.DirectionalLight(0x8195c4, this.qualityName === 'minima' ? 0.62 : 0.82);
+    moon.castShadow = !!this.qualityConfig.shadows;
+    if (moon.castShadow) {
+      const map = this.qualityName === 'alta' ? 2048 : 1024;
+      moon.shadow.mapSize.set(map, map);
+      moon.shadow.bias = -0.0008;
+      moon.shadow.normalBias = 0.03;
+      const s = moon.shadow.camera;
+      s.left = -28; s.right = 28; s.top = 28; s.bottom = -28; s.near = 1; s.far = 90;
+    }
     this.moonOffset = new THREE.Vector3(-18, 34, 14);
     this.scene.add(moon, moon.target);
     this.moon = moon;
   }
 
+  applyQualityToObject(root) {
+    if (!root || !this.qualityConfig.simpleMaterials) return;
+    root.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = mats.map((m) => {
+        if (!m || m.isMeshBasicMaterial || m.isMeshLambertMaterial) return m;
+        const next = new THREE.MeshLambertMaterial({
+          color: m.color?.clone?.() || 0xffffff,
+          map: m.map || null,
+          transparent: !!m.transparent,
+          opacity: m.opacity ?? 1,
+          alphaTest: m.alphaTest ?? 0,
+          side: m.side,
+          emissive: m.emissive?.clone?.() || 0x000000,
+          emissiveMap: m.emissiveMap || null,
+          emissiveIntensity: m.emissiveIntensity ?? 1,
+          flatShading: !!m.flatShading,
+        });
+        if (m.map) m.map.anisotropy = 1;
+        next.normalMap = null;
+        next.envMap = null;
+        return next;
+      });
+      o.castShadow = false;
+      o.receiveShadow = false;
+    });
+  }
+
+  setQuality(name, reason = 'URL') {
+    if (!QUALITY_CONFIG[name] || name === this.qualityName) return;
+    location.search = new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), qualidade: name }).toString();
+  }
+
   resize() {
     this.camera.aspect = innerWidth / innerHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(innerWidth, innerHeight);
-    this.composer.setSize(innerWidth, innerHeight);
+    this.renderer.setSize(innerWidth * this.qualityConfig.scale, innerHeight * this.qualityConfig.scale, false);
+    if (this.composer) this.composer.setSize(innerWidth, innerHeight);
     this.fx.resize(this.renderer.getDrawingBufferSize(new THREE.Vector2()).y);
   }
 
@@ -970,14 +1077,7 @@ class Game {
     this.frame++;
 
     if (this.fpsEnabled) {
-      this.fpsFrames++;
       this.fpsElapsed += dt;
-      if (this.fpsElapsed >= 0.5) {
-        const fps = this.fpsFrames / this.fpsElapsed;
-        this.fpsFrames = 0;
-        this.fpsElapsed = 0;
-        if (this.fpsEl) this.fpsEl.textContent = 'FPS: ' + Math.round(fps);
-      }
     }
 
     if (this.atmospherePass) this.atmospherePass.uniforms.uTime.value = this.time;
@@ -989,14 +1089,7 @@ class Game {
     }
 
     const p = this.player;
-    if (p) {
-      if (this.state === 'select') {
-        p.root.rotation.y += dt * 0.5;
-        p.anim.update(dt, 0);
-      } else if (this.state === 'play') {
-        p.update(dt);
-      }
-    }
+    if (p && this.state === 'play') p.update(dt);
     if (this.state === 'play') {
       for (const drop of this.groundLoot) drop.update(dt);
       this.groundLoot = this.groundLoot.filter((drop) => !drop.dead);
@@ -1033,7 +1126,47 @@ class Game {
     }
     this.ui.update(dt);
     this.input.endFrame();
-    this.composer.render();
+
+    // Character-select remains responsive without continuously rasterizing the 3D world.
+    if (this.state === 'select') return;
+
+    const renderInterval = 1 / (this.qualityConfig.renderCap || 60);
+    this._renderAccumulator = (this._renderAccumulator || 0) + dt;
+    if (this._renderAccumulator + 1e-5 < renderInterval) return;
+    this._renderAccumulator = 0;
+
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+
+    this.fpsFrames++;
+    if (this.fpsElapsed >= 0.5) {
+      const fps = this.fpsFrames / this.fpsElapsed;
+      this.fpsFrames = 0;
+      this.fpsElapsed = 0;
+      if (this.fpsEl) this.fpsEl.textContent = 'FPS: ' + Math.round(fps);
+    }
+
+    if (!this.autoPerfDone && this.state === 'play') {
+      this.autoPerfElapsed += dt;
+      this.autoPerfFrames++;
+      if (this.autoPerfElapsed >= 3) {
+        const avg = this.autoPerfFrames / this.autoPerfElapsed;
+        this.autoPerfDone = true;
+        if (avg < 30) {
+          console.warn('[ARENA] Auto quality fallback:', { averageFps: avg, gpu: this.gpuRenderer });
+          location.search = new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), qualidade: 'minima', auto: '1' }).toString();
+          return;
+        }
+      }
+    }
+
+    if (this.debugEl) {
+      const info = this.renderer.info;
+      this.debugEl.textContent = 'Q: ' + this.qualityName.toUpperCase() +
+        ' | GPU: ' + this.gpuRenderer +
+        ' | Draw: ' + info.render.calls +
+        ' | Tri: ' + info.render.triangles;
+    }
   }
 }
 

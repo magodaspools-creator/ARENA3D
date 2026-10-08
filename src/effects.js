@@ -19,6 +19,7 @@ class Particles {
     this.grav = new Float32Array(MAX);
     this.drag = new Float32Array(MAX);
     this.cursor = 0;
+    this.activeMax = MAX;
     const geo = new THREE.BufferGeometry();
     const attr = (arr, n) => new THREE.BufferAttribute(arr, n).setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('position', attr(this.pos, 3));
@@ -52,8 +53,9 @@ class Particles {
     scene.add(this.points);
   }
   spawn(x, y, z, vx, vy, vz, color, life, size, grav = 0, drag = 0) {
+    const cap = this.activeMax || MAX;
     const i = this.cursor;
-    this.cursor = (i + 1) % MAX;
+    this.cursor = (i + 1) % cap;
     const i3 = i * 3;
     this.pos[i3] = x; this.pos[i3 + 1] = y; this.pos[i3 + 2] = z;
     this.vel[i3] = vx; this.vel[i3 + 1] = vy; this.vel[i3 + 2] = vz;
@@ -65,7 +67,8 @@ class Particles {
     this.drag[i] = drag;
   }
   update(dt) {
-    for (let i = 0; i < MAX; i++) {
+    const cap = this.activeMax || MAX;
+    for (let i = 0; i < cap; i++) {
       if (this.life[i] <= 0) { if (this.alpha[i] !== 0) { this.alpha[i] = 0; this.size[i] = 0; } continue; }
       this.life[i] -= dt;
       const k = Math.max(0, this.life[i] / this.max[i]);
@@ -91,6 +94,11 @@ export class Effects {
     this.scene = game.scene;
     this.particles = new Particles(game.scene);
     this.items = [];
+    this.qualityScale = 1;
+  }
+  setQuality(name) {
+    this.qualityScale = name === 'minima' ? 0.2 : name === 'baixa' ? 0.5 : 1;
+    this.particles.activeMax = Math.max(200, Math.floor(MAX * this.qualityScale));
   }
   resize(h) { this.particles.material.uniforms.uH.value = h; }
 

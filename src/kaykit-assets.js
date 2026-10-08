@@ -81,7 +81,36 @@ export async function preloadKayKitEnemyAssets() {
 
 // Começa o preload assim que este módulo é carregado, antes dos Enemy serem criados.
 // A Promise fica no mesmo cache usado pelos inimigos, portanto não há segundo download.
-const kayKitEnemyPreload = preloadKayKitEnemyAssets();
+// Enemy GLBs are loaded on demand; the cache still guarantees one network load per URL.
+const kayKitEnemyPreload = null;
+
+export function simplifyKayKitMaterials(root) {
+  root?.traverse?.((o) => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    o.material = mats.map((m) => {
+      if (!m || m.isMeshBasicMaterial || m.isMeshLambertMaterial) return m;
+      const next = new THREE.MeshLambertMaterial({
+        color: m.color?.clone?.() || 0xffffff,
+        map: m.map || null,
+        transparent: !!m.transparent,
+        opacity: m.opacity ?? 1,
+        alphaTest: m.alphaTest ?? 0,
+        side: m.side,
+        emissive: m.emissive?.clone?.() || 0x000000,
+        emissiveMap: m.emissiveMap || null,
+        emissiveIntensity: m.emissiveIntensity ?? 1,
+        flatShading: !!m.flatShading,
+      });
+      next.normalMap = null;
+      next.envMap = null;
+      if (m.map) m.map.anisotropy = 1;
+      return next;
+    });
+    o.castShadow = false;
+    o.receiveShadow = false;
+  });
+}
 
 export async function cloneKayKit(key) {
   const asset = await loadKayKitAsset(key);
@@ -92,6 +121,7 @@ export async function cloneKayKit(key) {
       o.receiveShadow = true;
     }
   });
+  if (globalThis.game?.qualityName === 'minima') simplifyKayKitMaterials(model);
   model.updateMatrixWorld(true);
   return { model, animations: asset.animations || [] };
 }
@@ -140,8 +170,16 @@ export class KayKitEnvironment {
 
   update(dt, t) {
     if (!this.torchLights.length) return;
+    const p = this.game.player?.pos;
+    const ranked = p ? this.torchLights
+      .map((item, i) => ({ item, i, d: (item.light.position.x - p.x) ** 2 + (item.light.position.z - p.z) ** 2 }))
+      .sort((a, b) => a.d - b.d) : [];
+    const activeCount = this.game.qualityName === 'alta' ? 6 : 4;
     for (let i = 0; i < this.torchLights.length; i++) {
       const item = this.torchLights[i];
+      const rank = ranked.findIndex((r) => r.i === i);
+      const active = !p || rank >= 0 && rank < activeCount;
+      item.light.visible = active;
       const wave = Math.sin((t + item.phase) * 8.0) * 0.08 + Math.sin((t + item.phase) * 17.0) * 0.045;
       item.light.intensity = item.base + wave * item.base;
       item.light.position.y = item.y + Math.sin((t + item.phase) * 3.0) * 0.025;
@@ -246,6 +284,7 @@ export class KayKitEnvironment {
       }
     }
 
+    if (this.game.qualityName === 'minima') simplifyKayKitMaterials(this.root);
     this.ready = true;
     console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length, torchLights: this.torchLights.length });
   }
