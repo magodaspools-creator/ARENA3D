@@ -44,7 +44,7 @@ let zombieTexture = null;
 let zombieTexturePromise = null;
 const zombieInstances = new Set();
 
-function setZombieFrame(model, frame, flipped = model?.spriteFlipped ?? false) {
+function setZombieFrame(model, frame, flipped = model?.uvFlip ?? false) {
   const texture = model?.sprite?.material?.map;
   if (!texture) return;
 
@@ -78,17 +78,26 @@ function setZombieScreenDirection(model, mvx, mvz, camera) {
   right.normalize();
 
   const horizontal = mvx * right.x + mvz * right.z;
-  // Ignore nearly screen-vertical movement. Without this dead zone, tiny
-  // projection changes can rapidly alternate between front/back.
-  if (Math.abs(horizontal) < 0.12) return;
+  const absHorizontal = Math.abs(horizontal);
 
-  const movingRight = horizontal > 0;
-  // The authored zombie poses face screen-right. Mirror when moving left
-  // so the face follows the actual travel direction.
-  const flipped = !movingRight;
-  if (flipped === model.spriteFlipped) return;
-  model.spriteFlipped = flipped;
-  setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+  // Direction must survive the tiny +/- projection changes that happen while
+  // walking diagonally. Never let the instantaneous velocity toggle the
+  // sprite every frame.
+  if (absHorizontal <= 0.05) return; // OFF: keep the last valid direction.
+  if (absHorizontal < 0.15) return; // hysteresis band: still keep it.
+
+  const candidateDirX = Math.sign(horizontal);
+  if (candidateDirX === model.lastDirX) return;
+
+  // Hold the last accepted direction for a few frames after a real switch.
+  // This prevents a single noisy projection sample from immediately undoing it.
+  if (model.dirHold > 0) return;
+
+  model.lastDirX = candidateDirX;
+  model.facing = candidateDirX;
+  model.uvFlip = candidateDirX < 0;
+  model.dirHold = model.dirHoldFrames;
+  setZombieFrame(model, model.spriteFrame, model.uvFlip);
 }
 
 function attachZombieSprite(model) {
@@ -121,11 +130,15 @@ function attachZombieSprite(model) {
   sprite.position.y = 0.02;
   model.root.add(sprite);
   model.sprite = sprite;
-  model.spriteFlipped = false;
+  // false = authored/front orientation; true = mirror for leftward travel.
+  model.uvFlip = false;
+  model.facing = 1;
+  model.lastDirX = 1;
+  model.dirHold = 0;
   const spriteMap = material.map;
   spriteMap.wrapS = THREE.RepeatWrapping;
   spriteMap.wrapT = THREE.ClampToEdgeWrapping;
-  setZombieFrame(model, ZOMBIE_IDLE_FRAMES[0], false);
+  setZombieFrame(model, ZOMBIE_IDLE_FRAMES[0], model.uvFlip);
 }
 
 function loadZombieTexture() {
@@ -170,7 +183,15 @@ function createZombieSpriteModel(scale = 1) {
     spriteFrameT: 0,
     spriteWalkDistance: 0,
     spriteActionT: 0,
-    spriteFlipped: true,
+
+    // The authored sheet is front-facing and its neutral orientation faces
+    // screen-right. Keep that as the stable initial state.
+    facing: 1,
+    lastDirX: 1,
+    uvFlip: false,
+    dirHold: 0,
+    dirHoldFrames: 4,
+
     spriteAction: 'locomotion',
     spriteActionDuration: 0,
   };
@@ -228,8 +249,11 @@ function createZombieSpriteAnimator(model, def) {
         const frame = frames[frameIndex];
         if (frame !== model.spriteFrame) {
           model.spriteFrame = frame;
-          setZombieFrame(model, frame, model.spriteFlipped);
+          setZombieFrame(model, frame, model.uvFlip);
         }
+      }
+
+          if (model.dirHold > 0) model.dirHold = Math.max(0, model.dirHold - 1);
       }
 
       if (fps > 0) {
@@ -237,7 +261,7 @@ function createZombieSpriteAnimator(model, def) {
         const frame = frames[frameIndex];
         if (frame !== model.spriteFrame) {
           model.spriteFrame = frame;
-          setZombieFrame(model, frame, model.spriteFlipped);
+          setZombieFrame(model, frame, model.uvFlip);
         }
         model.spriteFrameT += dt * fps;
       }
@@ -253,7 +277,7 @@ function createZombieSpriteAnimator(model, def) {
       model.spriteActionT = 0;
       model.spriteFrameT = 0;
       model.spriteFrame = ZOMBIE_HURT_FRAMES[0];
-      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+      setZombieFrame(model, model.spriteFrame, model.uvFlip);
     },
 
     attack() {
@@ -263,7 +287,7 @@ function createZombieSpriteAnimator(model, def) {
       model.spriteActionDuration = Math.max(0.18, def.windup);
       model.spriteFrameT = 0;
       model.spriteFrame = ZOMBIE_ATTACK_FRAMES[0];
-      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+      setZombieFrame(model, model.spriteFrame, model.uvFlip);
     },
 
     die() {
@@ -271,7 +295,7 @@ function createZombieSpriteAnimator(model, def) {
       model.spriteActionT = 0;
       model.spriteFrameT = 0;
       model.spriteFrame = ZOMBIE_DEATH_FRAMES[0];
-      setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
+      setZombieFrame(model, model.spriteFrame, model.uvFlip);
     },
   };
 }
