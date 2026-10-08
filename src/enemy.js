@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createHumanoid, createWeapon, createWispModel, uniqueMaterials, applyFlash, HumanoidAnimator, mesh, mat } from './models.js';
 import { rollLoot } from './loot.js';
+import { loadKayKitEnemyRig } from './kaykit-assets.js';
 
 // Regular enemies. Two archetypes share one state machine:
 //   hollow — undead melee brute, telegraphs an overhead chop
