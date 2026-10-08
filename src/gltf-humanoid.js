@@ -18,6 +18,41 @@ const VOCATION_MODELS = KAYKIT_MODELS;
 const loader = new GLTFLoader();
 const PLAYER_GLTF_PROMISES = new Map();
 
+let minimaPlayerHaloTexture = null;
+
+function addMinimaPlayerHalo(root) {
+  if (!root || root.userData.minimaHalo) return;
+  if (!minimaPlayerHaloTexture) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+    g.addColorStop(0, 'rgba(120,220,190,0.48)');
+    g.addColorStop(0.42, 'rgba(120,220,190,0.14)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    minimaPlayerHaloTexture = new THREE.CanvasTexture(canvas);
+    minimaPlayerHaloTexture.colorSpace = THREE.SRGBColorSpace;
+  }
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: minimaPlayerHaloTexture,
+    color: 0x8de0c8,
+    transparent: true,
+    opacity: 0.72,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  }));
+  sprite.name = 'MinimaPlayerHalo';
+  sprite.position.set(0, 1.0, 0);
+  sprite.scale.set(1.55, 1.55, 1);
+  sprite.renderOrder = -1;
+  root.add(sprite);
+  root.userData.minimaHalo = sprite;
+}
+
 function getModelPathForVocation(vocation) {
   const key = String(vocation || '').toLowerCase();
   return VOCATION_MODELS[key] || VOCATION_MODELS.knight;
@@ -124,6 +159,7 @@ function buildGltfRig(asset, look = {}, vocation = null) {
 
   const root = new THREE.Group();
   root.add(model);
+  if (globalThis.game?.qualityName === 'minima') addMinimaPlayerHalo(root);
 
   // These seven nodes are compatibility anchors for the old procedural rig API.
   // They MUST stay outside the GLTF model/skeleton: gameplay code may rotate or
