@@ -254,8 +254,6 @@ function createZombieSpriteAnimator(model, def) {
         }
       }
 
-          }
-
       if (fps > 0) {
         const frameIndex = Math.min(frames.length - 1, Math.floor(model.spriteFrameT)) % frames.length;
         const frame = frames[frameIndex];
