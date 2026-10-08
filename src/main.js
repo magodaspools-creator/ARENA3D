@@ -59,7 +59,7 @@ function resolveQuality() {
   if (QUALITY_CONFIG[requested]) return { name: requested, explicit: true, reason: 'URL' };
   const mobile = matchMedia('(max-width: 800px)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
   const gpu = detectGpuRenderer();
-  if (isWeakGpu(gpu)) return { name: 'minima', explicit: false, reason: 'GPU fraca' };
+  if (isWeakGpu(gpu)) return { name: 'leve', explicit: false, reason: 'GPU fraca' };
   if (mobile) return { name: 'baixa', explicit: false, reason: 'celular' };
   return { name: 'media', explicit: false, reason: 'padrão' };
 }
@@ -316,9 +316,28 @@ class Game {
   }
 
   setupLights() {
-    this.scene.add(new THREE.HemisphereLight(0x202942, 0x070906, this.qualityName === 'minima' ? 0.62 : 0.48));
-    const moon = new THREE.DirectionalLight(0x8195c4, this.qualityName === 'minima' ? 0.62 : 0.82);
+    // MINIMA/LEVE deliberately use broad, cheap illumination so KayKit
+    // materials never fall into unreadable black areas.
+    const isMinima = this.qualityName === 'minima';
+    const isLeve = this.qualityName === 'leve';
+    const hemi = new THREE.HemisphereLight(
+      0x52706a,
+      0x14211d,
+      isMinima ? 1.15 : isLeve ? 0.82 : 0.48
+    );
+    this.scene.add(hemi);
+
+    if (isMinima) {
+      const ambient = new THREE.AmbientLight(0x78958c, 0.85);
+      this.scene.add(ambient);
+    }
+
+    const moon = new THREE.DirectionalLight(
+      isMinima ? 0x8caea2 : 0x8195c4,
+      isMinima ? 0.32 : isLeve ? 0.62 : 0.82
+    );
     moon.castShadow = !!this.qualityConfig.shadows;
+    if (isLeve) moon.castShadow = false;
     if (moon.castShadow) {
       const map = this.qualityName === 'alta' ? 2048 : 1024;
       moon.shadow.mapSize.set(map, map);
@@ -334,21 +353,37 @@ class Game {
 
   applyQualityToObject(root) {
     if (!root || !this.qualityConfig.simpleMaterials) return;
+    const visibleColor = (m) => {
+      const c = m?.color?.clone?.() || new THREE.Color(0xffffff);
+      // Some GLTF materials become effectively black when their normal/env
+      // lighting path is removed. Keep a readable base even without a map.
+      if (!m?.map && c.getHSL({ h: 0, s: 0, l: 0 }).l < 0.035) c.set(0x53645e);
+      return c;
+    };
     root.traverse((o) => {
       if (!o.isMesh || !o.material) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       o.material = mats.map((m) => {
-        if (!m || m.isMeshBasicMaterial || m.isMeshLambertMaterial) return m;
+        if (!m) return m;
+        const color = visibleColor(m);
+        if (m.isMeshBasicMaterial || m.isMeshLambertMaterial) {
+          if (m.isMeshLambertMaterial && (this.qualityName === 'minima' || this.qualityName === 'leve')) {
+            m.color.copy(color);
+            m.emissive = color.clone().multiplyScalar(0.38);
+            m.emissiveIntensity = 1;
+          }
+          return m;
+        }
         const next = new THREE.MeshLambertMaterial({
-          color: m.color?.clone?.() || 0xffffff,
+          color,
           map: m.map || null,
           transparent: !!m.transparent,
           opacity: m.opacity ?? 1,
           alphaTest: m.alphaTest ?? 0,
           side: m.side,
-          emissive: m.emissive?.clone?.() || 0x000000,
+          emissive: color.clone().multiplyScalar(0.38),
           emissiveMap: m.emissiveMap || null,
-          emissiveIntensity: m.emissiveIntensity ?? 1,
+          emissiveIntensity: 1,
           flatShading: !!m.flatShading,
         });
         if (m.map) m.map.anisotropy = 1;
@@ -1154,9 +1189,13 @@ class Game {
       if (this.autoPerfElapsed >= 3) {
         const avg = this.autoPerfFrames / this.autoPerfElapsed;
         this.autoPerfDone = true;
-        if (avg < 30) {
+        if (avg < 20 && this.qualityName !== 'minima') {
           console.warn('[ARENA] Auto quality fallback:', { averageFps: avg, gpu: this.gpuRenderer });
-          location.search = new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), qualidade: 'minima', auto: '1' }).toString();
+          location.search = new URLSearchParams({
+            ...Object.fromEntries(new URLSearchParams(location.search)),
+            qualidade: 'minima',
+            auto: '1'
+          }).toString();
           return;
         }
       }
