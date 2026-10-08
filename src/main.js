@@ -994,6 +994,7 @@ class Game {
       for (const n of this.npcs) n.update(dt);
       if (p) this.area?.update(dt, this.time);
       this.fx.update(dt);
+      this.kaykitEnvironment?.update?.(dt, this.time);
     }
 
     if (p) {
