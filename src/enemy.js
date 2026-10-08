@@ -554,6 +554,7 @@ export class Enemy {
       this.model = { root, kaykit: true };
       this.kaykitRig = rig;
       this.anim = animator;
+      this.mats = uniqueMaterials(this.root);
       this.kaykitVisual = true;
       this.zombieSprite = false;
       this.scorpion = false;

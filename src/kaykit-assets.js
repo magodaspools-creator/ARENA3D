@@ -95,13 +95,15 @@ export class KayKitEnvironment {
   async rebuild() {
     const collision = this.game.collision;
     if (!collision?.zones?.length) return;
-    const [floor, grate, wall, pillar, torch, rubble] = await Promise.all([
+    const [floor, grate, wall, pillar, torch, rubble, chest, banner] = await Promise.all([
       loadKayKitAsset('floor'),
       loadKayKitAsset('grate'),
       loadKayKitAsset('wall'),
       loadKayKitAsset('pillar'),
       loadKayKitAsset('torch'),
       loadKayKitAsset('rubble'),
+      loadKayKitAsset('chest'),
+      loadKayKitAsset('banner'),
     ]);
 
     this.clear();
@@ -130,6 +132,19 @@ export class KayKitEnvironment {
           const p = SkeletonUtils.clone(pillar.scene);
           p.position.copy(tile.position);
           this.root.add(p);
+        }
+        if (placed % 83 === 0) {
+          const c = SkeletonUtils.clone(chest.scene);
+          c.position.copy(tile.position);
+          c.position.y += 0.02;
+          c.rotation.y = (placed % 4) * Math.PI * 0.5;
+          this.root.add(c);
+        }
+        if (placed % 107 === 0) {
+          const b = SkeletonUtils.clone(banner.scene);
+          b.position.copy(tile.position);
+          b.position.y += 1.6;
+          this.root.add(b);
         }
         if (placed % 61 === 0) {
           const rr = SkeletonUtils.clone(rubble.scene);
