@@ -507,40 +507,62 @@ export class Enemy {
     this.resistances = { physical: 0, magic: 0, ...(this.def.resistances || {}) };
     this.lootTable = [...(this.def.loot ?? [])];
     this.group = opts.group ?? null;
+    // Keep a stable gameplay root; the KayKit visual is swapped into it
+    // asynchronously so enemy spawning never blocks the game loop.
+    this.root = new THREE.Group();
+    this.root.name = 'Enemy_' + type;
+    let fallbackRoot = null;
+
     if (type === 'wisp') {
       this.model = createWispModel();
-      this.root = this.model.root;
+      fallbackRoot = this.model.root;
+      this.anim = null;
     } else if (type === 'scorpion') {
       this.model = createScorpionModel();
-      this.root = this.model.root;
+      fallbackRoot = this.model.root;
       this.scorpion = true;
+      this.anim = null;
     } else if (type === 'spider' || type === 'spiderling') {
       const spiderScale = type === 'spiderling' ? 0.62 : 1;
       this.model = createSpiderModel(spiderScale);
-      this.root = this.model.root;
+      fallbackRoot = this.model.root;
       this.spider = true;
+      this.anim = null;
     } else if (type === 'zombie') {
       this.model = createZombieSpriteModel();
-      this.root = this.model.root;
+      fallbackRoot = this.model.root;
       this.anim = createZombieSpriteAnimator(this.model, this.def);
       this.zombieSprite = true;
     } else {
       this.rig = createHumanoid({
-        skin: 0x7d8a78,
-        body: 0x33302c,
-        legs: 0x2a2724,
-        accent: 0x4a4540,
-        boots: 0x1c1a18,
-        eyes: 0x8affd8,
-        bareArms: true,
-        rags: true,
+        skin: 0x7d8a78, body: 0x33302c, legs: 0x2a2724, accent: 0x4a4540,
+        boots: 0x1c1a18, eyes: 0x8affd8, bareArms: true, rags: true,
       });
       this.rig.torso.rotation.x = 0.35;
       this.rig.handR.add(createWeapon('blade'));
-      this.root = this.rig.root;
+      fallbackRoot = this.rig.root;
       this.anim = new HumanoidAnimator(this.rig);
-      this.root.scale.setScalar(1.05);
+      fallbackRoot.scale.setScalar(1.05);
     }
+
+    this.root.add(fallbackRoot);
+    this.kaykitVisual = false;
+    loadKayKitEnemyRig(type, this.def.height).then(({ root, rig, animator }) => {
+      if (this.removed) return;
+      while (this.root.children.length) this.root.remove(this.root.children[0]);
+      this.root.add(root);
+      this.model = { root, kaykit: true };
+      this.kaykitRig = rig;
+      this.anim = animator;
+      this.kaykitVisual = true;
+      this.zombieSprite = false;
+      this.scorpion = false;
+      this.spider = false;
+      console.info('[ARENA] KayKit enemy visual ready:', type);
+    }).catch((error) => {
+      console.warn('[ARENA] KayKit enemy visual unavailable; keeping gameplay fallback.', type, error);
+    });
+
     this.mats = uniqueMaterials(this.root);
     this.pos = this.root.position;
     // Area 2 can have several meters of procedural dune height. Enemies must

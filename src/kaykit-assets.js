@@ -1,0 +1,190 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { GltfAnimator } from './gltf-humanoid.js';
+
+const A = (path) => new URL(path, import.meta.url).href;
+
+const PATHS = {
+  knight: A('../assets/kaykit/characters/Knight.glb'),
+  mage: A('../assets/kaykit/characters/Mage.glb'),
+  skeletonMinion: A('../assets/kaykit/characters/Skeleton_Minion.glb'),
+  skeletonMage: A('../assets/kaykit/characters/Skeleton_Mage.glb'),
+  skeletonRogue: A('../assets/kaykit/characters/Skeleton_Rogue.glb'),
+  skeletonWarrior: A('../assets/kaykit/characters/Skeleton_Warrior.glb'),
+  floor: A('../assets/kaykit/environment/floor-tile.glb'),
+  grate: A('../assets/kaykit/environment/floor-grate.glb'),
+  wall: A('../assets/kaykit/environment/wall-broken.glb'),
+  arch: A('../assets/kaykit/environment/wall-arch.glb'),
+  pillar: A('../assets/kaykit/environment/pillar.glb'),
+  torch: A('../assets/kaykit/environment/torch.glb'),
+  chest: A('../assets/kaykit/environment/chest.glb'),
+  rubble: A('../assets/kaykit/environment/rubble.glb'),
+  banner: A('../assets/kaykit/environment/banner.glb'),
+};
+
+const loader = new GLTFLoader();
+const cache = new Map();
+
+export function kaykitPath(key) { return PATHS[key] || null; }
+
+export async function loadKayKitAsset(key) {
+  const url = kaykitPath(key);
+  if (!url) throw new Error('[ARENA] Unknown KayKit asset: ' + key);
+  if (!cache.has(key)) {
+    cache.set(key, loader.loadAsync(url).catch((error) => {
+      cache.delete(key);
+      throw error;
+    }));
+  }
+  return cache.get(key);
+}
+
+export async function cloneKayKit(key) {
+  const asset = await loadKayKitAsset(key);
+  const model = SkeletonUtils.clone(asset.scene);
+  model.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+  model.updateMatrixWorld(true);
+  return { model, animations: asset.animations || [] };
+}
+
+export async function loadKayKitEnemyRig(type, targetHeight = 2) {
+  const key =
+    type === 'wisp' ? 'skeletonMage' :
+    (type === 'scorpion' || type === 'spider' || type === 'spiderling') ? 'skeletonRogue' :
+    (type === 'hollow') ? 'skeletonWarrior' :
+    'skeletonMinion';
+
+  const { model, animations } = await cloneKayKit(key);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const h = Math.max(0.001, size.y);
+  const scale = Math.max(0.01, targetHeight / h);
+  model.scale.setScalar(scale);
+  model.position.y = -box.min.y * scale;
+  model.rotation.y = Math.PI;
+  model.updateMatrixWorld(true);
+
+  const root = new THREE.Group();
+  root.name = 'KayKitEnemyRig';
+  root.add(model);
+
+  const rig = { root, model, animations };
+  const animator = new GltfAnimator(rig);
+  return { root, model, rig, animator };
+}
+
+export class KayKitEnvironment {
+  constructor(game) {
+    this.game = game;
+    this.root = new THREE.Group();
+    this.root.name = 'KayKitEnvironment';
+    this.game.scene.add(this.root);
+    this.ready = false;
+  }
+
+  clear() {
+    while (this.root.children.length) this.root.remove(this.root.children[0]);
+  }
+
+  async rebuild() {
+    const collision = this.game.collision;
+    if (!collision?.zones?.length) return;
+    const [floor, grate, wall, pillar, torch, rubble] = await Promise.all([
+      loadKayKitAsset('floor'),
+      loadKayKitAsset('grate'),
+      loadKayKitAsset('wall'),
+      loadKayKitAsset('pillar'),
+      loadKayKitAsset('torch'),
+      loadKayKitAsset('rubble'),
+    ]);
+
+    this.clear();
+    const bounds = this.bounds(collision.zones);
+    const step = 4;
+    let placed = 0;
+    const maxTiles = 700;
+
+    for (let z = Math.floor(bounds.minZ / step) * step; z <= bounds.maxZ && placed < maxTiles; z += step) {
+      for (let x = Math.floor(bounds.minX / step) * step; x <= bounds.maxX && placed < maxTiles; x += step) {
+        const gx = x + step * 0.5, gz = z + step * 0.5;
+        if (!collision.inside(gx, gz, 0)) continue;
+
+        const tile = SkeletonUtils.clone(floor.scene);
+        tile.position.set(gx, this.groundY(gx, gz), gz);
+        this.root.add(tile);
+        placed++;
+
+        if (placed % 29 === 0) {
+          const r = SkeletonUtils.clone(grate.scene);
+          r.position.copy(tile.position);
+          r.rotation.y = Math.PI * 0.5;
+          this.root.add(r);
+        }
+        if (placed % 47 === 0) {
+          const p = SkeletonUtils.clone(pillar.scene);
+          p.position.copy(tile.position);
+          this.root.add(p);
+        }
+        if (placed % 61 === 0) {
+          const rr = SkeletonUtils.clone(rubble.scene);
+          rr.position.copy(tile.position);
+          rr.rotation.y = (placed % 4) * Math.PI * 0.5;
+          this.root.add(rr);
+        }
+
+        const edge =
+          !collision.inside(gx + step, gz, 0) ||
+          !collision.inside(gx - step, gz, 0) ||
+          !collision.inside(gx, gz + step, 0) ||
+          !collision.inside(gx, gz - step, 0);
+        if (edge && placed % 2 === 0) {
+          const w = SkeletonUtils.clone(wall.scene);
+          w.position.set(gx, this.groundY(gx, gz), gz);
+          w.rotation.y = !collision.inside(gx + step, gz, 0) ? Math.PI * 0.5 : 0;
+          this.root.add(w);
+          if (placed % 6 === 0) {
+            const t = SkeletonUtils.clone(torch.scene);
+            t.position.copy(w.position);
+            t.position.y += 1.1;
+            t.rotation.y = w.rotation.y;
+            this.root.add(t);
+          }
+        }
+      }
+    }
+
+    this.ready = true;
+    console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length });
+  }
+
+  groundY(x, z) {
+    return Number.isFinite(this.game.collision.groundHeight?.(x, z))
+      ? this.game.collision.groundHeight(x, z)
+      : 0;
+  }
+
+  bounds(zones) {
+    const out = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+    for (const z of zones) {
+      if (z.type === 'rect') {
+        out.minX = Math.min(out.minX, z.minX); out.maxX = Math.max(out.maxX, z.maxX);
+        out.minZ = Math.min(out.minZ, z.minZ); out.maxZ = Math.max(out.maxZ, z.maxZ);
+      } else if (z.type === 'circle') {
+        out.minX = Math.min(out.minX, z.x - z.r); out.maxX = Math.max(out.maxX, z.x + z.r);
+        out.minZ = Math.min(out.minZ, z.z - z.r); out.maxZ = Math.max(out.maxZ, z.z + z.r);
+      } else if (z.type === 'polygon') {
+        for (const [x, zz] of z.points) {
+          out.minX = Math.min(out.minX, x); out.maxX = Math.max(out.maxX, x);
+          out.minZ = Math.min(out.minZ, zz); out.maxZ = Math.max(out.maxZ, zz);
+        }
+      }
+    }
+    return out;
+  }
+}

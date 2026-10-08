@@ -1,0 +1,52 @@
+name: Import KayKit CC0 GLB assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-kaykit-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch verified KayKit GLBs
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/hollowmere /tmp/ashglass
+          git clone --depth 1 https://github.com/euuuuuuan/hollowmere-public.git /tmp/hollowmere
+          git clone --depth 1 https://github.com/euuuuuuan/ashglass-reliquary-public.git /tmp/ashglass
+
+          mkdir -p assets/kaykit/characters assets/kaykit/environment
+
+          cp /tmp/hollowmere/public/models/char/Knight.glb assets/kaykit/characters/Knight.glb
+          cp /tmp/hollowmere/public/models/char/Mage.glb assets/kaykit/characters/Mage.glb
+          cp /tmp/hollowmere/public/models/char/Skeleton_Rogue.glb assets/kaykit/characters/Skeleton_Rogue.glb
+          cp /tmp/hollowmere/public/models/char/Skeleton_Minion.glb assets/kaykit/characters/Skeleton_Minion.glb
+          cp /tmp/hollowmere/public/models/char/Skeleton_Mage.glb assets/kaykit/characters/Skeleton_Mage.glb
+          cp /tmp/hollowmere/public/models/char/Skeleton_Warrior.glb assets/kaykit/characters/Skeleton_Warrior.glb
+
+          for f in floor-tile floor-grate wall-broken wall-arch pillar torch chest rubble banner; do
+            cp "/tmp/ashglass/static/assets/environment/$f.glb" "assets/kaykit/environment/$f.glb"
+          done
+
+          test "$(find assets/kaykit -name '*.glb' | wc -l)" -ge 15
+
+      - name: Commit imported assets
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/kaykit
+          if git diff --cached --quiet; then
+            echo "KayKit assets already imported."
+            exit 0
+          fi
+          git commit -m "Import KayKit CC0 GLB assets"
+          git push

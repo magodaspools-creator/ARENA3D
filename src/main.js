@@ -20,6 +20,7 @@ import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
+import { KayKitEnvironment } from './kaykit-assets.js';
 
 const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 // The published game uses the finalized vocation GLTFs by default.
@@ -77,6 +78,8 @@ class Game {
     this.deathBackpacks = [];
 
     this.area = createArea1(this);
+    this.kaykitEnvironment = new KayKitEnvironment(this);
+    this.kaykitEnvironment.rebuild().catch((error) => console.warn('[ARENA] KayKit environment unavailable.', error));
     this.returnArea = null;
     this.startArea = this.area;
     this.player = null;
@@ -263,6 +266,7 @@ class Game {
       this.enemies = [];
       const area2 = createArea2(this);
       this.area = area2;
+      this.kaykitEnvironment?.rebuild?.().catch((error) => console.warn('[ARENA] KayKit area rebuild failed.', error));
       this.returnArea = this.startArea;
       const s = saved.checkpoint || area2.checkpoint || area2.spawn;
       this.player.place(s.x, s.z, s.facing);
@@ -385,6 +389,7 @@ class Game {
     this.schedule(0.75, () => {
       currentArea?.dispose?.();
       this.area = target;
+      this.kaykitEnvironment?.rebuild?.().catch((error) => console.warn('[ARENA] KayKit area rebuild failed.', error));
       this.enemies = this.returnEnemies || this.enemies;
       this.returnEnemies = null;
       const spawn = target.checkpoint || target.spawn;

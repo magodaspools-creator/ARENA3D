@@ -3,12 +3,14 @@ import { createWeapon } from './models.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
+const ASSET = (path) => new URL(path, import.meta.url).href;
+
 const KAYKIT_MODELS = {
-  knight: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Knight.glb',
-  sorcerer: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Mage.glb',
-  druid: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Mage.glb',
-  paladin: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Rogue.glb',
-  monk: 'https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/main/assets/vendor/kaykit_adventurers/Barbarian.glb',
+  knight: ASSET('../assets/kaykit/characters/Knight.glb'),
+  sorcerer: ASSET('../assets/kaykit/characters/Mage.glb'),
+  druid: ASSET('../assets/kaykit/characters/Mage.glb'),
+  paladin: ASSET('../assets/kaykit/characters/Knight.glb'),
+  monk: ASSET('../assets/kaykit/characters/Knight.glb'),
 };
 
 const VOCATION_MODELS = KAYKIT_MODELS;
