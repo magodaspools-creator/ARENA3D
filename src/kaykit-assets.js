@@ -140,43 +140,33 @@ export async function preloadKayKitEnemyAssets() {
 const kayKitEnemyPreload = null;
 
 export function simplifyKayKitMaterials(root) {
+  // LOW QUALITY MUST KEEP THE ORIGINAL GLTF MATERIAL. KayKit uses a shared
+  // atlas texture; replacing the material can break its texture/color response
+  // and, on some WebGL paths, animated SkinnedMesh variants.
   root?.traverse?.((o) => {
     if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    o.material = mats.map((m) => {
-      if (!m) return m;
-      const color = m.color?.clone?.() || new THREE.Color(0xffffff);
-      if (!m.map && color.getHSL({ h: 0, s: 0, l: 0 }).l < 0.035) color.set(0x53645e);
-      if (m.isMeshBasicMaterial) return m;
-      if (m.isMeshLambertMaterial) {
-        m.color.copy(color);
-        m.emissive = color.clone().multiplyScalar(0.38);
-        m.emissiveIntensity = 1;
-        m.normalMap = null;
-        m.envMap = null;
-        if (m.map) m.map.anisotropy = 1;
-        return m;
+    for (const m of mats) {
+      if (!m) continue;
+      if (m.map) {
+        m.map.anisotropy = 1;
+        m.map.needsUpdate = false;
       }
-      const next = new THREE.MeshLambertMaterial({
-        color,
-        map: m.map || null,
-        transparent: !!m.transparent,
-        opacity: m.opacity ?? 1,
-        alphaTest: m.alphaTest ?? 0,
-        side: m.side,
-        emissive: color.clone().multiplyScalar(0.38),
-        emissiveMap: m.emissiveMap || null,
-        emissiveIntensity: 1,
-        flatShading: !!m.flatShading,
-      });
-      next.normalMap = null;
-      next.envMap = null;
-      if (m.map) m.map.anisotropy = 1;
-      return next;
-    });
+      if (m.emissive) {
+        const base = m.color?.clone?.() || new THREE.Color(0xffffff);
+        m.emissive.copy(base);
+        m.emissiveIntensity = 0.34;
+      }
+      m.needsUpdate = true;
+    }
     o.castShadow = false;
     o.receiveShadow = false;
   });
+}
+
+export function prepareKayKitLowQuality(root, addHalo = false) {
+  simplifyKayKitMaterials(root);
+  if (addHalo) addMinimaCharacterHalo(root, 1.45);
 }
 
 export async function cloneKayKit(key) {
@@ -189,8 +179,7 @@ export async function cloneKayKit(key) {
     }
   });
   if (globalThis.game?.qualityName === 'minima' || globalThis.game?.qualityName === 'leve') {
-    simplifyKayKitMaterials(model);
-    addMinimaCharacterHalo(model, 1.45);
+    prepareKayKitLowQuality(model, true);
   }
   model.updateMatrixWorld(true);
   return { model, animations: asset.animations || [] };
@@ -273,6 +262,13 @@ export class KayKitEnvironment {
     ]);
 
     this.clear();
+
+    if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
+      for (const asset of [floor, grate, wall, pillar, torch, rubble, chest, banner]) {
+        prepareKayKitLowQuality(asset.scene, false);
+      }
+    }
+
     const bounds = this.bounds(collision.zones);
     const step = 4;
 
