@@ -148,8 +148,9 @@ class Game {
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(FOG);
-    this.scene.fog = quality.fog > 0 ? new THREE.FogExp2(FOG, quality.fog) : null;
+    const sceneFogColor = (this.qualityName === 'minima' || this.qualityName === 'leve') ? LOW_QUALITY_FOG : FOG;
+    this.scene.background = new THREE.Color(sceneFogColor);
+    this.scene.fog = quality.fog > 0 ? new THREE.FogExp2(sceneFogColor, quality.fog) : null;
     this.camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 220);
 
     this.setupLights();
@@ -347,7 +348,7 @@ class Game {
       s.left = -28; s.right = 28; s.top = 28; s.bottom = -28; s.near = 1; s.far = 90;
     }
     this.moonOffset = new THREE.Vector3(-18, 34, 14);
-    this.scene.add(moon, moon.target);
+    if (!isMinima) this.scene.add(moon, moon.target);
     this.moon = moon;
   }
 
@@ -1167,6 +1168,10 @@ class Game {
     // Character-select remains responsive without continuously rasterizing the 3D world.
     if (this.state === 'select') return;
 
+    if (this.state === 'play' && !this.autoPerfDone) {
+      this.autoPerfElapsed += dt;
+    }
+
     const renderInterval = 1 / (this.qualityConfig.renderCap || 60);
     this._renderAccumulator = (this._renderAccumulator || 0) + dt;
     if (this._renderAccumulator + 1e-5 < renderInterval) return;
@@ -1176,6 +1181,7 @@ class Game {
     else this.renderer.render(this.scene, this.camera);
 
     this.fpsFrames++;
+    this._lastRenderedFrame = true;
     if (this.fpsElapsed >= 0.5) {
       const fps = this.fpsFrames / this.fpsElapsed;
       this.fpsFrames = 0;
@@ -1183,21 +1189,23 @@ class Game {
       if (this.fpsEl) this.fpsEl.textContent = 'FPS: ' + Math.round(fps);
     }
 
-    if (!this.autoPerfDone && this.state === 'play') {
-      this.autoPerfElapsed += dt;
+    // Automatic fallback is based on actual rendered frames, not loop callbacks.
+    // This keeps the threshold meaningful even when MINIMA is capped at 30 FPS.
+    if (this._lastRenderedFrame) {
       this.autoPerfFrames++;
-      if (this.autoPerfElapsed >= 3) {
-        const avg = this.autoPerfFrames / this.autoPerfElapsed;
-        this.autoPerfDone = true;
-        if (avg < 20 && this.qualityName !== 'minima') {
-          console.warn('[ARENA] Auto quality fallback:', { averageFps: avg, gpu: this.gpuRenderer });
-          location.search = new URLSearchParams({
-            ...Object.fromEntries(new URLSearchParams(location.search)),
-            qualidade: 'minima',
-            auto: '1'
-          }).toString();
-          return;
-        }
+      this._lastRenderedFrame = false;
+    }
+    if (!this.autoPerfDone && this.state === 'play' && this.autoPerfElapsed >= 3) {
+      const avg = this.autoPerfFrames / this.autoPerfElapsed;
+      this.autoPerfDone = true;
+      if (avg < 20 && this.qualityName !== 'minima') {
+        console.warn('[ARENA] Auto quality fallback:', { averageFps: avg, gpu: this.gpuRenderer });
+        location.search = new URLSearchParams({
+          ...Object.fromEntries(new URLSearchParams(location.search)),
+          qualidade: 'minima',
+          auto: '1'
+        }).toString();
+        return;
       }
     }
 
