@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { Input } from './input.js';
 import { CameraRig } from './camera.js';
 import { Collision } from './collision.js';
@@ -28,7 +29,64 @@ const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 const USE_GLTF_PLAYER = MODEL_MODE !== 'procedural';
 import { MapEditor } from './map-editor.js';
 
-const FOG = 0x0b1220; // Scene background only; local mist is handled by individual areas.
+const FOG = 0x080b12;
+const DARK_FANTASY_PASS = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTime: { value: 0 },
+    uVignette: { value: 0.72 },
+    uExposure: { value: 0.92 },
+    uContrast: { value: 1.08 },
+    uSaturation: { value: 0.92 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uTime;
+    uniform float uVignette;
+    uniform float uExposure;
+    uniform float uContrast;
+    uniform float uSaturation;
+    varying vec2 vUv;
+
+    vec3 grade(vec3 c) {
+      c *= uExposure;
+      c = (c - 0.5) * uContrast + 0.5;
+
+      float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(lum), c, uSaturation);
+
+      // Slightly cool shadows and warm highlights.
+      float hi = smoothstep(0.22, 0.92, lum);
+      c *= mix(vec3(0.88, 0.94, 1.04), vec3(1.06, 0.98, 0.88), hi);
+
+      return max(c, 0.0);
+    }
+
+    void main() {
+      vec4 src = texture2D(tDiffuse, vUv);
+      vec3 c = grade(src.rgb);
+
+      vec2 p = vUv - 0.5;
+      p.x *= 1.08;
+      float d = length(p);
+      float vignette = smoothstep(0.90, 0.34, d);
+      vignette = mix(1.0 - uVignette, 1.0, vignette);
+
+      // Very subtle breathing avoids a completely static post-process.
+      float pulse = 1.0 + sin(uTime * 0.55) * 0.008;
+      c *= vignette * pulse;
+
+      gl_FragColor = vec4(c, src.a);
+    }
+  `
+};
 
 class Game {
   constructor() {
@@ -45,15 +103,17 @@ class Game {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(FOG);
-    this.scene.fog = null; // Do not fog the entire map; secret-room mist is local to Area 1.
+    this.scene.fog = new THREE.FogExp2(FOG, 0.0105);
     this.camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 220);
 
     this.setupLights();
 
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.48, 0.5, 1.05);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.62, 0.48, 0.82);
     this.composer.addPass(this.bloom);
+    this.atmospherePass = new ShaderPass(DARK_FANTASY_PASS);
+    this.composer.addPass(this.atmospherePass);
     this.composer.addPass(new OutputPass());
 
     this.time = 0;
@@ -173,8 +233,8 @@ class Game {
   }
 
   setupLights() {
-    this.scene.add(new THREE.HemisphereLight(0x3a4d78, 0x1a2414, 1.1));
-    const moon = new THREE.DirectionalLight(0xa9bcff, 1.5);
+    this.scene.add(new THREE.HemisphereLight(0x202942, 0x070906, 0.48));
+    const moon = new THREE.DirectionalLight(0x8195c4, 0.82);
     moon.castShadow = true;
     moon.shadow.mapSize.set(2048, 2048);
     const s = moon.shadow.camera;
@@ -896,6 +956,7 @@ class Game {
     if (this.hitstop > 0) { this.hitstop -= dt; dt *= 0.08; }
     this.time += dt;
     this.frame++;
+    if (this.atmospherePass) this.atmospherePass.uniforms.uTime.value = this.time;
 
     for (let i = this.timers.length - 1; i >= 0; i--) {
       const t = this.timers[i];

@@ -129,10 +129,23 @@ export class KayKitEnvironment {
     this.root.name = 'KayKitEnvironment';
     this.game.scene.add(this.root);
     this.ready = false;
+    this.torchLights = [];
+    this.torchPhase = Math.random() * 10;
   }
 
   clear() {
     while (this.root.children.length) this.root.remove(this.root.children[0]);
+    this.torchLights.length = 0;
+  }
+
+  update(dt, t) {
+    if (!this.torchLights.length) return;
+    for (let i = 0; i < this.torchLights.length; i++) {
+      const item = this.torchLights[i];
+      const wave = Math.sin((t + item.phase) * 8.0) * 0.08 + Math.sin((t + item.phase) * 17.0) * 0.045;
+      item.light.intensity = item.base + wave * item.base;
+      item.light.position.y = item.y + Math.sin((t + item.phase) * 3.0) * 0.025;
+    }
   }
 
   async rebuild() {
@@ -212,13 +225,29 @@ export class KayKitEnvironment {
             t.position.y += 1.1;
             t.rotation.y = w.rotation.y;
             this.root.add(t);
+
+            // Warm local illumination: the torch model itself is emissive,
+            // while this point light gives the surrounding dungeon the ARPG
+            // torch-lit look. Only a subset casts shadows to keep the pass cheap.
+            if (this.torchLights.length < 14) {
+              const light = new THREE.PointLight(0xff7a32, 8.5, 10, 1.8);
+              light.position.set(gx, this.groundY(gx, gz) + 1.9, gz);
+              light.castShadow = this.torchLights.length < 5;
+              if (light.castShadow) {
+                light.shadow.mapSize.set(256, 256);
+                light.shadow.bias = -0.001;
+                light.shadow.normalBias = 0.025;
+              }
+              this.root.add(light);
+              this.torchLights.push({ light, base: 8.5, y: light.position.y, phase: this.torchPhase + placed * 0.37 });
+            }
           }
         }
       }
     }
 
     this.ready = true;
-    console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length });
+    console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length, torchLights: this.torchLights.length });
   }
 
   groundY(x, z) {
