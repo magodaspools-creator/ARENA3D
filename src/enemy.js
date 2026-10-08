@@ -78,8 +78,11 @@ function setZombieScreenDirection(model, mvx, mvz, camera) {
   right.normalize();
 
   const movingRight = mvx * right.x + mvz * right.z > 0;
-  if (movingRight === model.spriteFlipped) return;
-  model.spriteFlipped = movingRight;
+  // The authored zombie poses face screen-left. Mirror when moving right
+  // so the face follows the actual travel direction.
+  const flipped = movingRight;
+  if (flipped === model.spriteFlipped) return;
+  model.spriteFlipped = flipped;
   setZombieFrame(model, model.spriteFrame, model.spriteFlipped);
 }
 
@@ -160,6 +163,7 @@ function createZombieSpriteModel(scale = 1) {
     sprite: null,
     spriteFrame: ZOMBIE_IDLE_FRAMES[0],
     spriteFrameT: 0,
+    spriteWalkDistance: 0,
     spriteActionT: 0,
     spriteFlipped: false,
     spriteAction: 'locomotion',
@@ -191,6 +195,7 @@ function createZombieSpriteAnimator(model, def) {
           model.spriteAction = 'locomotion';
           model.spriteActionT = 0;
           model.spriteFrameT = 0;
+          model.spriteWalkDistance = 0;
         }
       } else if (model.spriteAction === 'hurt') {
         frames = ZOMBIE_HURT_FRAMES;
@@ -199,20 +204,38 @@ function createZombieSpriteAnimator(model, def) {
           model.spriteAction = 'locomotion';
           model.spriteActionT = 0;
           model.spriteFrameT = 0;
+          model.spriteWalkDistance = 0;
         }
       } else if (stride > 0.05) {
         frames = ZOMBIE_WALK_FRAMES;
+
+        // Advance the walk cycle from actual world movement rather than from
+        // a generic timer. One complete 9-frame cycle represents about 1.15
+        // world units of travel, so the feet stay visually planted.
         const strideLength = 1.15;
-        fps = THREE.MathUtils.clamp(def.speed * stride * frames.length / strideLength, 4, 20);
+        const distance = def.speed * stride * dt;
+        model.spriteWalkDistance = (model.spriteWalkDistance + distance) % strideLength;
+        const walkPhase = (model.spriteWalkDistance / strideLength) * frames.length;
+        model.spriteFrameT = walkPhase;
+        fps = 0;
+
+        const frameIndex = Math.floor(walkPhase) % frames.length;
+        const frame = frames[frameIndex];
+        if (frame !== model.spriteFrame) {
+          model.spriteFrame = frame;
+          setZombieFrame(model, frame, model.spriteFlipped);
+        }
       }
 
-      const frameIndex = Math.min(frames.length - 1, Math.floor(model.spriteFrameT)) % frames.length;
-      const frame = frames[frameIndex];
-      if (frame !== model.spriteFrame) {
-        model.spriteFrame = frame;
-        setZombieFrame(model, frame, model.spriteFlipped);
+      if (fps > 0) {
+        const frameIndex = Math.min(frames.length - 1, Math.floor(model.spriteFrameT)) % frames.length;
+        const frame = frames[frameIndex];
+        if (frame !== model.spriteFrame) {
+          model.spriteFrame = frame;
+          setZombieFrame(model, frame, model.spriteFlipped);
+        }
+        model.spriteFrameT += dt * fps;
       }
-      model.spriteFrameT += dt * fps;
 
       if (model.spriteAction === 'death') {
         model.spriteFrameT = Math.min(model.spriteFrameT, ZOMBIE_DEATH_FRAMES.length - 1);
