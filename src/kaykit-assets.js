@@ -66,10 +66,10 @@ export function addMinimaCharacterHalo(root, scale = 1.55) {
   root.userData.minimaHalo = sprite;
 }
 
-export function addMinimaTorchGlow(root, scale = 2.4) {
+export function addMinimaTorchGlow(root, scale = 1.35) {
   if (!root || root.userData.minimaTorchGlow) return;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: getMinimaTorchGlowTexture(), color: 0xff8a40, transparent: true, opacity: 0.9,
+    map: getMinimaTorchGlowTexture(), color: 0xff8a40, transparent: true, opacity: 0.35,
     depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false,
   }));
   sprite.name = 'MinimaTorchGlow';
@@ -152,11 +152,9 @@ export function simplifyKayKitMaterials(root) {
         m.map.anisotropy = 1;
         m.map.needsUpdate = false;
       }
-      if (m.emissive) {
-        const base = m.color?.clone?.() || new THREE.Color(0xffffff);
-        m.emissive.copy(base);
-        m.emissiveIntensity = 0.34;
-      }
+      // Do not inject emissive light into KayKit materials. The pack uses
+      // an atlas/base-color workflow; adding emissive here was the source of
+      // the washed-out low-quality scene.
       m.needsUpdate = true;
     }
     o.castShadow = false;
@@ -270,7 +268,27 @@ export class KayKitEnvironment {
     }
 
     const bounds = this.bounds(collision.zones);
-    const step = 4;
+    // Measure the real GLB footprint instead of assuming the grid pitch.
+    // floor-tile.glb is authored from -2..+2 on X/Z: 4 x 4 world units.
+    // Its pivot is centered, so a cell center can be used directly as position.
+    const floorBox = new THREE.Box3().setFromObject(floor.scene);
+    const floorSize = floorBox.getSize(new THREE.Vector3());
+    const floorCenter = floorBox.getCenter(new THREE.Vector3());
+    const stepX = Math.max(0.1, floorSize.x);
+    const stepZ = Math.max(0.1, floorSize.z);
+    const floorBottomOffset = floorBox.min.y;
+    const gridMinX = Math.floor(bounds.minX / stepX) * stepX;
+    const gridMinZ = Math.floor(bounds.minZ / stepZ) * stepZ;
+    console.info('[ARENA] KayKit floor tile footprint:', {
+      sizeX: Number(floorSize.x.toFixed(4)),
+      sizeY: Number(floorSize.y.toFixed(4)),
+      sizeZ: Number(floorSize.z.toFixed(4)),
+      centerX: Number(floorCenter.x.toFixed(4)),
+      centerZ: Number(floorCenter.z.toFixed(4)),
+      previousStep: 4,
+      stepX: Number(stepX.toFixed(4)),
+      stepZ: Number(stepZ.toFixed(4)),
+    });
 
     // MINIMA/LEVE: continuous cheap underlay prevents black cracks between
     // imported floor tiles without touching gameplay collision.
@@ -284,7 +302,7 @@ export class KayKitEnvironment {
         new THREE.MeshBasicMaterial({ color: 0x18342d, side: THREE.DoubleSide })
       );
       underlay.rotation.x = -Math.PI * 0.5;
-      underlay.position.set(centerX, this.groundY(centerX, centerZ) - 0.18, centerZ);
+      underlay.position.set(centerX, this.groundY(centerX, centerZ) - 0.12, centerZ);
       underlay.renderOrder = -5;
       this.root.add(underlay);
       this.floorUnderlay = underlay;
@@ -292,13 +310,13 @@ export class KayKitEnvironment {
     let placed = 0;
     const maxTiles = 700;
 
-    for (let z = Math.floor(bounds.minZ / step) * step; z <= bounds.maxZ && placed < maxTiles; z += step) {
-      for (let x = Math.floor(bounds.minX / step) * step; x <= bounds.maxX && placed < maxTiles; x += step) {
-        const gx = x + step * 0.5, gz = z + step * 0.5;
+    for (let z = gridMinZ; z <= bounds.maxZ && placed < maxTiles; z += stepZ) {
+      for (let x = gridMinX; x <= bounds.maxX && placed < maxTiles; x += stepX) {
+        const gx = x + stepX * 0.5, gz = z + stepZ * 0.5;
         if (!collision.inside(gx, gz, 0)) continue;
 
         const tile = SkeletonUtils.clone(floor.scene);
-        tile.position.set(gx, this.groundY(gx, gz), gz);
+        tile.position.set(gx - floorCenter.x, this.groundY(gx, gz) - floorBottomOffset, gz - floorCenter.z);
         this.root.add(tile);
         placed++;
 
@@ -334,10 +352,10 @@ export class KayKitEnvironment {
         }
 
         const edge =
-          !collision.inside(gx + step, gz, 0) ||
-          !collision.inside(gx - step, gz, 0) ||
-          !collision.inside(gx, gz + step, 0) ||
-          !collision.inside(gx, gz - step, 0);
+          !collision.inside(gx + stepX, gz, 0) ||
+          !collision.inside(gx - stepX, gz, 0) ||
+          !collision.inside(gx, gz + stepZ, 0) ||
+          !collision.inside(gx, gz - stepZ, 0);
         if (edge && placed % 2 === 0) {
           const w = SkeletonUtils.clone(wall.scene);
           w.position.set(gx, this.groundY(gx, gz), gz);
@@ -351,7 +369,7 @@ export class KayKitEnvironment {
             this.root.add(t);
 
             if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
-              addMinimaTorchGlow(t, 2.5);
+              addMinimaTorchGlow(t, 1.35);
             }
 
             // Warm local illumination: the torch model itself is emissive,
