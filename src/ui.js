@@ -870,4 +870,13 @@ export class UI {
     button.textContent = loading ? 'Carregando personagem...' : 'Entrar na floresta';
     button.setAttribute('aria-busy', loading ? 'true' : 'false');
   }
+
+  setAssetLoadingProgress(percent, label = 'Carregando gráficos...') {
+    const button = $('start-btn');
+    if (!button) return;
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    button.disabled = p < 100;
+    button.textContent = p < 100 ? label + ' ' + p + '%' : 'Entrar na floresta';
+    button.setAttribute('aria-busy', p < 100 ? 'true' : 'false');
+  }
 }
