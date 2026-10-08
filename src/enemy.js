@@ -556,7 +556,7 @@ export class Enemy {
       this.kaykitRig = rig;
       this.anim = animator;
       this.mats = uniqueMaterials(this.root);
-    g.applyQualityToObject?.(this.root);
+    game.applyQualityToObject?.(this.root);
       this.kaykitVisual = true;
       this.zombieSprite = false;
       this.scorpion = false;
@@ -767,7 +767,7 @@ export class Enemy {
     const pdx = player ? this.pos.x - player.pos.x : 0;
     const pdz = player ? this.pos.z - player.pos.z : 0;
     const distToPlayer = player ? Math.hypot(pdx, pdz) : Infinity;
-    const animateEnemy = distToPlayer <= (g.qualityConfig?.maxAnimatedEnemyDistance || 22);
+    const animateEnemy = distToPlayer <= (g.maxAnimatedEnemyDistance || 22);
     if (this.anim) {
       if (animateEnemy) this.anim.update(dt, spd / def.speed);
       const e = this.state === 'windup' ? 7 : 3;

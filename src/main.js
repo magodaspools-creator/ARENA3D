@@ -32,10 +32,10 @@ import { MapEditor } from './map-editor.js';
 const FOG = 0x080b12;
 
 const QUALITY_CONFIG = {
-  minima: { antialias: false, pixelRatio: 1, scale: 0.75, shadows: false, bloom: false, fog: 0, simpleMaterials: true, particleScale: 0.2, maxAnimatedEnemies: 4, renderCap: 30 },
-  baixa:  { antialias: false, pixelRatio: 1, scale: 1, shadows: false, bloom: false, fog: 0.006, simpleMaterials: false, particleScale: 0.5, maxAnimatedEnemies: 7, renderCap: 60 },
-  media:  { antialias: false, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.28, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 12, renderCap: 60 },
-  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, maxAnimatedEnemies: 999, renderCap: 60 },
+  minima: { antialias: false, pixelRatio: 1, scale: 0.75, shadows: false, bloom: false, fog: 0, simpleMaterials: true, particleScale: 0.2, maxAnimatedEnemies: 4, maxAnimatedEnemyDistance: 16, renderCap: 30 },
+  baixa:  { antialias: false, pixelRatio: 1, scale: 1, shadows: false, bloom: false, fog: 0.006, simpleMaterials: false, particleScale: 0.5, maxAnimatedEnemies: 7, maxAnimatedEnemyDistance: 20, renderCap: 60 },
+  media:  { antialias: false, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.28, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 12, maxAnimatedEnemyDistance: 28, renderCap: 60 },
+  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, maxAnimatedEnemies: 999, maxAnimatedEnemyDistance: 40, renderCap: 60 },
 };
 
 function detectGpuRenderer() {
@@ -282,6 +282,7 @@ class Game {
     this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
     this.applyQualityToObject(this.scene);
+    this.maxAnimatedEnemyDistance = quality.maxAnimatedEnemyDistance;
 
     document.getElementById('again-btn').onclick = () => location.reload();
     document.getElementById('stay-btn').onclick = () => {
@@ -430,6 +431,7 @@ class Game {
       // Do not silently replace it with the old procedural/robot character.
       if (USE_GLTF_PLAYER) {
         finalRig = await loadPlayerRig(look, createHumanoid, id);
+        this.applyQualityToObject(finalRig?.root);
       } else {
         finalRig = createHumanoid(look);
         finalRig.isProceduralFallback = true;
