@@ -169,17 +169,17 @@ export const ITEMS = {
   gorvak_fang: {
     id: 'gorvak_fang', sprite: 'assets/items/hollow-core.svg', name: 'Presa de Gorvak',
     description: 'Uma presa mineralizada do Guardião das Profundezas, ainda vibrando com força bruta.',
-    category: 'material', maxStack: 10, value: 95, icon: '◆',
+    category: 'material', maxStack: 10, value: 95, sellable: false, icon: '◆',
   },
   morvhal_heart: {
     id: 'morvhal_heart', sprite: 'assets/items/hollow-core.svg', name: 'Coração Oco',
     description: 'Fragmento condensado do poder de Morvhal, raro e instável.',
-    category: 'material', maxStack: 10, value: 120, icon: '✦',
+    category: 'material', maxStack: 10, value: 120, sellable: false, icon: '✦',
   },
   azhur_sun_ember: {
     id: 'azhur_sun_ember', sprite: 'assets/items/ember-staff.svg', name: 'Brasa do Sol Sepultado',
     description: 'Uma brasa dourada que sobreviveu à queda de Azhur.',
-    category: 'material', maxStack: 10, value: 180, icon: '☼',
+    category: 'material', maxStack: 10, value: 180, sellable: false, icon: '☼',
   },
   depths_edge: {
     id: 'depths_edge', sprite: 'assets/items/iron-sword.svg', name: 'Lâmina das Profundezas',
