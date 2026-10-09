@@ -230,10 +230,13 @@ function createWallWeapons(parent) {
 }
 
 export function createForgeScene(game) {
-  const center = { x: 20.2, z: 23.2 };
+  const center = { x: 21.5, z: 23.2 };
+  const footprintScale = 2;
   const root = new THREE.Group();
   root.name = 'forest-blacksmith-hut';
   root.position.set(center.x, 0, center.z);
+  // Double the hut's footprint while keeping its height and performance profile.
+  root.scale.set(footprintScale, 1, footprintScale);
   game.scene.add(root);
   createForgeFloor(root);
 
@@ -256,12 +259,23 @@ export function createForgeScene(game) {
   for (let x = -2.2; x <= 2.21; x += 0.62) {
     addMesh(root, new THREE.BoxGeometry(0.08, 2.75, 0.24), MAT.woodLight, x, 1.45, -2.22);
   }
+  // Roof-only materials can fade without changing the shared wood materials elsewhere.
+  const roofMaterialA = MAT.woodDark.clone();
+  const roofMaterialB = MAT.wood.clone();
+  const roofTrimMaterial = MAT.woodLight.clone();
+  const roofMaterials = [roofMaterialA, roofMaterialB, roofTrimMaterial];
+  for (const material of roofMaterials) {
+    material.transparent = true;
+    material.opacity = 1;
+    material.depthWrite = true;
+  }
+  const roofMeshes = [];
   // Sloped roof panels and exposed ridge/rafters, all static and unlit.
-  addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), MAT.woodDark, -1.35, 3.15, -0.02, { rz: -0.27 });
-  addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), MAT.wood, 1.35, 3.15, -0.02, { rz: 0.27 });
-  addMesh(root, new THREE.BoxGeometry(0.18, 0.22, 5.25), MAT.woodLight, 0, 3.55, -0.02);
+  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), roofMaterialA, -1.35, 3.15, -0.02, { rz: -0.27 }));
+  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), roofMaterialB, 1.35, 3.15, -0.02, { rz: 0.27 }));
+  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(0.18, 0.22, 5.25), roofTrimMaterial, 0, 3.55, -0.02));
   for (const z of [-2.1, 0, 2.0]) {
-    addMesh(root, new THREE.BoxGeometry(5.35, 0.12, 0.16), MAT.woodDark, 0, 2.65, z);
+    roofMeshes.push(addMesh(root, new THREE.BoxGeometry(5.35, 0.12, 0.16), roofMaterialA, 0, 2.65, z));
   }
 
   createForgeSign(root);
@@ -274,19 +288,40 @@ export function createForgeScene(game) {
 
   // Wall, furnace, anvil, workbench and barrel blockers use the existing XZ
   // collision system. The entrance remains completely open.
-  game.collision.addBox(center.x - 3.0, center.x - 2.42, center.z - 2.42, center.z + 2.25);
-  game.collision.addBox(center.x + 2.42, center.x + 3.0, center.z - 2.42, center.z + 2.25);
-  game.collision.addBox(center.x - 3.0, center.x + 3.0, center.z - 2.78, center.z - 2.18);
-  game.collision.addBox(center.x - 2.5, center.x - 1.0, center.z - 1.9, center.z - 0.65);
-  game.collision.addCircle(center.x + 0.35, center.z + 0.48, 0.62);
-  game.collision.addBox(center.x + 1.12, center.x + 2.48, center.z - 1.85, center.z - 0.52);
-  game.collision.addCircle(center.x + 2.12, center.z + 1.52, 0.42);
-  game.collision.addCircle(center.x - 1.95, center.z + 1.45, 0.42);
+  const bx = (x1, x2, z1, z2) => game.collision.addBox(
+    center.x + x1 * footprintScale, center.x + x2 * footprintScale,
+    center.z + z1 * footprintScale, center.z + z2 * footprintScale,
+  );
+  const bc = (x, z, radius) => game.collision.addCircle(
+    center.x + x * footprintScale, center.z + z * footprintScale, radius * footprintScale,
+  );
+  bx(-3.0, -2.42, -2.42, 2.25);
+  bx(2.42, 3.0, -2.42, 2.25);
+  bx(-3.0, 3.0, -2.78, -2.18);
+  bx(-2.5, -1.0, -1.9, -0.65);
+  bc(0.35, 0.48, 0.62);
+  bx(1.12, 2.48, -1.85, -0.52);
+  bc(2.12, 1.52, 0.42);
+  bc(-1.95, 1.45, 0.42);
 
   return {
     root,
     update(dt, time, playerPos) {
-      furnace.update(dt, time, playerPos, center.x - 1.72, center.z - 1.12);
+      furnace.update(dt, time, playerPos, center.x - 1.72 * footprintScale, center.z - 1.12 * footprintScale);
+      const inside = !!playerPos
+        && Math.abs(playerPos.x - center.x) < 5.15
+        && playerPos.z > center.z - 4.35
+        && playerPos.z < center.z + 3.55;
+      // Fade the roof to 5% opacity (95% transparent) only while the player is inside.
+      // Restore full opacity immediately when the player leaves the hut.
+      const opacity = inside ? 0.05 : 1;
+      for (const material of roofMaterials) {
+        if (material.opacity !== opacity) {
+          material.opacity = opacity;
+          material.depthWrite = !inside;
+          material.needsUpdate = true;
+        }
+      }
     },
   };
 }
