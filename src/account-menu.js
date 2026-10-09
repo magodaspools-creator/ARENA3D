@@ -144,7 +144,7 @@ export async function installAccountMenu(game) {
     if (!name) return { valid: false, message: 'Digite um nome para continuar.' };
     if (name.length < 3) return { valid: false, message: 'Use pelo menos 3 caracteres.' };
     if (name.length > 24) return { valid: false, message: 'O limite é de 24 caracteres.' };
-    if (!/^[\\p{L}_ -]+$/u.test(name)) {
+    if (!/^[\p{L}_ -]+$/u.test(name)) {
       return { valid: false, message: 'Use apenas letras (maiúsculas ou minúsculas), espaços, _ ou -.' };
     }
     return { valid: true, message: 'Nome válido.' };
