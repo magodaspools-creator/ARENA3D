@@ -9,7 +9,7 @@ import { CameraRig } from './camera.js';
 import { Collision } from './collision.js';
 import { Effects } from './effects.js';
 import { Combat } from './combat.js';
-import { UI } from './ui.js';
+import { UI } from './ui.js?v=character-name-20261009a';
 import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js';
 import { Player } from './player.js';
