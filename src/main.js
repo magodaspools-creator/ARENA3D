@@ -1333,7 +1333,12 @@ class Game {
     if (character.gold < recipe.cost) return this.renderForge(mode, 'Ouro insuficiente: são necessários ' + recipe.cost + ' ouro.', true);
     const missing = Object.entries(recipe.materials).filter(([id, qty]) => character.getItemCount(id) < qty);
     if (missing.length) return this.renderForge(mode, 'Materiais insuficientes: ' + missing.map(([id, qty]) => getItem(id)?.name + ' x' + qty).join(', ') + '.', true);
-    if (character.inventory.length >= 24) return this.renderForge(mode, 'Mochila cheia. Libere um espaço antes de forjar.', true);
+    const freesSlot = Object.entries(recipe.materials).some(([id, qty]) =>
+      character.inventory.some((slot) => slot.id === id && slot.qty <= qty)
+    );
+    if (character.inventory.length >= 24 && !freesSlot) {
+      return this.renderForge(mode, 'Mochila cheia. Libere um espaço antes de forjar.', true);
+    }
 
     for (const [id, qty] of Object.entries(recipe.materials)) character.removeItem(id, qty);
     character.spendGold(recipe.cost);
