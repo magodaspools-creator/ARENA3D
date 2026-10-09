@@ -352,7 +352,9 @@ export class UI {
     if (!this.el.tutorial) return;
     let seen = false;
     try { seen = localStorage.getItem('arena3d-controls-tutorial-seen') === '1'; } catch {}
-    if (!seen) this.el.tutorial.classList.remove('hidden');
+    // A newly created character must always receive the controls tutorial,
+    // even if this browser has already dismissed it for another character.
+    if (this.game.isNewCharacter || !seen) this.el.tutorial.classList.remove('hidden');
   }
 
   closeTutorial() {
