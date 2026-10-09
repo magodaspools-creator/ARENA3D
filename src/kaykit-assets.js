@@ -120,6 +120,58 @@ export function loadKayKitAsset(key) {
 }
 
 const ENEMY_ASSET_KEYS = ['skeletonMinion', 'skeletonMage', 'skeletonRogue', 'skeletonWarrior'];
+
+const STONE_FLOOR_ZONES = Object.freeze({
+  northRuins: { minX: -18, maxX: 18, minZ: 44, maxZ: 58 },
+  courtyardRuins: { minX: -23, maxX: 23, minZ: -21, maxZ: 13.5 },
+  secretSanctuary: { minX: 14, maxX: 38, minZ: 4, maxZ: 16 },
+  bossArena: { x: 0, z: -44, radius: 15.6 },
+  safeZone: { x: 0.1, z: 35.2, radius: 8.2 },
+});
+
+function isStoneFloorAt(x, z) {
+  const inRect = (zone) => x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ;
+  const inCircle = (zone) => Math.hypot(x - zone.x, z - zone.z) <= zone.radius;
+  return inRect(STONE_FLOOR_ZONES.northRuins) ||
+    inRect(STONE_FLOOR_ZONES.courtyardRuins) ||
+    inRect(STONE_FLOOR_ZONES.secretSanctuary) ||
+    inCircle(STONE_FLOOR_ZONES.bossArena) ||
+    inCircle(STONE_FLOOR_ZONES.safeZone);
+}
+
+function createForestGrassTexture() {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+  // Deterministic, seamless fine noise over a gentle broad color wave.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const wave = Math.sin(x * Math.PI * 2 / size * 3) * 3.2 +
+        Math.cos(y * Math.PI * 2 / size * 2) * 2.4 +
+        Math.sin((x + y) * Math.PI * 2 / size * 5) * 1.5;
+      const grain = ((Math.imul(x + 17, 374761393) ^ Math.imul(y + 31, 668265263)) >>> 0) % 13 - 6;
+      const n = wave + grain;
+      data[i] = Math.max(0, Math.min(255, 66 + n));
+      data[i + 1] = Math.max(0, Math.min(255, 105 + n * 1.35));
+      data[i + 2] = Math.max(0, Math.min(255, 52 + n * 0.8));
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(10, 14);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  return texture;
+}
+
 const ENVIRONMENT_ASSET_KEYS = ['floor', 'grate', 'wall', 'arch', 'pillar', 'torch', 'chest', 'rubble', 'banner'];
 const PRELOAD_KEYS = [...ENEMY_ASSET_KEYS, ...ENVIRONMENT_ASSET_KEYS];
 const idleTurn = () => new Promise((resolve) => {
@@ -297,6 +349,8 @@ export class KayKitEnvironment {
     if (box.isEmpty()) return;
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+    // Tiny rubble shards stay decorative; only substantial chunks block movement.
+    if (kind === 'rubble' && Math.max(size.x, size.y, size.z) < 0.5) return;
     const margin = Math.min(0.18, Math.max(0.06, Math.min(size.x, size.z) * 0.08));
     const halfX = Math.max(0.08, size.x * 0.5 - margin);
     const halfZ = Math.max(0.08, size.z * 0.5 - margin);
@@ -360,6 +414,15 @@ export class KayKitEnvironment {
       this.floorUnderlay.geometry?.dispose?.();
       const materials = Array.isArray(this.floorUnderlay.material) ? this.floorUnderlay.material : [this.floorUnderlay.material];
       for (const material of materials) material?.dispose?.();
+    }
+    if (this.grassTerrain) {
+      this.grassTerrain.geometry?.dispose?.();
+      const materials = Array.isArray(this.grassTerrain.material) ? this.grassTerrain.material : [this.grassTerrain.material];
+      for (const material of materials) {
+        material?.map?.dispose?.();
+        material?.dispose?.();
+      }
+      this.grassTerrain = null;
     }
     while (this.root.children.length) this.root.remove(this.root.children[0]);
     this.torchLights.length = 0;
@@ -451,13 +514,13 @@ export class KayKitEnvironment {
       stepZ: Number(stepZ.toFixed(4)),
     });
 
-    // MINIMA/LEVE: continuous cheap underlay prevents black cracks between
-    // imported floor tiles without touching gameplay collision.
+    // MINIMA/LEVE: retain the dark continuous backing under the new grass
+    // and the stone paving, so no black gaps appear between surfaces.
+    const width = Math.max(4, bounds.maxX - bounds.minX + 8);
+    const depth = Math.max(4, bounds.maxZ - bounds.minZ + 8);
+    const centerX = (bounds.minX + bounds.maxX) * 0.5;
+    const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
     if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
-      const width = Math.max(4, bounds.maxX - bounds.minX + 8);
-      const depth = Math.max(4, bounds.maxZ - bounds.minZ + 8);
-      const centerX = (bounds.minX + bounds.maxX) * 0.5;
-      const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
       const underlay = new THREE.Mesh(
         new THREE.PlaneGeometry(width, depth),
         new THREE.MeshBasicMaterial({
@@ -475,7 +538,38 @@ export class KayKitEnvironment {
       this.root.add(underlay);
       this.floorUnderlay = underlay;
     }
+
+    // One terrain-matched grass mesh for the whole forest: no per-tile objects.
+    // Vertex heights follow the existing ground sampler, while the small
+    // repeating canvas texture adds subtle color variation at every quality.
+    const grassGeometry = new THREE.PlaneGeometry(
+      width, depth,
+      Math.max(2, Math.ceil(width / 2)),
+      Math.max(2, Math.ceil(depth / 2))
+    ).rotateX(-Math.PI * 0.5);
+    const grassPositions = grassGeometry.attributes.position;
+    for (let i = 0; i < grassPositions.count; i++) {
+      const wx = grassPositions.getX(i) + centerX;
+      const wz = grassPositions.getZ(i) + centerZ;
+      grassPositions.setY(i, this.groundY(wx, wz) + 0.012);
+    }
+    grassGeometry.computeVertexNormals();
+    const grassTexture = createForestGrassTexture();
+    grassTexture.repeat.set(width / 8, depth / 8);
+    const lowQuality = ['minima', 'leve', 'baixa'].includes(this.game.qualityName);
+    const grassMaterial = lowQuality
+      ? new THREE.MeshLambertMaterial({ map: grassTexture, color: 0xffffff, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ map: grassTexture, color: 0xffffff, roughness: 0.96, metalness: 0, side: THREE.DoubleSide });
+    const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+    grass.name = 'KayKitForestGrassTerrain';
+    grass.position.set(centerX, 0, centerZ);
+    grass.receiveShadow = !lowQuality;
+    grass.renderOrder = -1;
+    this.root.add(grass);
+    this.grassTerrain = grass;
+
     let placed = 0;
+    let stoneTiles = 0;
     const maxTiles = 700;
 
     for (let z = gridMinZ; z <= bounds.maxZ && placed < maxTiles; z += stepZ) {
@@ -483,27 +577,35 @@ export class KayKitEnvironment {
         const gx = x + stepX * 0.5, gz = z + stepZ * 0.5;
         if (!collision.inside(gx, gz, 0)) continue;
 
-        const tile = SkeletonUtils.clone(floor.scene);
-        tile.position.set(gx - floorCenter.x, this.groundY(gx, gz), gz - floorCenter.z);
-        this.root.add(tile);
+        // Keep the old grid/prop cadence and world positions; only the floor
+        // surface changes from KayKit stone to grass outside designated zones.
+        const tilePosition = new THREE.Vector3(gx - floorCenter.x, this.groundY(gx, gz) + 0.035, gz - floorCenter.z);
+        const stoneFloor = isStoneFloorAt(gx, gz);
         placed++;
+        if (stoneFloor) {
+          const tile = SkeletonUtils.clone(floor.scene);
+          tile.position.copy(tilePosition);
+          this.root.add(tile);
+          stoneTiles++;
+        }
 
-        if (placed % 29 === 0) {
+        if (stoneFloor && placed % 29 === 0) {
           const r = SkeletonUtils.clone(grate.scene);
-          r.position.copy(tile.position);
+          r.position.copy(tilePosition);
+          r.position.y += 0.02;
           r.rotation.y = Math.PI * 0.5;
           this.root.add(r);
         }
         if (placed % 47 === 0) {
           const p = SkeletonUtils.clone(pillar.scene);
-          p.position.copy(tile.position);
+          p.position.copy(tilePosition);
           p.userData.arenaPropRotationY = 0;
           this.root.add(p);
           this.registerSolidPropCollider(p, 'pillar');
         }
         if (placed % 83 === 0) {
           const c = SkeletonUtils.clone(chest.scene);
-          c.position.copy(tile.position);
+          c.position.copy(tilePosition);
           c.position.y += 0.02;
           c.userData.arenaPropRotationY = (placed % 4) * Math.PI * 0.5;
           c.rotation.y = c.userData.arenaPropRotationY;
@@ -522,7 +624,7 @@ export class KayKitEnvironment {
         }
         if (placed % 107 === 0) {
           const b = SkeletonUtils.clone(banner.scene);
-          b.position.copy(tile.position);
+          b.position.copy(tilePosition);
           b.position.y += 1.6;
           b.userData.arenaPropRotationY = 0;
           this.root.add(b);
@@ -530,9 +632,10 @@ export class KayKitEnvironment {
         }
         if (placed % 61 === 0) {
           const rr = SkeletonUtils.clone(rubble.scene);
-          rr.position.copy(tile.position);
+          rr.position.copy(tilePosition);
           rr.rotation.y = (placed % 4) * Math.PI * 0.5;
           this.root.add(rr);
+          this.registerSolidPropCollider(rr, 'rubble');
         }
 
         const edge =
@@ -585,7 +688,9 @@ export class KayKitEnvironment {
     this.ready = true;
     console.info('[ARENA] KayKit forest environment ready:', {
       area: this.game.area?.name || '(not set)',
-      tiles: placed,
+      gridCells: placed,
+      stoneTiles,
+      grassTerrain: this.grassTerrain?.name || false,
       objects: this.root.children.length,
       torchLights: this.torchLights.length,
       underlay: this.floorUnderlay ? {
