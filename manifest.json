@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Ecos da Eternidade — ARENA3D",
+  "short_name": "Ecos da Eternidade",
+  "description": "RPG de ação 3D — Floresta de Vhal",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#080b12",
+  "theme_color": "#080b12",
+  "icons": [
+    { "src": "./icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "./icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
