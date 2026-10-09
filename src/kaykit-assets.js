@@ -118,19 +118,54 @@ export function loadKayKitAsset(key) {
   return loadPromises.get(url);
 }
 
-export async function preloadKayKitEnemyAssets() {
-  const keys = ['skeletonMinion', 'skeletonMage', 'skeletonRogue', 'skeletonWarrior'];
-  const results = await Promise.allSettled(keys.map((key) => loadKayKitAsset(key)));
-  const failed = results
-    .map((result, index) => result.status === 'rejected' ? keys[index] : null)
-    .filter(Boolean);
+const ENEMY_ASSET_KEYS = ['skeletonMinion', 'skeletonMage', 'skeletonRogue', 'skeletonWarrior'];
+const ENVIRONMENT_ASSET_KEYS = ['floor', 'grate', 'wall', 'arch', 'pillar', 'torch', 'chest', 'rubble', 'banner'];
+const PRELOAD_KEYS = [...ENEMY_ASSET_KEYS, ...ENVIRONMENT_ASSET_KEYS];
+const idleTurn = () => new Promise((resolve) => {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 120 });
+  else setTimeout(resolve, 24);
+});
 
-  if (failed.length) {
-    console.warn('[ARENA] Some KayKit enemy visuals could not be preloaded:', failed);
-  } else {
-    console.info('[ARENA] KayKit enemy GLBs preloaded:', keys);
+// Serial, yield-between-files preload. The same URL Promise is used by the
+// live scene, so this does not download an asset twice.
+export async function preloadKayKitAssetsSpaced(onProgress = null) {
+  const results = [];
+  for (let i = 0; i < PRELOAD_KEYS.length; i++) {
+    await idleTurn();
+    const key = PRELOAD_KEYS[i];
+    try {
+      const asset = await loadKayKitAsset(key);
+      // Force world matrices and bounds once while outside the transition.
+      asset.scene.updateMatrixWorld(true);
+      new THREE.Box3().setFromObject(asset.scene);
+      results.push({ status: 'fulfilled', value: asset });
+    } catch (reason) {
+      results.push({ status: 'rejected', reason });
+      console.warn('[ARENA] KayKit preload failed:', key, reason);
+    }
+    onProgress?.(i + 1, PRELOAD_KEYS.length, key);
   }
+  const failed = results.filter((x) => x.status === 'rejected').length;
+  console.info('[ARENA] Spaced KayKit preload complete:', {
+    total: PRELOAD_KEYS.length, failed,
+    cached: PRELOAD_KEYS.filter((key) => loadPromises.has(kaykitPath(key))),
+  });
+  return results;
+}
 
+export async function preloadKayKitEnemyAssets(onProgress = null) {
+  const results = [];
+  for (let i = 0; i < ENEMY_ASSET_KEYS.length; i++) {
+    await idleTurn();
+    const key = ENEMY_ASSET_KEYS[i];
+    try {
+      results.push({ status: 'fulfilled', value: await loadKayKitAsset(key) });
+    } catch (reason) {
+      results.push({ status: 'rejected', reason });
+      console.warn('[ARENA] KayKit enemy preload failed:', key, reason);
+    }
+    onProgress?.(i + 1, ENEMY_ASSET_KEYS.length, key);
+  }
   return results;
 }
 
