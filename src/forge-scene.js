@@ -230,12 +230,12 @@ function createWallWeapons(parent) {
 }
 
 export function createForgeScene(game) {
-  const center = { x: 21.5, z: 23.2 };
-  const footprintScale = 2;
+  const center = { x: 24.5, z: 23.2 };
+  const footprintScale = 2.8;
   const root = new THREE.Group();
   root.name = 'forest-blacksmith-hut';
   root.position.set(center.x, 0, center.z);
-  // Double the hut's footprint while keeping its height and performance profile.
+  // Expand the hut to a grand workshop footprint while keeping the original height.
   root.scale.set(footprintScale, 1, footprintScale);
   game.scene.add(root);
   createForgeFloor(root);
@@ -244,8 +244,17 @@ export function createForgeScene(game) {
   // Stone footings visually ground the timber walls into the forest terrain.
   for (const x of [-2.72, 2.72]) {
     addMesh(root, new THREE.BoxGeometry(0.28, 0.52, 4.58), MAT.stone, x, 0.28, -0.05);
+    // Stone corner piers make the timber frame feel anchored and reinforce the silhouette.
+    for (const z of [-2.18, 2.08]) {
+      addMesh(root, new THREE.BoxGeometry(0.42, 0.72, 0.42), MAT.stoneLight, x, 0.36, z);
+      addMesh(root, new THREE.BoxGeometry(0.34, 0.16, 0.34), MAT.stone, x, 0.82, z);
+    }
   }
   addMesh(root, new THREE.BoxGeometry(5.58, 0.52, 0.28), MAT.stone, 0, 0.28, -2.22);
+  // Layered stone courses along the back wall add a hand-built masonry detail.
+  for (let x = -2.45; x <= 2.46; x += 0.48) {
+    addMesh(root, new THREE.BoxGeometry(0.44, 0.18, 0.34), (Math.round((x + 2.45) / 0.48) % 2) ? MAT.stone : MAT.stoneLight, x, 0.62, -2.18);
+  }
   for (const x of [-2.72, 2.72]) {
     addMesh(root, new THREE.BoxGeometry(0.22, 2.85, 4.55), MAT.wood, x, 1.45, -0.05);
     for (let y = 0.38; y < 2.6; y += 0.52) {
@@ -276,6 +285,30 @@ export function createForgeScene(game) {
   roofMeshes.push(addMesh(root, new THREE.BoxGeometry(0.18, 0.22, 5.25), roofTrimMaterial, 0, 3.55, -0.02));
   for (const z of [-2.1, 0, 2.0]) {
     roofMeshes.push(addMesh(root, new THREE.BoxGeometry(5.35, 0.12, 0.16), roofMaterialA, 0, 2.65, z));
+  }
+  // Extra overlapping roof shingles: dark staggered courses read as separate boards.
+  for (let row = 0; row < 4; row++) {
+    const x = -2.18 + row * 1.42;
+    for (let z = -2.0; z <= 2.01; z += 0.82) {
+      const offset = row % 2 ? 0.36 : 0;
+      roofMeshes.push(addMesh(root, new THREE.BoxGeometry(1.34, 0.075, 0.76), row % 2 ? roofMaterialB : roofMaterialA,
+        x, 3.2 + Math.abs(x) * 0.27, z + offset, { rz: x < 0 ? -0.27 : 0.27 }));
+    }
+  }
+  // Exposed front lintel and paired braces frame the open entrance.
+  for (const x of [-2.5, 2.5]) {
+    addMesh(root, new THREE.BoxGeometry(0.22, 2.8, 0.24), MAT.woodDark, x, 1.43, 2.2);
+    addMesh(root, new THREE.BoxGeometry(0.82, 0.16, 0.16), MAT.woodLight, x < 0 ? -2.15 : 2.15, 2.72, 1.82,
+      { rz: x < 0 ? -0.52 : 0.52 });
+  }
+  addMesh(root, new THREE.BoxGeometry(5.4, 0.22, 0.28), MAT.woodDark, 0, 2.85, 2.16);
+  // Side windows with dark recesses and crossbars.
+  for (const x of [-2.84, 2.84]) {
+    for (const z of [-0.75, 0.95]) {
+      addMesh(root, new THREE.BoxGeometry(0.06, 0.78, 0.72), MAT.dark, x, 1.65, z);
+      addMesh(root, new THREE.BoxGeometry(0.12, 0.08, 0.82), MAT.woodLight, x, 1.65, z);
+      addMesh(root, new THREE.BoxGeometry(0.12, 0.84, 0.08), MAT.woodLight, x, 1.65, z);
+    }
   }
 
   createForgeSign(root);
@@ -309,9 +342,9 @@ export function createForgeScene(game) {
     update(dt, time, playerPos) {
       furnace.update(dt, time, playerPos, center.x - 1.72 * footprintScale, center.z - 1.12 * footprintScale);
       const inside = !!playerPos
-        && Math.abs(playerPos.x - center.x) < 5.15
-        && playerPos.z > center.z - 4.35
-        && playerPos.z < center.z + 3.55;
+        && Math.abs(playerPos.x - center.x) < 7.45
+        && playerPos.z > center.z - 6.4
+        && playerPos.z < center.z + 5.2;
       // Fade the roof to 5% opacity (95% transparent) only while the player is inside.
       // Restore full opacity immediately when the player leaves the hut.
       const opacity = inside ? 0.05 : 1;
