@@ -20,7 +20,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
-import { createArea1 } from './areas/area1.js?v=maren-portal-blacksmith-20261009a';
+import { createArea1 } from './areas/area1.js?v=forge-scenery-stage1-20261009a';
 import { createArea2 } from './areas/area2.js';
 import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js';
 
