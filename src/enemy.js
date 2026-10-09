@@ -548,7 +548,7 @@ export class Enemy {
 
     this.root.add(fallbackRoot);
     this.kaykitVisual = false;
-    loadKayKitEnemyRig(type, this.def.height).then(({ root, rig, animator }) => {
+    this.visualReady = loadKayKitEnemyRig(type, this.def.height).then(({ root, rig, animator }) => {
       if (this.removed) return;
       while (this.root.children.length) this.root.remove(this.root.children[0]);
       this.root.add(root);
@@ -556,7 +556,7 @@ export class Enemy {
       this.kaykitRig = rig;
       this.anim = animator;
       this.mats = uniqueMaterials(this.root);
-    game.applyQualityToObject?.(this.root);
+      game.applyQualityToObject?.(this.root);
       this.kaykitVisual = true;
       this.zombieSprite = false;
       this.scorpion = false;
