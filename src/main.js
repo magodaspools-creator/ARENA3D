@@ -1257,7 +1257,8 @@ class Game {
       const materialsText = Object.entries(recipe.materials).map(([id, qty]) => getItem(id)?.name + ' x' + qty).join(' · ');
       const enoughMaterials = Object.entries(recipe.materials).every(([id, qty]) => character.getItemCount(id) >= qty);
       const enoughGold = character.gold >= recipe.cost;
-      const hasSpace = character.inventory.length < 24;
+      const freesSlot = Object.entries(recipe.materials).some(([id, qty]) => character.inventory.some((slot) => slot.id === id && slot.qty <= qty));
+      const hasSpace = character.inventory.length < 24 || freesSlot;
       return {
         id: recipe.id, name: recipe.name, description: recipe.description,
         meta: 'Custo: ' + recipe.cost + ' ouro\nMateriais: ' + materialsText + (recipe.exclusive ? '\nReceita exclusiva de boss' : ''),
