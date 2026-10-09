@@ -179,6 +179,51 @@
       </div>
     </div>
 
+    <div id="main-menu" role="dialog" aria-label="Menu principal">
+      <div class="menu-backdrop"></div>
+      <div class="menu-grain"></div>
+      <main class="main-menu-content">
+        <div class="game-brand">
+          <div class="brand-kicker">LENDAS ESQUECIDAS</div>
+          <h1>ECOS DA<br><span>ETERNIDADE</span></h1>
+          <div class="brand-rule"><i></i></div>
+          <p>O destino não esquece aqueles que ousam despertar.</p>
+        </div>
+        <nav class="main-menu-nav" aria-label="Menu do jogo">
+          <button id="menu-new-game" class="main-menu-btn primary" type="button"><span>Novo jogo</span><b>↗</b></button>
+          <button id="menu-continue" class="main-menu-btn" type="button"><span>Carregar jogo</span><b>›</b></button>
+          <button id="menu-settings" class="main-menu-btn" type="button"><span>Configurações</span><b>⚙</b></button>
+          <button id="menu-exit" class="main-menu-btn subdued" type="button"><span>Sair</span><b>×</b></button>
+        </nav>
+        <div class="main-menu-footer"><span>FLORESTA DE VHAL</span><span>ALPHA · 0.1.0</span></div>
+      </main>
+      <div class="menu-side-note">UMA JORNADA ALÉM DO TEMPO</div>
+    </div>
+
+    <div id="menu-dialog" class="hidden" role="dialog" aria-modal="true" aria-labelledby="menu-dialog-title">
+      <div class="menu-dialog-panel">
+        <div class="menu-dialog-kicker">ECOS DA ETERNIDADE</div>
+        <h2 id="menu-dialog-title">Configurações</h2>
+        <p id="menu-dialog-description">Ajuste sua experiência de jogo.</p>
+        <div id="menu-settings-options">
+          <label for="menu-quality">Qualidade gráfica</label>
+          <select id="menu-quality">
+            <option value="minima">Mínima — melhor desempenho</option>
+            <option value="leve">Leve</option>
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta — melhor visual</option>
+          </select>
+          <p class="menu-settings-note">A qualidade escolhida será aplicada ao recarregar o jogo.</p>
+          <button id="menu-apply-settings" class="main-menu-btn primary" type="button"><span>Aplicar qualidade</span><b>✓</b></button>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="menu-dialog-confirm" class="main-menu-btn primary hidden" type="button"><span>Entendi</span><b>✓</b></button>
+          <button id="menu-dialog-close" class="main-menu-btn" type="button"><span>Voltar</span><b>‹</b></button>
+        </div>
+      </div>
+    </div>
+
     <div id="select">
       <div class="select-panel">
         <div class="logo">ARENA</div>
