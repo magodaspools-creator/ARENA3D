@@ -879,4 +879,43 @@ export class UI {
     button.textContent = p < 100 ? label + ' ' + p + '%' : 'Entrar na floresta';
     button.setAttribute('aria-busy', p < 100 ? 'true' : 'false');
   }
+
+  showMapLoading(title = 'Preparando mapa...', percent = 0, detail = 'Preparando recursos') {
+    let panel = $('map-transition-loading');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'map-transition-loading';
+      panel.setAttribute('role', 'status');
+      panel.setAttribute('aria-live', 'polite');
+      Object.assign(panel.style, {
+        position: 'fixed', inset: '0', zIndex: '10000', display: 'flex',
+        flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(5, 10, 12, 0.97)', color: '#e8e0cc',
+        fontFamily: 'system-ui, sans-serif', letterSpacing: '0.08em',
+        textAlign: 'center', padding: '24px', boxSizing: 'border-box',
+      });
+      panel.innerHTML = '<div id="map-loading-title" style="font-size:clamp(18px,3vw,28px);font-weight:700;margin-bottom:18px"></div><div style="width:min(420px,82vw);height:8px;background:#26322f;border:1px solid #52635c;border-radius:8px;overflow:hidden"><div id="map-loading-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#b87939,#e6c77b);transition:width .12s linear"></div></div><div id="map-loading-detail" style="font-size:12px;margin-top:12px;color:#aebdb5"></div><div id="map-loading-percent" style="font-size:12px;margin-top:6px;color:#e6c77b">0%</div>';
+      document.body.appendChild(panel);
+    }
+    panel.style.display = 'flex';
+    $('map-loading-title').textContent = title;
+    $('map-loading-detail').textContent = detail;
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    $('map-loading-fill').style.width = p + '%';
+    $('map-loading-percent').textContent = p + '%';
+  }
+
+  updateMapLoading(percent, detail) {
+    const panel = $('map-transition-loading');
+    if (!panel) return;
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    $('map-loading-fill').style.width = p + '%';
+    $('map-loading-percent').textContent = p + '%';
+    if (detail) $('map-loading-detail').textContent = detail;
+  }
+
+  hideMapLoading() {
+    const panel = $('map-transition-loading');
+    if (panel) panel.style.display = 'none';
+  }
 }
