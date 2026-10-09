@@ -58,7 +58,4 @@ export const FORGE_RECYCLE = {
   iron_buckler: { iron_scrap: 3 },
   red_potion: { moon_herb: 1 },
   mana_potion: { wisp_essence: 1 },
-  iron_scrap: { iron_scrap: 1 },
-  wisp_essence: { wisp_essence: 1 },
-  moon_herb: { moon_herb: 1 },
 };
