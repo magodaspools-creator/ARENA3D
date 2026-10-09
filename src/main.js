@@ -641,6 +641,9 @@ class Game {
 
       t = now();
       const result = await build();
+      // Enemy constructors keep gameplay immediate, but expose their visual
+      // promises so the target scene is not revealed before its rigs are ready.
+      await Promise.allSettled(this.enemies.map((enemy) => enemy.visualReady).filter(Boolean));
       times.assembly = now() - t;
       this.ui.updateMapLoading(48, 'Cena montada; preparando texturas...');
       await nextFrame();
