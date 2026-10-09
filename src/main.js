@@ -21,7 +21,7 @@ import { getItem } from './items.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
-import { KayKitEnvironment, preloadKayKitEnemyAssets, loadKayKitEnemyRig } from './kaykit-assets.js';
+import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js';
 
 const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 // The published game uses the finalized vocation GLTFs by default.
@@ -228,6 +228,9 @@ class Game {
       return null;
     });
     this.graphicsReady = false;
+    this.debugTransitions = new URLSearchParams(location.search).get('debug') === '1';
+    this.mapAssetPreload = null;
+    this._mapTransitionBusy = false;
     this.returnArea = null;
     this.startArea = this.area;
     this.player = null;
@@ -442,23 +445,32 @@ class Game {
 
   async prepareGraphics() {
     // MEDIA/ALTA keep their existing loading path untouched.
-    if (this.qualityName !== 'minima' && this.qualityName !== 'leve') {
+    if (!['minima', 'leve', 'baixa'].includes(this.qualityName)) {
       this.graphicsReady = true;
       this.ui.setAssetLoadingProgress?.(100, 'Gráficos prontos');
       this.ui.setStartLoading?.(false);
       return;
     }
 
-    // LOW tiers: Area 1 environment + its four KayKit enemy rigs are loaded once.
+    // Low tiers share one asset cache. Prepare forest assets and all enemy rigs
+    // before play; Area 2 reuses those rigs and is otherwise procedural.
     await this.kaykitEnvironmentReady;
-    this.ui.setAssetLoadingProgress?.(35, 'Cenário carregado');
+    this.ui.setAssetLoadingProgress?.(30, 'Cenário carregado');
 
-    await preloadKayKitEnemyAssets();
+    await preloadKayKitEnemyAssets((done, total, key) => {
+      this.ui.setAssetLoadingProgress?.(30 + Math.round(done / total * 35), 'Preparando inimigos: ' + key);
+    });
     this.ui.setAssetLoadingProgress?.(70, 'Inimigos carregados');
 
-    // Warm up the exact low-quality material programs before gameplay.
+    // Finish the shared asset cache serially, yielding between files so the
+    // browser can paint the progress indicator and process input.
+    await preloadKayKitAssetsSpaced((done, total, key) => {
+      this.ui.setAssetLoadingProgress?.(70 + Math.round(done / total * 20), 'Cache gráfico: ' + key);
+    });
+
+    // Warm the low-quality material programs before gameplay.
     // compileAsync is intentionally skipped for the expensive high tiers here.
-    if (this.qualityName === 'minima' || this.qualityName === 'leve') {
+    if (['minima', 'leve', 'baixa'].includes(this.qualityName)) {
       this.camera.updateMatrixWorld(true);
       this.scene.updateMatrixWorld(true);
       await this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
@@ -535,6 +547,7 @@ class Game {
     this.area.onStart();
     this.saveWorldState();
     this.spawnPendingDeathBackpacks();
+    this.scheduleMapBackgroundPreload();
 
     console.log('[ARENA] START PLAYER FINALIZED', {
       playerId: this.player.id,
@@ -599,58 +612,157 @@ class Game {
     });
   }
 
-  enterArea2() {
-    if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
-
-    this.returnArea = this.area;
-    this.returnEnemies = this.enemies;
-    this.enemies = [];
-    this.inputLocked = true;
-    this.ui.hidePrompt();
-    this.ui.fade(true);
-
-    this.schedule(0.75, () => {
-      const area2 = createArea2(this);
-      this.area = area2;
-      this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
-      this.rig.snap(this.player.pos);
-      this.area.onStart();
-      this.saveWorldState();
-    });
-
-    this.schedule(1.45, () => {
-      this.ui.fade(false);
-      this.inputLocked = false;
-    });
-  }
-
-  enterPreviousArea() {
-    if (this.state !== 'play' || this.inputLocked || !this.returnArea) return;
-
-    const target = this.returnArea;
-    const currentArea = this.area;
+  async runMapTransition({ title, download = null, build, afterBuild = null }) {
+    if (this._mapTransitionBusy) return;
+    this._mapTransitionBusy = true;
     this.inputLocked = true;
     this.ui.hidePrompt();
     this.dialogue.close(false);
     this.ui.fade(true);
+    this.ui.showMapLoading(title, 3, 'Preparando troca de mapa...');
+    const now = () => performance.now();
+    const memory = () => {
+      const info = this.renderer?.info?.memory;
+      return info ? { geometries: info.geometries, textures: info.textures } : null;
+    };
+    const before = memory();
+    const times = {};
+    const totalStart = now();
+    const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    try {
+      // Ensure the loading overlay is painted before any synchronous map work.
+      await nextFrame();
+      await nextFrame();
 
-    this.schedule(0.75, () => {
-      currentArea?.dispose?.();
-      this.area = target;
-      this.kaykitEnvironment?.rebuild?.().catch((error) => console.warn('[ARENA] KayKit area rebuild failed.', error));
-      this.enemies = this.returnEnemies || this.enemies;
-      this.returnEnemies = null;
-      const spawn = target.checkpoint || target.spawn;
-      this.player.place(spawn.x, spawn.z, spawn.facing);
-      this.rig.snap(this.player.pos);
-      this.area.onStart();
-      this.saveWorldState();
-    });
+      let t = now();
+      if (download) await download();
+      times.download = now() - t;
+      this.ui.updateMapLoading(18, 'Assets e rigs prontos');
 
-    this.schedule(1.45, () => {
+      t = now();
+      const result = await build();
+      times.assembly = now() - t;
+      this.ui.updateMapLoading(48, 'Cena montada; preparando texturas...');
+      await nextFrame();
+
+      t = now();
+      this.camera.updateMatrixWorld(true);
+      this.scene.updateMatrixWorld(true);
+      // A real render submits newly-created textures to WebGL before reveal.
+      this.renderer.render(this.scene, this.camera);
+      times.textureUpload = now() - t;
+      this.ui.updateMapLoading(66, 'Texturas enviadas à GPU');
+
+      t = now();
+      if (this.renderer.compileAsync) {
+        await this.renderer.compileAsync(this.scene, this.camera).catch((error) => {
+          if (this.debugTransitions) console.warn('[ARENA][map-transition] compileAsync fallback:', error);
+        });
+      } else {
+        this.renderer.compile(this.scene, this.camera);
+      }
+      times.shaders = now() - t;
+      this.ui.updateMapLoading(88, 'Shaders compilados');
+
+      if (afterBuild) await afterBuild(result);
+      this.ui.updateMapLoading(96, 'Finalizando mapa...');
+      await nextFrame();
+      this.ui.updateMapLoading(100, 'Pronto');
+      this.ui.fade(false);
+      await nextFrame();
+      this.ui.hideMapLoading();
+      this.inputLocked = false;
+
+      if (this.debugTransitions) {
+        console.group('[ARENA][map-transition] ' + title);
+        console.table({
+          download_ms: +times.download.toFixed(1),
+          assembly_ms: +times.assembly.toFixed(1),
+          texture_upload_ms: +times.textureUpload.toFixed(1),
+          shader_compile_ms: +times.shaders.toFixed(1),
+          total_ms: +(now() - totalStart).toFixed(1),
+        });
+        console.log('renderer.info.memory before:', before, 'after:', memory());
+        console.groupEnd();
+      }
+      return result;
+    } catch (error) {
+      this.ui.hideMapLoading();
       this.ui.fade(false);
       this.inputLocked = false;
-    });
+      console.error('[ARENA] Map transition failed:', title, error);
+      throw error;
+    } finally {
+      this._mapTransitionBusy = false;
+    }
+  }
+
+  scheduleMapBackgroundPreload() {
+    if (!['minima', 'leve', 'baixa'].includes(this.qualityName) || this._backgroundMapPreloadStarted) return;
+    this._backgroundMapPreloadStarted = true;
+    const run = () => {
+      // Avoid competing with combat-heavy frames; retry later while the player
+      // is in a boss windup/chase or several enemies are close.
+      const p = this.player?.pos;
+      const intense = this.state !== 'play' || this.enemies.filter((e) => e.alive && p && e.pos.distanceTo(p) < 10).length >= 3;
+      if (intense) {
+        setTimeout(run, 1800);
+        return;
+      }
+      this.mapAssetPreload = preloadKayKitAssetsSpaced((done, total, key) => {
+        if (this.debugTransitions) console.debug('[ARENA][preload]', key, done + '/' + total);
+      }).catch((error) => console.warn('[ARENA] Background map preload failed:', error));
+    };
+    setTimeout(run, 900);
+  }
+
+  enterArea2() {
+    if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
+    this.returnArea = this.area;
+    this.returnEnemies = this.enemies;
+    this.enemies = [];
+    void this.runMapTransition({
+      title: 'DESERTO DO SOL SEPULTADO',
+      download: async () => {
+        if (this.mapAssetPreload) await this.mapAssetPreload;
+        await preloadKayKitEnemyAssets();
+      },
+      build: async () => {
+        const area2 = createArea2(this);
+        this.area = area2;
+        this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
+        this.rig.snap(this.player.pos);
+        this.area.onStart();
+        this.saveWorldState();
+        return area2;
+      },
+    }).catch((error) => console.error('[ARENA] Could not enter Area 2:', error));
+  }
+
+  enterPreviousArea() {
+    if (this.state !== 'play' || this.inputLocked || !this.returnArea) return;
+    const target = this.returnArea;
+    const currentArea = this.area;
+    void this.runMapTransition({
+      title: 'FLORESTA DE VHAL',
+      download: async () => {
+        if (this.mapAssetPreload) await this.mapAssetPreload;
+        await preloadKayKitEnemyAssets();
+      },
+      build: async () => {
+        currentArea?.dispose?.();
+        this.area = target;
+        this.enemies = this.returnEnemies || this.enemies;
+        this.returnEnemies = null;
+        const spawn = target.checkpoint || target.spawn;
+        this.player.place(spawn.x, spawn.z, spawn.facing);
+        this.rig.snap(this.player.pos);
+        await this.kaykitEnvironment?.rebuild?.();
+        this.area.onStart();
+        this.saveWorldState();
+        return target;
+      },
+    }).catch((error) => console.error('[ARENA] Could not return to Forest:', error));
   }
 
   addEnemy(e) { this.enemies.push(e); return e; }
