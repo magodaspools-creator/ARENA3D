@@ -8,6 +8,7 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
+import { createForgeScene } from '../forge-scene.js';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
@@ -66,6 +67,9 @@ export function createArea1(game) {
     const d = collision.sdf(x, z);
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
+
+  // Dedicated blacksmith hut at the east edge of the forest safe-zone approach.
+  const forgeScene = createForgeScene(game);
 
   const decor = new Decor();
 
@@ -2291,24 +2295,8 @@ const leaveMine = () => {
   merchant.setMarker(0xe8b95b);
   game.npcs.push(merchant);
 
-  const blacksmith = new NPC(game, {
-    name: 'Brom, o Ferreiro da Mina',
-    // Keep Brom inside the actual entrance clearing's walkable zone.
-    // The previous x=16 position sat outside the entrance collision zone.
-    x: 8.5, z: 42.0, facing: -0.8,
-    look: { skin: 0x9a7257, body: 0x473b32, legs: 0x25221f, robe: 0x594337, hood: 0x302823, head: null, accent: 0xc78a43, npcRole: 'merchant' },
-    dialogue: () => ({
-      lines: [
-        'A entrada da mina é o melhor lugar para uma forja: aqui chegam os minérios e os restos dos monstros.',
-        'Posso aprimorar o equipamento que você veste. A têmpera pode falhar; nesse caso, o ouro e os fragmentos se perdem, mas não deixo uma peça quebrar.',
-        'Também reciclo itens da mochila, fabrico equipamentos por receita e trabalho com materiais raros dos bosses.',
-        'As peças exclusivas exigem troféus de Gorvak, Morvhal ou Azhur. Traga os materiais e a receita será sua.',
-      ],
-    }),
-    service: () => game.openForge({ npcName: 'Brom, o Ferreiro da Mina' }),
-  });
-  blacksmith.setMarker(0xd58a45);
-  game.npcs.push(blacksmith);
+  // The old standalone Brom NPC is removed; Stage 1 replaces him with a
+  // dedicated forge set. The existing forge economy/service code is untouched.
 
   game.interaction.add({
     pos: portalAnchor.position,
@@ -2703,6 +2691,7 @@ const leaveMine = () => {
 
     update(dt, t) {
       campfire.update(dt, t);
+      forgeScene.update(dt, t, game.player?.pos);
       if (mine.active && !mine.loading) {
         mineLightTick -= dt;
         if (mineLightTick <= 0) {
