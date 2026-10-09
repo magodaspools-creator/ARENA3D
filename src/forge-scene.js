@@ -231,7 +231,7 @@ function createWallWeapons(parent) {
 
 export function createForgeScene(game) {
   const center = { x: 24.5, z: 23.2 };
-  const footprintScale = 2.8;
+  const footprintScale = 1.7;
   const root = new THREE.Group();
   root.name = 'forest-blacksmith-hut';
   root.position.set(center.x, 0, center.z);
@@ -279,10 +279,44 @@ export function createForgeScene(game) {
     material.depthWrite = true;
   }
   const roofMeshes = [];
-  // Sloped roof panels and exposed ridge/rafters, all static and unlit.
-  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), roofMaterialA, -1.35, 3.15, -0.02, { rz: -0.27 }));
-  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(3.0, 0.22, 5.15), roofMaterialB, 1.35, 3.15, -0.02, { rz: 0.27 }));
-  roofMeshes.push(addMesh(root, new THREE.BoxGeometry(0.18, 0.22, 5.25), roofTrimMaterial, 0, 3.55, -0.02));
+  // Curved gable roof surfaces (custom meshes, not giant rectangular slabs).
+  // A shallow eave dip and subtly bowed ridge break the box-like silhouette.
+  const makeRoofSurface = (side, material) => {
+    const vertices = [], indices = [];
+    const cols = 12, rows = 10, halfWidth = 3.0, halfLength = 2.78;
+    for (let row = 0; row <= rows; row++) {
+      const v = row / rows;
+      const z = -halfLength + v * halfLength * 2;
+      for (let col = 0; col <= cols; col++) {
+        const u = col / cols;
+        const x = side < 0 ? -halfWidth + u * halfWidth : u * halfWidth;
+        const dist = Math.abs(x) / halfWidth;
+        const y = 2.48 + (1 - dist) * 1.36 - Math.pow(1 - dist, 2) * 0.10
+          + Math.sin(v * Math.PI) * 0.055;
+        vertices.push(x, y, z);
+      }
+    }
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const a = row * (cols + 1) + col;
+        const b = a + 1, c = a + cols + 1, d = c + 1;
+        if (side < 0) indices.push(a, c, b, b, c, d);
+        else indices.push(a, b, c, b, d, c);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    root.add(mesh);
+    return mesh;
+  };
+  roofMeshes.push(makeRoofSurface(-1, roofMaterialA));
+  roofMeshes.push(makeRoofSurface(1, roofMaterialB));
+  roofMeshes.push(addMesh(root, new THREE.CylinderGeometry(0.11, 0.13, 5.6, 7), roofTrimMaterial, 0, 3.78, -0.02, { rx: Math.PI / 2 }));
   for (const z of [-2.1, 0, 2.0]) {
     roofMeshes.push(addMesh(root, new THREE.BoxGeometry(5.35, 0.12, 0.16), roofMaterialA, 0, 2.65, z));
   }
