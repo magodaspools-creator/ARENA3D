@@ -37,7 +37,7 @@ const QUALITY_CONFIG = {
   leve:   { antialias: false, pixelRatio: 1, scale: 0.85, shadows: false, bloom: false, fog: 0.0045, simpleMaterials: true, particleScale: 0.25, maxAnimatedEnemies: 5, maxAnimatedEnemyDistance: 18, renderCap: 45 },
   baixa:  { antialias: false, pixelRatio: 1, scale: 1, shadows: false, bloom: false, fog: 0.006, simpleMaterials: false, particleScale: 0.5, maxAnimatedEnemies: 7, maxAnimatedEnemyDistance: 20, renderCap: 60 },
   media:  { antialias: false, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.28, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 12, maxAnimatedEnemyDistance: 28, renderCap: 60 },
-  alta:   { antialias: true, pixelRatio: 1.5, scale: 1, shadows: true, bloom: true, bloomStrength: 0.62, fog: 0.0105, simpleMaterials: false, particleScale: 1, maxAnimatedEnemies: 999, maxAnimatedEnemyDistance: 40, renderCap: 60 },
+  alta:   { antialias: true, pixelRatio: 1.25, scale: 1, shadows: true, bloom: true, bloomStrength: 0.42, fog: 0.0105, simpleMaterials: false, particleScale: 0.8, maxAnimatedEnemies: 14, maxAnimatedEnemyDistance: 28, renderCap: 45 },
 }
 
 function detectGpuRenderer() {
@@ -176,6 +176,11 @@ class Game {
     this.timers = [];
     this.hitstop = 0;
     this.state = 'menu';
+    this.activeCharacterId = null;
+    this.activeCharacterName = '';
+    this.activeCharacterGender = 'male';
+    this.activeCharacterGameState = {};
+    this.isNewCharacter = false;
     this.inputLocked = false;
     this.stats = { kills: 0, deaths: 0, damage: 0, start: 0, bossTime: 0 };
 
@@ -307,14 +312,8 @@ class Game {
     });
     document.getElementById('main-menu')?.classList.remove('hidden');
     document.getElementById('select')?.classList.add('hidden');
-    document.getElementById('menu-new-game')?.addEventListener('click', () => {
-      document.getElementById('main-menu')?.classList.add('hidden');
-      this.state = 'select';
-      this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
-    });
-    document.getElementById('menu-continue')?.addEventListener('click', () => {
-      this.showMenuMessage('Carregar jogo', 'O jogo ainda não salva todos os dados do personagem. O salvamento completo será implementado antes de habilitar a continuação de uma jornada.');
-    });
+    document.getElementById('menu-new-game')?.addEventListener('click', () => window.dispatchEvent(new Event('arena:new-character')));
+    document.getElementById('menu-continue')?.addEventListener('click', () => window.dispatchEvent(new Event('arena:continue')));
     document.getElementById('menu-settings')?.addEventListener('click', () => this.openMainMenuSettings());
     document.getElementById('menu-exit')?.addEventListener('click', () => {
       this.showMenuMessage('Até a próxima', 'Você pode fechar esta aba do navegador quando quiser. O jogo não pode fechar a aba automaticamente por segurança.');
@@ -379,6 +378,8 @@ class Game {
     if (!dialog || !options || !confirm) return;
     title.textContent = 'Configurações';
     description.textContent = 'Ajuste a qualidade gráfica para equilibrar desempenho e fidelidade visual.';
+    document.getElementById('menu-dialog-custom')?.classList.add('hidden');
+    if (document.getElementById('menu-dialog-custom')) document.getElementById('menu-dialog-custom').innerHTML = '';
     options.classList.remove('hidden');
     confirm.classList.add('hidden');
     dialog.classList.remove('hidden');
@@ -390,12 +391,17 @@ class Game {
     document.getElementById('menu-dialog-title').textContent = titleText;
     document.getElementById('menu-dialog-description').textContent = message;
     document.getElementById('menu-settings-options').classList.add('hidden');
+    document.getElementById('menu-dialog-custom')?.classList.add('hidden');
     document.getElementById('menu-dialog-confirm').classList.remove('hidden');
     dialog.classList.remove('hidden');
   }
 
   closeMenuDialog() {
     document.getElementById('menu-dialog')?.classList.add('hidden');
+    const custom = document.getElementById('menu-dialog-custom');
+    if (custom) { custom.classList.add('hidden'); custom.innerHTML = ''; }
+    document.getElementById('menu-settings-options')?.classList.remove('hidden');
+    document.getElementById('menu-dialog-confirm')?.classList.add('hidden');
   }
 
   setupLights() {
@@ -470,7 +476,7 @@ class Game {
   // ---------- world persistence ----------
   worldStorageKey() {
     const vocation = this.character?.vocation;
-    return vocation ? `arena.world.v1.${vocation}` : null;
+    return this.activeCharacterId ? `arena.world.v1.${this.activeCharacterId}` : vocation ? `arena.world.v1.${vocation}` : null;
   }
 
   saveWorldState() {
@@ -555,9 +561,17 @@ class Game {
     this.ui.setStartLoading?.(false);
   }
 
-  async start(id) {
+  async start(id, options = {}) {
     if (!id || this.player || this.startingPlayer || !this.graphicsReady) return;
 
+    this.activeCharacterId = options.characterId || null;
+    this.activeCharacterName = options.name || VOCATIONS[id]?.name || '';
+    this.activeCharacterGender = options.gender || 'male';
+    this.activeCharacterGameState = options.gameState || {};
+    this.isNewCharacter = options.isNew ?? !options.characterId;
+    if (this.isNewCharacter && !this.activeCharacterId) {
+      try { localStorage.removeItem(`arena.character.v1.${id}`); localStorage.removeItem(`arena.world.v1.${id}`); } catch {}
+    }
     this.startingPlayer = true;
     this.inputLocked = true;
     this.ui.setStartLoading?.(true);
@@ -577,7 +591,7 @@ class Game {
       }
 
       // The player is instantiated exactly once, after the final rig exists.
-      this.character = new CharacterState(id);
+      this.character = new CharacterState(id, this.activeCharacterId);
       this.player = new Player(this, id, finalRig);
       if (this.qualityName === 'minima' || this.qualityName === 'leve') {
         this.camera.updateMatrixWorld(true);
@@ -585,7 +599,7 @@ class Game {
         await this.renderer.compileAsync(finalRig.root, this.camera, this.scene).catch(() => {});
       }
 
-    const saved = this.loadWorldState();
+    const saved = this.isNewCharacter ? null : this.loadWorldState();
     if (saved?.area === 'area2') {
       this.returnEnemies = this.enemies;
       this.enemies = [];
@@ -613,6 +627,8 @@ class Game {
     this.ui.hideSelect();
     this.area.onStart();
     this.saveWorldState();
+    this.isNewCharacter = false;
+    window.dispatchEvent(new Event('arena:character-started'));
     this.spawnPendingDeathBackpacks();
     this.scheduleMapBackgroundPreload();
 
@@ -630,9 +646,10 @@ class Game {
       this.player?.dispose?.();
       this.player = null;
       this.character = null;
-      this.state = 'select';
+      this.state = 'menu';
       this.inputLocked = false;
-      this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+      document.getElementById('main-menu')?.classList.remove('hidden');
+      this.ui.hideSelect();
       this.ui.toast('Não foi possível iniciar o jogo. Tente novamente.');
     } finally {
       this.ui.setStartLoading?.(false);
@@ -1437,3 +1454,4 @@ class Game {
 }
 
 window.game = new Game();
+import('./account-menu.js?v=menu-account-20261009a').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => console.error('[ARENA] Account menu failed to load:', error));
