@@ -2127,7 +2127,7 @@ const leaveMine = () => {
     for (let gz = -7.5; gz <= 7.5; gz += 1.35) {
       const x = gx + Math.sin(gz * 2.7) * 0.22;
       const z = gz + Math.cos(gx * 2.1) * 0.18;
-      if (Math.hypot(x, z) > npcPz.radius - 0.45) continue;
+      if (Math.hypot(x, z) > npcPz.radius - 0.3) continue;
       const w = 1.15 + ((Math.abs(Math.sin(gx * 3.1 + gz)) * 0.35));
       const d = 0.92 + ((Math.abs(Math.cos(gz * 2.4 - gx)) * 0.28));
       const stone = new THREE.Mesh(
