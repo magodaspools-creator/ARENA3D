@@ -787,7 +787,10 @@ export class Enemy {
     if (!this.scorpion && !this.zombieSprite) this.root.rotation.y = this.facing;
     if (this.scorpion) setScorpionScreenDirection(this.model, mvx, mvz, g.camera);
     if (this.zombieSprite) setZombieScreenDirection(this.model, mvx, mvz, g.camera);
-    if (this.scorpion && typeof g.collision.groundHeight === 'function') {
+    // All desert rigs must follow the dune surface, not only the scorpion.
+    // Otherwise zombie/wisp GLBs stay at their spawn Y and become buried as
+    // they cross a ridge, leaving only their floating health bars visible.
+    if (typeof g.collision.groundHeight === 'function') {
       const terrainY = g.collision.groundHeight(this.pos.x, this.pos.z);
       if (Number.isFinite(terrainY)) this.pos.y = terrainY;
     }
