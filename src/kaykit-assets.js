@@ -406,7 +406,7 @@ export class KayKitEnvironment {
         if (edge && placed % 2 === 0) {
           const w = SkeletonUtils.clone(wall.scene);
           w.position.set(gx, this.groundY(gx, gz), gz);
-          w.rotation.y = !collision.inside(gx + step, gz, 0) ? Math.PI * 0.5 : 0;
+          w.rotation.y = !collision.inside(gx + stepX, gz, 0) ? Math.PI * 0.5 : 0;
           this.root.add(w);
           if (placed % 6 === 0) {
             const t = SkeletonUtils.clone(torch.scene);
