@@ -57,6 +57,19 @@ export class Collision {
     return o;
   }
 
+  // Rotated rectangle in world XZ. Extents are local to the prop before Y rotation.
+  addOrientedBox(x, z, halfX, halfZ, rotationY = 0, opts = {}) {
+    const o = {
+      type: 'orientedBox', x, z,
+      halfX: Math.max(0.05, halfX), halfZ: Math.max(0.05, halfZ),
+      rotationY,
+      enabled: opts.enabled ?? true,
+      projectiles: opts.projectiles ?? true,
+    };
+    this.obstacles.push(o);
+    return o;
+  }
+
   // Returns the highest nearby walkable surface that can be reached from the
   // current height in one movement step. The base ground is always Y=0.
   surfaceHeight(x, z, currentY = 0, maxStep = 0.35) {
@@ -164,6 +177,28 @@ export class Collision {
           if (d2 < min * min) {
             const d = Math.sqrt(d2) || 1e-4;
             nx = o.x + (ox / d) * min; nz = o.z + (oz / d) * min;
+          }
+        } else if (o.type === 'orientedBox') {
+          const dx = nx - o.x, dz = nz - o.z;
+          const cs = Math.cos(o.rotationY), sn = Math.sin(o.rotationY);
+          let lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+          const cx = clamp(lx, -o.halfX, o.halfX), cz = clamp(lz, -o.halfZ, o.halfZ);
+          const ox = lx - cx, oz = lz - cz, d2 = ox * ox + oz * oz;
+          if (d2 < r * r) {
+            if (d2 > 1e-8) {
+              const d = Math.sqrt(d2), push = r / d;
+              lx = cx + ox * push; lz = cz + oz * push;
+            } else {
+              const left = lx + o.halfX, right = o.halfX - lx;
+              const back = lz + o.halfZ, front = o.halfZ - lz;
+              const m = Math.min(left, right, back, front);
+              if (m === left) lx = -o.halfX - r;
+              else if (m === right) lx = o.halfX + r;
+              else if (m === back) lz = -o.halfZ - r;
+              else lz = o.halfZ + r;
+            }
+            nx = o.x + lx * cs + lz * sn;
+            nz = o.z - lx * sn + lz * cs;
           }
         } else {
           const cx = clamp(nx, o.minX, o.maxX), cz = clamp(nz, o.minZ, o.maxZ);
