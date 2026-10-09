@@ -255,6 +255,7 @@ export class KayKitEnvironment {
     this.torchPhase = Math.random() * 10;
     this.floorUnderlay = null;
     this.propColliders = [];
+    this.propInteractions = [];
     this.debugCollision = new URLSearchParams(location.search).get('debug') === 'colisao';
   }
 
@@ -326,6 +327,8 @@ export class KayKitEnvironment {
       }
     }
     this.propColliders.length = 0;
+    for (const item of this.propInteractions) this.game.interaction?.remove?.(item);
+    this.propInteractions.length = 0;
     if (this.floorUnderlay) {
       this.floorUnderlay.geometry?.dispose?.();
       const materials = Array.isArray(this.floorUnderlay.material) ? this.floorUnderlay.material : [this.floorUnderlay.material];
@@ -449,6 +452,16 @@ export class KayKitEnvironment {
           c.rotation.y = c.userData.arenaPropRotationY;
           this.root.add(c);
           this.registerSolidPropCollider(c, 'chest');
+          // These KayKit chests are decorative props without loot. Keep them
+          // distinct from gameplay chests that already own rewards/interactions.
+          const lockedChest = this.game.interaction?.add?.({
+            pos: c.position,
+            radius: 2.2,
+            height: c.position.y + 1.0,
+            label: 'Baú trancado',
+            onInteract: () => this.game.ui?.toast?.('Está trancado.'),
+          });
+          if (lockedChest) this.propInteractions.push(lockedChest);
         }
         if (placed % 107 === 0) {
           const b = SkeletonUtils.clone(banner.scene);
