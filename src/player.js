@@ -177,7 +177,12 @@ export class Player {
   }
 
   place(x, z, facing) {
-    this.pos.set(x, 0, z);
+    // Map 2 has procedural dunes above world Y=0. Place the character root on
+    // the same surface height used by enemies so the terrain cannot bury its body.
+    const groundY = Number.isFinite(this.game.collision.groundHeight?.(x, z))
+      ? this.game.collision.groundHeight(x, z)
+      : 0;
+    this.pos.set(x, groundY, z);
     this.facing = facing;
     this.root.rotation.y = facing;
     this.vel.set(0, 0, 0);
