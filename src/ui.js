@@ -421,12 +421,12 @@ export class UI {
           actions.appendChild(button);
         };
         if (mode === 'upgrade') {
-          makeButton(entry.actionLabel || 'Aprimorar', () => onUpgrade?.(entry.id));
+          makeButton(entry.actionLabel || 'Aprimorar', () => onUpgrade?.(entry.id, mode));
         } else if (mode === 'recycle') {
-          makeButton(entry.actionLabel || 'Reciclar 1', () => onRecycle?.(entry.id, 1));
-          if ((entry.owned || 0) > 1) makeButton('Reciclar tudo (' + entry.owned + ')', () => onRecycle?.(entry.id, entry.owned), true);
+          makeButton(entry.actionLabel || 'Reciclar 1', () => onRecycle?.(entry.id, 1, mode));
+          if ((entry.owned || 0) > 1) makeButton('Reciclar tudo (' + entry.owned + ')', () => onRecycle?.(entry.id, entry.owned, mode), true);
         } else {
-          makeButton(entry.actionLabel || 'Forjar', () => onCraft?.(entry.id));
+          makeButton(entry.actionLabel || 'Forjar', () => onCraft?.(entry.id, mode));
         }
         card.append(info, actions);
         this.el.forgeItems.appendChild(card);
