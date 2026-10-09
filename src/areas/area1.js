@@ -8,7 +8,7 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createForgeScene } from '../forge-scene.js';
+import { createForgeScene } from '../forge-scene.js?v=blacksmith-curved-roof-20261009c';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
