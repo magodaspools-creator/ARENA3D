@@ -1454,4 +1454,4 @@ class Game {
 }
 
 window.game = new Game();
-window.__arenaAccountMenuReady = import('./account-menu.js?v=name-validation-20261009b').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => { console.error('[ARENA] Account menu failed to load:', error); return null; });
+window.__arenaAccountMenuReady = import('./account-menu.js?v=db-name-rules-20261009c').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => { console.error('[ARENA] Account menu failed to load:', error); return null; });
