@@ -278,6 +278,7 @@ export class KayKitEnvironment {
     this.game.scene.add(this.root);
     this.ready = false;
     this.torchLights = [];
+    this.rankedTorchLights = [];
     this.torchPhase = Math.random() * 10;
     this.floorUnderlay = null;
     this.propColliders = [];
@@ -362,21 +363,27 @@ export class KayKitEnvironment {
     }
     while (this.root.children.length) this.root.remove(this.root.children[0]);
     this.torchLights.length = 0;
+    this.rankedTorchLights.length = 0;
     this.floorUnderlay = null;
   }
 
   update(dt, t) {
     if (!this.torchLights.length) return;
     const p = this.game.player?.pos;
-    const ranked = p ? this.torchLights
-      .map((item, i) => ({ item, i, d: (item.light.position.x - p.x) ** 2 + (item.light.position.z - p.z) ** 2 }))
-      .sort((a, b) => a.d - b.d) : [];
+    const ranked = this.rankedTorchLights;
+    if (p) {
+      for (let i = 0; i < ranked.length; i++) {
+        const item = ranked[i];
+        const dx = item.light.position.x - p.x, dz = item.light.position.z - p.z;
+        item.distanceSq = dx * dx + dz * dz;
+      }
+      ranked.sort((a, b) => a.distanceSq - b.distanceSq);
+      for (let i = 0; i < ranked.length; i++) ranked[i].rank = i;
+    }
     const activeCount = this.game.qualityName === 'alta' ? 6 : 4;
     for (let i = 0; i < this.torchLights.length; i++) {
       const item = this.torchLights[i];
-      const rank = ranked.findIndex((r) => r.i === i);
-      const active = !p || rank >= 0 && rank < activeCount;
-      item.light.visible = active;
+      item.light.visible = !p || item.rank < activeCount;
       const wave = Math.sin((t + item.phase) * 8.0) * 0.08 + Math.sin((t + item.phase) * 17.0) * 0.045;
       item.light.intensity = item.base + wave * item.base;
       item.light.position.y = item.y + Math.sin((t + item.phase) * 3.0) * 0.025;
@@ -541,7 +548,9 @@ export class KayKitEnvironment {
                 light.shadow.normalBias = 0.025;
               }
               this.root.add(light);
-              this.torchLights.push({ light, base: 8.5, y: light.position.y, phase: this.torchPhase + placed * 0.37 });
+              const torchRecord = { light, base: 8.5, y: light.position.y, phase: this.torchPhase + placed * 0.37, distanceSq: 0, rank: this.torchLights.length };
+              this.torchLights.push(torchRecord);
+              this.rankedTorchLights.push(torchRecord);
             }
           }
         }
