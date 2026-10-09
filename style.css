@@ -1607,7 +1607,7 @@ button:hover { filter: brightness(1.1); }
 /* Resource orbs flank the item action bar; combat abilities sit in a separate row below it. */
 #player-panel .resource-orbs { display: none; }
 #hp-orb, #mana-orb {
-  position: fixed;
+  position: fixed !important;
   bottom: 99px;
   z-index: 52;
   width: 58px;
@@ -1617,7 +1617,7 @@ button:hover { filter: brightness(1.1); }
 #mana-orb { left: calc(50% + 228px); }
 #action-bar { bottom: 88px; }
 #skills {
-  position: fixed;
+  position: fixed !important;
   left: 50%;
   top: auto;
   bottom: 12px;
