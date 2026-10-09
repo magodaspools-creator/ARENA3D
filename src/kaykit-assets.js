@@ -232,14 +232,36 @@ export async function loadKayKitEnemyRig(type, targetHeight = 2) {
   const scale = Math.max(0.01, targetHeight / h);
   model.scale.setScalar(scale);
   model.position.y = -box.min.y * scale;
-  model.rotation.y = Math.PI;
+  model.rotation.y = 0;
   model.updateMatrixWorld(true);
 
+  // Per-source-rig facing correction. The previous unconditional PI rotation
+  // flipped every enemy regardless of its authored forward axis.
+  const KAYKIT_RIG_FACING = {
+    skeletonMinion: 0,
+    skeletonMage: 0,
+    skeletonRogue: 0,
+    skeletonWarrior: 0,
+    knight: 0,
+    mage: 0,
+  };
   const root = new THREE.Group();
   root.name = 'KayKitEnemyRig';
-  root.add(model);
+  const facingCorrection = new THREE.Group();
+  facingCorrection.name = 'KayKitFacingCorrection_' + key;
+  facingCorrection.rotation.y = KAYKIT_RIG_FACING[key] ?? 0;
+  facingCorrection.add(model);
+  root.add(facingCorrection);
 
-  const rig = { root, model, animations };
+  if (new URLSearchParams(location.search).get('debug') === 'rigs') {
+    console.info('[ARENA][rig-facing]', {
+      enemyType: type, rig: key,
+      correctionRadians: facingCorrection.rotation.y,
+      correctionDegrees: Math.round(facingCorrection.rotation.y * 180 / Math.PI),
+    });
+  }
+
+  const rig = { root, model, animations, facingCorrection, rigKey: key };
   const animator = new GltfAnimator(rig);
   return { root, model, rig, animator };
 }
