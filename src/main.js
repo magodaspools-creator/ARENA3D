@@ -462,11 +462,10 @@ class Game {
     });
     this.ui.setAssetLoadingProgress?.(70, 'Inimigos carregados');
 
-    // Finish the shared asset cache serially, yielding between files so the
-    // browser can paint the progress indicator and process input.
-    await preloadKayKitAssetsSpaced((done, total, key) => {
-      this.ui.setAssetLoadingProgress?.(70 + Math.round(done / total * 20), 'Cache gráfico: ' + key);
-    });
+    // All assets needed by the current forest and the desert's shared enemy
+    // rigs are ready. Remaining optional assets are warmed in the background
+    // after play starts, one file per idle turn.
+    this.ui.setAssetLoadingProgress?.(88, 'Recursos dos próximos mapas preparados');
 
     // Warm the low-quality material programs before gameplay.
     // compileAsync is intentionally skipped for the expensive high tiers here.
@@ -760,7 +759,8 @@ class Game {
         const spawn = target.checkpoint || target.spawn;
         this.player.place(spawn.x, spawn.z, spawn.facing);
         this.rig.snap(this.player.pos);
-        await this.kaykitEnvironment?.rebuild?.();
+        // The forest's KayKit environment was retained while the desert was
+        // active. Reuse it instead of rebuilding hundreds of cloned tiles.
         this.area.onStart();
         this.saveWorldState();
         return target;
