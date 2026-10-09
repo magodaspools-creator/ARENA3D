@@ -257,6 +257,19 @@ export class KayKitEnvironment {
   }
 
   clear() {
+    // GLB clone geometry/materials are shared with the module asset cache and
+    // must remain alive. Dispose only per-rebuild resources owned by this root.
+    this.root.traverse((object) => {
+      if (object.isSprite && (object.name === 'MinimaTorchGlow' || object.name === 'MinimaCharacterHalo')) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) material?.dispose?.();
+      }
+    });
+    if (this.floorUnderlay) {
+      this.floorUnderlay.geometry?.dispose?.();
+      const materials = Array.isArray(this.floorUnderlay.material) ? this.floorUnderlay.material : [this.floorUnderlay.material];
+      for (const material of materials) material?.dispose?.();
+    }
     while (this.root.children.length) this.root.remove(this.root.children[0]);
     this.torchLights.length = 0;
     this.floorUnderlay = null;
