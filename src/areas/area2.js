@@ -852,6 +852,31 @@ export function createArea2(game) {
     },
 
     dispose() {
+      // Capture this area's roots before removing them so its private resources
+      // can be released without disposing shared forest/player/enemy assets.
+      const addedChildren = [...scene.children].filter((child) => !sceneBaseline.has(child));
+      const sharedGeometry = new Set();
+      const sharedMaterials = new Set();
+      const sharedTextures = new Set();
+      const collect = (root, geometries, materials, textures) => {
+        root?.traverse?.((object) => {
+          if (object.geometry) geometries.add(object.geometry);
+          const list = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of list) {
+            if (!material) continue;
+            materials.add(material);
+            for (const value of Object.values(material)) {
+              if (value?.isTexture) textures.add(value);
+            }
+            for (const uniform of Object.values(material.uniforms || {})) {
+              if (uniform?.value?.isTexture) textures.add(uniform.value);
+            }
+          }
+        });
+      };
+      for (const child of sceneBaseline) collect(child, sharedGeometry, sharedMaterials, sharedTextures);
+      collect(game.player?.root, sharedGeometry, sharedMaterials, sharedTextures);
+
       // Restore global presentation state changed only for the desert.
       if (oldBackground) scene.background = oldBackground;
       else scene.background = null;
@@ -865,9 +890,26 @@ export function createArea2(game) {
       for (const enemy of areaEnemies) enemy.dispose?.();
       game.enemies = game.enemies.filter((enemy) => !areaEnemies.includes(enemy));
 
-      for (const child of [...scene.children]) {
-        if (!sceneBaseline.has(child)) scene.remove(child);
+      const privateGeometry = new Set();
+      const privateMaterials = new Set();
+      const privateTextures = new Set();
+      for (const child of addedChildren) {
+        // KayKit enemy GLBs are shared through the module cache; Enemy.dispose()
+        // removes their instances, but their cached geometry/materials stay alive.
+        if (child.name?.startsWith('Enemy_')) continue;
+        collect(child, privateGeometry, privateMaterials, privateTextures);
       }
+      for (const geometry of privateGeometry) {
+        if (!sharedGeometry.has(geometry)) geometry.dispose?.();
+      }
+      for (const texture of privateTextures) {
+        if (!sharedTextures.has(texture)) texture.dispose?.();
+      }
+      for (const material of privateMaterials) {
+        if (!sharedMaterials.has(material)) material.dispose?.();
+      }
+
+      for (const child of addedChildren) scene.remove(child);
       game.ui.hideBoss();
       game.ui.hidePrompt();
       game.dialogue.close(false);
