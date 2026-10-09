@@ -108,7 +108,7 @@ export class CharacterState {
     const result = {};
     for (const slot of EQUIPMENT_SLOTS) {
       const level = Math.max(0, Math.min(5, Math.floor(Number(source?.[slot]) || 0)));
-      if (level && this.data?.equipment?.[slot]) result[slot] = level;
+      if (level) result[slot] = level;
     }
     return result;
   }
