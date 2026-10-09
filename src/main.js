@@ -1226,7 +1226,7 @@ class Game {
     if (mode === 'upgrade') {
       return Object.entries(character.equipment || {}).filter(([, id]) => !!getItem(id)?.equipment?.slot).map(([slot, id]) => {
         const item = getItem(id);
-        const level = character.getUpgradeLevel(slot);
+        const level = character.getUpgradeLevel(slot, id);
         const next = FORGE_UPGRADES[level];
         return {
           id: slot, name: item.name + ' · +' + level, description: item.description,
