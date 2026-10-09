@@ -1873,13 +1873,20 @@ const enterMine = () => {
     });
   });
 
-  game.schedule(0.9, () => {
+  const finishMineEntry = () => {
     if (mine.transitionToken !== token || game.state !== 'play') return;
+    // Shader warmup can take longer on low-end GPUs; keep the overlay up until
+    // the staged activation and compilation have both completed.
+    if (mine.loading) {
+      game.schedule(0.15, finishMineEntry);
+      return;
+    }
     game.ui.updateMapLoading?.(100, 'Pronto');
     game.ui.fade(false);
     game.ui.hideMapLoading?.();
     game.inputLocked = false;
-  });
+  };
+  game.schedule(0.9, finishMineEntry);
 };
 
 const leaveMine = () => {
