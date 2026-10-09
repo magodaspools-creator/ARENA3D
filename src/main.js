@@ -245,7 +245,7 @@ class Game {
       desert: {
         build: 'procedural dunes, oasis, caravan, temple, portals and Sun God boss',
         textures: 'no map-specific external texture files',
-        enemyRigsSharedWithForest: ['Skeleton_Rogue.glb', 'Skeleton_Mage.glb', 'Skeleton_Warrior.glb'],
+        enemyRigsSharedWithForest: ['Skeleton_Minion.glb', 'Skeleton_Rogue.glb', 'Skeleton_Mage.glb', 'Skeleton_Warrior.glb'],
       },
     });
     this.returnArea = null;
