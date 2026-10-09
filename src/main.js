@@ -542,7 +542,8 @@ class Game {
       this.enemies = [];
       const area2 = createArea2(this);
       this.area = area2;
-      this.kaykitEnvironment?.rebuild?.().catch((error) => console.warn('[ARENA] KayKit area rebuild failed.', error));
+      // The forest's KayKit tiles/underlay must never survive into the desert.
+      this.kaykitEnvironment?.clear?.();
       this.returnArea = this.startArea;
       const s = saved.checkpoint || area2.checkpoint || area2.spawn;
       this.player.place(s.x, s.z, s.facing);
@@ -748,6 +749,8 @@ class Game {
       build: async () => {
         const area2 = createArea2(this);
         this.area = area2;
+        // Discard forest-only KayKit tiles and underlay before revealing Map 2.
+        this.kaykitEnvironment?.clear?.();
         this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
         this.rig.snap(this.player.pos);
         this.area.onStart();
@@ -774,8 +777,11 @@ class Game {
         const spawn = target.checkpoint || target.spawn;
         this.player.place(spawn.x, spawn.z, spawn.facing);
         this.rig.snap(this.player.pos);
-        // The forest's KayKit environment was retained while the desert was
-        // active. Reuse it instead of rebuilding hundreds of cloned tiles.
+        // Rebuild the forest-only KayKit environment after the desert has
+        // disposed its collision/interaction additions and restored forest zones.
+        await this.kaykitEnvironment?.rebuild?.().catch((error) => {
+          console.warn('[ARENA] KayKit forest environment rebuild failed.', error);
+        });
         this.area.onStart();
         this.saveWorldState();
         return target;
