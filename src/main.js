@@ -764,7 +764,6 @@ class Game {
     void this.runMapTransition({
       title: 'FLORESTA DE VHAL',
       download: async () => {
-        if (this.mapAssetPreload) await this.mapAssetPreload;
         await preloadKayKitEnemyAssets();
       },
       build: async () => {
