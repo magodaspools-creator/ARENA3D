@@ -9,19 +9,29 @@ export const FORGE_UPGRADES = [
 
 export const FORGE_RECIPES = [
   {
+    id: 'reinforced_leggings', itemId: 'reinforced_leggings', name: 'Calças Reforçadas',
+    cost: 80, materials: { iron_scrap: 6 },
+    description: 'Equipamento confiável para explorar as ruínas.',
+  },
+  {
+    id: 'iron_buckler', itemId: 'iron_buckler', name: 'Broquel de Ferro',
+    cost: 100, materials: { iron_scrap: 8 },
+    description: 'Um escudo simples, reforçado na forja.',
+  },
+  {
     id: 'depths_edge', itemId: 'depths_edge', name: 'Lâmina das Profundezas',
     cost: 180, materials: { iron_scrap: 12, gorvak_fang: 1 },
-    description: 'Arma especial forjada com a presa de Gorvak.',
+    description: 'Arma especial forjada com a presa de Gorvak.', exclusive: true,
   },
   {
     id: 'morvhal_ward', itemId: 'morvhal_ward', name: 'Égide do Guardião Oco',
     cost: 240, materials: { iron_scrap: 10, wisp_essence: 5, morvhal_heart: 1 },
-    description: 'Proteção rara moldada pelo poder de Morvhal.',
+    description: 'Proteção rara moldada pelo poder de Morvhal.', exclusive: true,
   },
   {
     id: 'azhur_sunbow', itemId: 'azhur_sunbow', name: 'Arco da Brasa Eterna',
     cost: 320, materials: { iron_scrap: 8, moon_herb: 5, azhur_sun_ember: 1 },
-    description: 'Arco exclusivo criado com a última brasa de Azhur.',
+    description: 'Arco exclusivo criado com a última brasa de Azhur.', exclusive: true,
   },
 ];
 
