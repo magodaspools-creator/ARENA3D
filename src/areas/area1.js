@@ -1621,7 +1621,7 @@ const mineMiniboss = new MineBoss(game,126.5,143.0,{
     game.onBossDefeated({
       xp:320,
       gold:220,
-      loot:[{itemId:'iron_scrap',amount:8},{itemId:'hollow_core',amount:1}]
+      loot:[{itemId:'iron_scrap',amount:8},{itemId:'hollow_core',amount:1},{itemId:'gorvak_fang',amount:1}]
     },mineMiniboss.pos);
     game.schedule(0.5,()=>game.ui.hideBoss());
     game.ui.banner('PROFUNDEZAS LIMPA','Gorvak caiu. A caverna revelou o antigo cache dos mineiros.','victory',3.5);
@@ -2291,6 +2291,23 @@ const leaveMine = () => {
   merchant.setMarker(0xe8b95b);
   game.npcs.push(merchant);
 
+  const blacksmith = new NPC(game, {
+    name: 'Brom, o Ferreiro da Mina',
+    x: 16.0, z: 35.2, facing: -1.0,
+    look: { skin: 0x9a7257, body: 0x473b32, legs: 0x25221f, robe: 0x594337, hood: 0x302823, head: null, accent: 0xc78a43, npcRole: 'merchant' },
+    dialogue: () => ({
+      lines: [
+        'A entrada da mina é o melhor lugar para uma forja: aqui chegam os minérios e os restos dos monstros.',
+        'Posso aprimorar o equipamento que você veste. A têmpera pode falhar; nesse caso, o ouro e os fragmentos se perdem, mas não deixo uma peça quebrar.',
+        'Também reciclo itens da mochila, fabrico equipamentos por receita e trabalho com materiais raros dos bosses.',
+        'As peças exclusivas exigem troféus de Gorvak, Morvhal ou Azhur. Traga os materiais e a receita será sua.',
+      ],
+    }),
+    service: () => game.openForge({ npcName: 'Brom, o Ferreiro da Mina' }),
+  });
+  blacksmith.setMarker(0xd58a45);
+  game.npcs.push(blacksmith);
+
   game.interaction.add({
     pos: portalAnchor.position,
     radius: 3.0,
@@ -2554,7 +2571,7 @@ const leaveMine = () => {
       }
     },
     onDefeated: () => {
-      game.onBossDefeated({ xp: 500, gold: 250, loot: [{ itemId: 'hollow_core', amount: 1 }, { itemId: 'moon_ring', amount: 1 }] }, boss.pos);
+      game.onBossDefeated({ xp: 500, gold: 250, loot: [{ itemId: 'hollow_core', amount: 1 }, { itemId: 'moon_ring', amount: 1 }, { itemId: 'morvhal_heart', amount: 1 }] }, boss.pos);
       game.stats.bossTime = game.time - fightStart;
       localStorage.setItem(BOSS_KEY, String(+(localStorage.getItem(BOSS_KEY) || 0) + 1));
       prog.advance('return');
