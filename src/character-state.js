@@ -41,8 +41,9 @@ function fresh(vocation) {
 }
 
 export class CharacterState {
-  constructor(vocation) {
+  constructor(vocation, characterId = null) {
     this.vocation = vocation;
+    this.characterId = characterId || null;
     this.data = this.load();
   }
 
@@ -88,7 +89,7 @@ export class CharacterState {
   }
 
   get key() {
-    return `${STORAGE_PREFIX}.${this.vocation}`;
+    return `${STORAGE_PREFIX}.${this.characterId || this.vocation}`;
   }
 
   sanitizeEquipment(saved) {
