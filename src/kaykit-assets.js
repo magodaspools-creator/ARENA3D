@@ -579,12 +579,13 @@ export class KayKitEnvironment {
 
         // Keep the old grid/prop cadence and world positions; only the floor
         // surface changes from KayKit stone to grass outside designated zones.
-        const tilePosition = new THREE.Vector3(gx - floorCenter.x, this.groundY(gx, gz) + 0.035, gz - floorCenter.z);
+        const tilePosition = new THREE.Vector3(gx - floorCenter.x, this.groundY(gx, gz), gz - floorCenter.z);
         const stoneFloor = isStoneFloorAt(gx, gz);
         placed++;
         if (stoneFloor) {
           const tile = SkeletonUtils.clone(floor.scene);
           tile.position.copy(tilePosition);
+          tile.position.y += 0.035;
           this.root.add(tile);
           stoneTiles++;
         }
@@ -592,7 +593,7 @@ export class KayKitEnvironment {
         if (stoneFloor && placed % 29 === 0) {
           const r = SkeletonUtils.clone(grate.scene);
           r.position.copy(tilePosition);
-          r.position.y += 0.02;
+          r.position.y += 0.055;
           r.rotation.y = Math.PI * 0.5;
           this.root.add(r);
         }
@@ -634,6 +635,7 @@ export class KayKitEnvironment {
           const rr = SkeletonUtils.clone(rubble.scene);
           rr.position.copy(tilePosition);
           rr.rotation.y = (placed % 4) * Math.PI * 0.5;
+          rr.userData.arenaPropRotationY = rr.rotation.y;
           this.root.add(rr);
           this.registerSolidPropCollider(rr, 'rubble');
         }
