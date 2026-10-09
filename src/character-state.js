@@ -34,6 +34,7 @@ function fresh(vocation) {
     gold: 0,
     inventory: [],
     equipment: { ...(STARTER_EQUIPMENT[vocation] || {}) },
+    equipmentUpgrades: {},
     actionBar: Array(6).fill(null),
     deathDrops: [],
     progression: {},
@@ -60,6 +61,7 @@ export class CharacterState {
         xp: Math.max(0, Math.floor(saved.xp || 0)),
         gold: Math.max(0, Math.floor(saved.gold || 0)),
         equipment: this.sanitizeEquipment(saved),
+        equipmentUpgrades: this.sanitizeEquipmentUpgrades(saved.equipmentUpgrades),
         actionBar: this.sanitizeActionBar(saved.actionBar),
         inventory: Array.isArray(saved.inventory)
           ? saved.inventory
@@ -102,6 +104,29 @@ export class CharacterState {
     return { ...(STARTER_EQUIPMENT[this.vocation] || {}) };
   }
 
+  sanitizeEquipmentUpgrades(source) {
+    const result = {};
+    for (const slot of EQUIPMENT_SLOTS) {
+      const level = Math.max(0, Math.min(5, Math.floor(Number(source?.[slot]) || 0)));
+      if (level && this.data?.equipment?.[slot]) result[slot] = level;
+    }
+    return result;
+  }
+
+  getUpgradeLevel(slot) {
+    return Math.max(0, Math.min(5, Math.floor(Number(this.data.equipmentUpgrades?.[slot]) || 0)));
+  }
+
+  setUpgradeLevel(slot, level) {
+    if (!EQUIPMENT_SLOTS.includes(slot) || !this.data.equipment?.[slot]) return false;
+    this.data.equipmentUpgrades ||= {};
+    const next = Math.max(0, Math.min(5, Math.floor(Number(level) || 0)));
+    if (next) this.data.equipmentUpgrades[slot] = next;
+    else delete this.data.equipmentUpgrades[slot];
+    this.save();
+    return true;
+  }
+
   get level() { return this.data.level; }
   get equipment() { return this.data.equipment; }
   get xp() { return this.data.xp; }
@@ -138,8 +163,8 @@ export class CharacterState {
     const abilityCooldownScale = Math.max(0.85, 1 - levelBonus * 0.003);
 
     const equipment = this.equipment;
-    const equipmentBonus = Object.values(equipment).reduce((sum, id) => {
-      const bonus = id ? this.getEquipmentBonus(id) : {};
+    const equipmentBonus = Object.entries(equipment).reduce((sum, [slot, id]) => {
+      const bonus = id ? this.getEquipmentBonus(id, this.getUpgradeLevel(slot)) : {};
       for (const [key, value] of Object.entries(bonus)) sum[key] = (sum[key] || 0) + Number(value || 0);
       return sum;
     }, {});
@@ -167,10 +192,13 @@ export class CharacterState {
     };
   }
 
-  getEquipmentBonus(itemId) {
-    const item = this.data.equipment && itemId ? itemId : null;
-    const def = getItem(item);
-    return def?.stats || {};
+  getEquipmentBonus(itemId, upgradeLevel = 0) {
+    const def = getItem(itemId);
+    const stats = def?.stats || {};
+    const multiplier = 1 + Math.max(0, Math.min(5, Number(upgradeLevel) || 0)) * 0.08;
+    return Object.fromEntries(Object.entries(stats).map(([key, value]) => [
+      key, Number((Number(value || 0) * multiplier).toFixed(3)),
+    ]));
   }
 
   equip(itemId) {
@@ -182,6 +210,9 @@ export class CharacterState {
     const removed = this.removeItem(itemId, 1);
     if (!removed) return { ok: false, reason: 'missing' };
     this.data.equipment[slot] = itemId;
+    this.data.equipmentUpgrades ||= {};
+    // Upgrade levels belong to the equipped slot; changing the item resets that slot.
+    delete this.data.equipmentUpgrades[slot];
     if (previous) this.addItem(previous, 1, getItem(previous)?.maxStack || 1);
     this.save();
     return { ok: true, slot, previous };
@@ -195,6 +226,7 @@ export class CharacterState {
     const result = this.addItem(itemId, 1, def?.maxStack || 1);
     if (!result.added) return { ok: false, reason: 'inventory_full' };
     delete this.data.equipment[slot];
+    if (this.data.equipmentUpgrades) delete this.data.equipmentUpgrades[slot];
     this.save();
     return { ok: true, itemId };
   }
