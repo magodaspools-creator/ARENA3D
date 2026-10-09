@@ -19,6 +19,7 @@ export function createArea2(game) {
   const collisionZoneBaseline = collision.zones.length;
   const collisionObstacleBaseline = collision.obstacles.length;
   const interactionBaseline = game.interaction.items.length;
+  const npcBaseline = new Set(game.npcs);
   const areaEnemies = [];
 
   const ORIGIN = { x: 150, z: 0 };
@@ -883,6 +884,7 @@ export function createArea2(game) {
       for (const band of mirageBands) scene.remove(band);
       // Remove every Area 2 interaction and collision entry created after the snapshot.
       game.interaction.items.length = interactionBaseline;
+      game.npcs = game.npcs.filter((npc) => npcBaseline.has(npc));
       collision.zones.length = collisionZoneBaseline;
       collision.obstacles.length = collisionObstacleBaseline;
       collision.setGroundHeight(null);
