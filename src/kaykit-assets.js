@@ -392,7 +392,14 @@ export class KayKitEnvironment {
 
   async rebuild() {
     const collision = this.game.collision;
-    if (!collision?.zones?.length) return;
+    if (this.game.area?.name !== 'Floresta de Vhal' || !collision?.zones?.length) {
+      this.clear();
+      console.info('[ARENA] KayKit forest environment skipped outside Forest of Vhal.', {
+        area: this.game.area?.name || '(not set)',
+        underlay: false,
+      });
+      return;
+    }
     const [floor, grate, wall, pillar, torch, rubble, chest, banner] = await Promise.all([
       loadKayKitAsset('floor'),
       loadKayKitAsset('grate'),
@@ -404,6 +411,16 @@ export class KayKitEnvironment {
       loadKayKitAsset('banner'),
     ]);
 
+    // Assets load asynchronously. Re-check the active map after the await:
+    // a transition may have started while the forest GLBs were in flight.
+    if (this.game.area?.name !== 'Floresta de Vhal') {
+      this.clear();
+      console.info('[ARENA] KayKit forest environment load discarded after map transition.', {
+        area: this.game.area?.name || '(not set)',
+        underlay: false,
+      });
+      return;
+    }
     this.clear();
 
     if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') {
@@ -443,8 +460,15 @@ export class KayKitEnvironment {
       const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
       const underlay = new THREE.Mesh(
         new THREE.PlaneGeometry(width, depth),
-        new THREE.MeshBasicMaterial({ color: 0x18342d, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({
+          color: 0x18342d,
+          side: THREE.DoubleSide,
+          depthTest: true,
+          depthWrite: false,
+          transparent: false,
+        })
       );
+      underlay.name = 'KayKitForestFloorUnderlay';
       underlay.rotation.x = -Math.PI * 0.5;
       underlay.position.set(centerX, this.groundY(centerX, centerZ) - 0.12, centerZ);
       underlay.renderOrder = -5;
@@ -559,7 +583,20 @@ export class KayKitEnvironment {
 
     if (this.game.qualityName === 'minima' || this.game.qualityName === 'leve') simplifyKayKitMaterials(this.root);
     this.ready = true;
-    console.info('[ARENA] KayKit environment ready:', { tiles: placed, objects: this.root.children.length, torchLights: this.torchLights.length });
+    console.info('[ARENA] KayKit forest environment ready:', {
+      area: this.game.area?.name || '(not set)',
+      tiles: placed,
+      objects: this.root.children.length,
+      torchLights: this.torchLights.length,
+      underlay: this.floorUnderlay ? {
+        name: this.floorUnderlay.name,
+        color: '0x18342d (forest green)',
+        y: Number(this.floorUnderlay.position.y.toFixed(3)),
+        renderOrder: this.floorUnderlay.renderOrder,
+        depthWrite: this.floorUnderlay.material.depthWrite,
+        transparent: this.floorUnderlay.material.transparent,
+      } : false,
+    });
   }
 
   groundY(x, z) {
