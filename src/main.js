@@ -175,7 +175,7 @@ class Game {
     this.frame = 0;
     this.timers = [];
     this.hitstop = 0;
-    this.state = 'select';
+    this.state = 'menu';
     this.inputLocked = false;
     this.stats = { kills: 0, deaths: 0, damage: 0, start: 0, bossTime: 0 };
 
@@ -305,7 +305,29 @@ class Game {
       if (e.code === 'Escape' && (this.state === 'inventory' || this.state === 'profile')) this.closeOverlay();
       if (e.code === 'Escape' && this.state === 'shop') this.closeShop();
     });
-    this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+    document.getElementById('main-menu')?.classList.remove('hidden');
+    document.getElementById('select')?.classList.add('hidden');
+    document.getElementById('menu-new-game')?.addEventListener('click', () => {
+      document.getElementById('main-menu')?.classList.add('hidden');
+      this.state = 'select';
+      this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+    });
+    document.getElementById('menu-continue')?.addEventListener('click', () => {
+      this.showMenuMessage('Carregar jogo', 'O jogo ainda não salva todos os dados do personagem. O salvamento completo será implementado antes de habilitar a continuação de uma jornada.');
+    });
+    document.getElementById('menu-settings')?.addEventListener('click', () => this.openMainMenuSettings());
+    document.getElementById('menu-exit')?.addEventListener('click', () => {
+      this.showMenuMessage('Até a próxima', 'Você pode fechar esta aba do navegador quando quiser. O jogo não pode fechar a aba automaticamente por segurança.');
+    });
+    document.getElementById('menu-dialog-close')?.addEventListener('click', () => this.closeMenuDialog());
+    document.getElementById('menu-dialog-confirm')?.addEventListener('click', () => this.closeMenuDialog());
+    document.getElementById('menu-apply-settings')?.addEventListener('click', () => {
+      const quality = document.getElementById('menu-quality')?.value;
+      if (quality && QUALITY_CONFIG[quality]) this.setQuality(quality, 'menu');
+    });
+    const savedQuality = new URLSearchParams(location.search).get('qualidade') || this.qualityName;
+    const qualitySelect = document.getElementById('menu-quality');
+    if (qualitySelect && QUALITY_CONFIG[savedQuality]) qualitySelect.value = savedQuality;
     this.ui.setStartLoading?.(true);
     this.ui.setAssetLoadingProgress?.(0, 'Preparando gráficos...');
     this.fx.resize(renderer.getDrawingBufferSize(new THREE.Vector2()).y);
@@ -346,6 +368,34 @@ class Game {
     this.clock = new THREE.Clock();
     document.getElementById('loading').remove();
     renderer.setAnimationLoop(() => this.loop());
+  }
+
+  openMainMenuSettings() {
+    const dialog = document.getElementById('menu-dialog');
+    const options = document.getElementById('menu-settings-options');
+    const confirm = document.getElementById('menu-dialog-confirm');
+    const title = document.getElementById('menu-dialog-title');
+    const description = document.getElementById('menu-dialog-description');
+    if (!dialog || !options || !confirm) return;
+    title.textContent = 'Configurações';
+    description.textContent = 'Ajuste a qualidade gráfica para equilibrar desempenho e fidelidade visual.';
+    options.classList.remove('hidden');
+    confirm.classList.add('hidden');
+    dialog.classList.remove('hidden');
+  }
+
+  showMenuMessage(titleText, message) {
+    const dialog = document.getElementById('menu-dialog');
+    if (!dialog) return;
+    document.getElementById('menu-dialog-title').textContent = titleText;
+    document.getElementById('menu-dialog-description').textContent = message;
+    document.getElementById('menu-settings-options').classList.add('hidden');
+    document.getElementById('menu-dialog-confirm').classList.remove('hidden');
+    dialog.classList.remove('hidden');
+  }
+
+  closeMenuDialog() {
+    document.getElementById('menu-dialog')?.classList.add('hidden');
   }
 
   setupLights() {
@@ -1333,7 +1383,7 @@ class Game {
     this.input.endFrame();
 
     // Character-select remains responsive without continuously rasterizing the 3D world.
-    if (this.state === 'select') return;
+    if (this.state === 'select' || this.state === 'menu') return;
 
     if (this.state === 'play' && !this.autoPerfDone) {
       this.autoPerfElapsed += dt;
