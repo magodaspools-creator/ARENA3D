@@ -231,6 +231,23 @@ class Game {
     this.debugTransitions = new URLSearchParams(location.search).get('debug') === '1';
     this.mapAssetPreload = null;
     this._mapTransitionBusy = false;
+    if (this.debugTransitions) console.info('[ARENA] Map asset manifest', {
+      forest: {
+        build: 'procedural terrain, cemetery, ruins, boss arena, portals, NPCs',
+        kaykit: ['floor-tile.glb', 'floor-grate.glb', 'wall-broken.glb', 'pillar.glb', 'torch.glb', 'rubble.glb', 'chest.glb', 'banner.glb'],
+        enemyRigs: ['Skeleton_Minion.glb', 'Skeleton_Mage.glb', 'Skeleton_Rogue.glb', 'Skeleton_Warrior.glb'],
+      },
+      mine: {
+        build: 'prebuilt procedural cave geometry, props, lights and boss',
+        textures: ['assets/mine/spider-webs.svg', 'assets/mine/spider-cocoons.svg'],
+        enemyRigsSharedWithForest: ['Skeleton_Mage.glb', 'Skeleton_Minion.glb', 'Skeleton_Rogue.glb'],
+      },
+      desert: {
+        build: 'procedural dunes, oasis, caravan, temple, portals and Sun God boss',
+        textures: 'no map-specific external texture files',
+        enemyRigsSharedWithForest: ['Skeleton_Rogue.glb', 'Skeleton_Mage.glb', 'Skeleton_Warrior.glb'],
+      },
+    });
     this.returnArea = null;
     this.startArea = this.area;
     this.player = null;
@@ -726,7 +743,6 @@ class Game {
     void this.runMapTransition({
       title: 'DESERTO DO SOL SEPULTADO',
       download: async () => {
-        if (this.mapAssetPreload) await this.mapAssetPreload;
         await preloadKayKitEnemyAssets();
       },
       build: async () => {
