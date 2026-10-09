@@ -136,17 +136,66 @@ export async function installAccountMenu(game) {
     });
   }
 
+  function validateCharacterName(rawValue) {
+    const name = String(rawValue || '').trim();
+    if (!name) return { valid: false, message: 'Digite um nome para continuar.' };
+    if (name.length < 3) return { valid: false, message: 'Use pelo menos 3 caracteres.' };
+    if (name.length > 24) return { valid: false, message: 'O limite é de 24 caracteres.' };
+    if (/^\s|\s$/.test(String(rawValue))) return { valid: false, message: 'Não comece nem termine com espaço.' };
+    if (/\s{2,}/.test(name)) return { valid: false, message: 'Use apenas um espaço entre palavras.' };
+    if (!/^[\p{L}\p{M}\p{N}_ -]+$/u.test(name)) return { valid: false, message: 'Use só letras, números, espaço, _ ou -.' };
+    if (!/[\p{L}\p{N}]/u.test(name)) return { valid: false, message: 'Inclua ao menos uma letra ou número.' };
+    return { valid: true, message: 'Nome válido.' };
+  }
+
+  function updateCharacterNameStatus(rawValue, showEmpty = false) {
+    const input = document.getElementById('menu-character-name');
+    const icon = document.getElementById('menu-character-name-icon');
+    const feedback = document.getElementById('menu-character-name-feedback');
+    if (!input || !icon || !feedback) return validateCharacterName(rawValue);
+    const value = String(rawValue || '');
+    if (!value && !showEmpty) {
+      input.classList.remove('is-valid', 'is-invalid');
+      input.setAttribute('aria-invalid', 'false');
+      icon.textContent = '';
+      icon.className = 'menu-name-icon';
+      feedback.textContent = 'Use de 3 a 24 caracteres.';
+      feedback.className = 'menu-name-feedback';
+      return { valid: false, message: 'Digite um nome para continuar.' };
+    }
+    const result = validateCharacterName(value);
+    input.classList.toggle('is-valid', result.valid);
+    input.classList.toggle('is-invalid', !result.valid);
+    input.setAttribute('aria-invalid', String(!result.valid));
+    icon.textContent = result.valid ? '✓' : '×';
+    icon.className = 'menu-name-icon ' + (result.valid ? 'valid' : 'invalid');
+    feedback.textContent = result.message;
+    feedback.className = 'menu-name-feedback ' + (result.valid ? 'valid' : 'invalid');
+    return result;
+  }
+
   async function renderCreator(user) {
     const custom = openDialog('Criar personagem', `Conta conectada: ${user.user_metadata?.username || user.email}. Um novo personagem começa na Floresta de Vhal, no nível 1.`);
     const { VOCATIONS } = await import('./vocations.js');
     const options = Object.entries(VOCATIONS).map(([id, vocation]) => `<option value="${id}">${vocation.name} — ${vocation.title}</option>`).join('');
     custom.innerHTML = `<form id="menu-character-form" class="menu-auth-form">
-      <label>Nome do personagem<input name="name" minlength="3" maxlength="24" required autocomplete="off" placeholder="Nome do herói"></label>
+      <label>Nome do personagem
+        <div class="menu-name-field">
+          <input id="menu-character-name" name="name" minlength="3" maxlength="24" required autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Digite o nome do herói" aria-describedby="menu-character-name-feedback" aria-invalid="false">
+          <span id="menu-character-name-icon" class="menu-name-icon" aria-hidden="true"></span>
+        </div>
+        <span id="menu-character-name-feedback" class="menu-name-feedback" aria-live="polite">Use de 3 a 24 caracteres.</span>
+      </label>
       <label>Sexo<select name="gender"><option value="male">Masculino</option><option value="female">Feminino</option></select></label>
       <label>Vocação<select name="vocation">${options}</select></label>
       <p class="menu-auth-feedback" id="menu-character-feedback" role="status"></p>
       <button class="main-menu-btn primary" id="menu-character-submit" type="submit"><span>Criar e jogar</span><b>↗</b></button>
     </form>`;
+    const nameInput = custom.querySelector('#menu-character-name');
+    nameInput.addEventListener('input', () => updateCharacterNameStatus(nameInput.value));
+    nameInput.addEventListener('blur', () => {
+      if (nameInput.value) updateCharacterNameStatus(nameInput.value, true);
+    });
     custom.querySelector('#menu-character-form').addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -155,9 +204,12 @@ export async function installAccountMenu(game) {
       const name = form.elements.name.value.trim();
       const gender = form.elements.gender.value;
       const vocationId = form.elements.vocation.value;
-      if (name.length < 3 || name.length > 24) {
-        feedback.textContent = 'O nome precisa ter entre 3 e 24 caracteres.';
+      const nameCheck = validateCharacterName(name);
+      if (!nameCheck.valid) {
+        updateCharacterNameStatus(name, true);
+        feedback.textContent = nameCheck.message;
         feedback.className = 'menu-auth-feedback error';
+        form.elements.name.focus();
         return;
       }
       button.disabled = true;
