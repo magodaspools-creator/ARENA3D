@@ -183,6 +183,13 @@ export class Player {
       ? this.game.collision.groundHeight(x, z)
       : 0;
     this.pos.set(x, groundY, z);
+    if (this.game.area?.name === 'Deserto do Sol Sepultado') {
+      console.info('[ARENA] Player placed on desert terrain:', {
+        x: Number(x.toFixed(2)), z: Number(z.toFixed(2)),
+        groundY: Number(groundY.toFixed(3)),
+        area: this.game.area.name,
+      });
+    }
     this.facing = facing;
     this.root.rotation.y = facing;
     this.vel.set(0, 0, 0);
@@ -309,6 +316,11 @@ export class Player {
     } else {
       g.collision.move(this.pos, this.vel.x * dt, this.vel.z * dt, this.radius);
     }
+
+    // Keep the player's feet on the procedural desert surface as the character
+    // walks up/down dunes. Other maps have no dynamic ground-height provider.
+    const terrainY = g.collision.groundHeight?.(this.pos.x, this.pos.z);
+    if (Number.isFinite(terrainY)) this.pos.y = terrainY;
 
     // --- facing ---
     let want = null;
