@@ -278,7 +278,6 @@ class Game {
       if (e.code === 'Escape' && this.state === 'play') { e.preventDefault(); this.pauseGame(); return; }
       if (e.code === 'Escape' && this.state === 'pause-controls') { e.preventDefault(); this.showPauseMenu(); return; }
       if (e.code === 'Escape' && this.state === 'pause') { e.preventDefault(); this.resumeGame(); return; }
-      if (e.code === 'KeyH' && this.state === 'play') this.ui.toggleHelp();
 
       // Hidden admin testing tool: revive the optional mine boss without
       // resetting the character. This is intentionally gated by the same
