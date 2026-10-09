@@ -1811,6 +1811,7 @@ const enterMine = () => {
   game.inputLocked = true;
   game.ui.hidePrompt();
   game.ui.fade(true);
+  game.ui.showMapLoading?.('MINA ABANDONADA', 5, 'Ativando área subterrânea...');
 
   // Do not wake the whole mine in one synchronous turn. The scene geometry is
   // already built, so the safe optimization here is to stagger visibility and
@@ -1824,6 +1825,7 @@ const enterMine = () => {
     mine.active = true;
     mine.group.visible = true;
     mineKeeper.root.visible = true;
+    game.ui.updateMapLoading?.(28, 'Cenário da mina ativado');
 
     // Keep dynamic lights asleep for the first rendered mine frame. Static
     // geometry can appear immediately without also activating every PointLight.
@@ -1841,14 +1843,24 @@ const enterMine = () => {
     });
 
     // Frame 1 after the dungeon is visible: restore the mine lighting.
-    nextFrame(() => {
+    nextFrame(async () => {
       for (const light of mineLights) light.visible = true;
+      game.ui.updateMapLoading?.(48, 'Iluminação preparada');
+
+      // Compile while the transition overlay is still covering the scene.
+      try {
+        await game.renderer.compileAsync?.(game.scene, game.camera);
+      } catch (error) {
+        console.warn('[ARENA] Mine shader warmup skipped:', error);
+      }
+      game.ui.updateMapLoading?.(72, 'Shaders preparados');
 
       // Frame 2: wake the regular mine patrols.
       nextFrame(() => {
         for (const e of game.enemies) {
           if (e.group === 'mine' && !e.removed) e.root.visible = true;
         }
+        game.ui.updateMapLoading?.(86, 'Inimigos ativados');
 
         // Frame 3: wake the optional miniboss only after the regular patrols
         // are active. This avoids a second enemy/animation spike on the entry
@@ -1863,7 +1875,9 @@ const enterMine = () => {
 
   game.schedule(0.9, () => {
     if (mine.transitionToken !== token || game.state !== 'play') return;
+    game.ui.updateMapLoading?.(100, 'Pronto');
     game.ui.fade(false);
+    game.ui.hideMapLoading?.();
     game.inputLocked = false;
   });
 };
@@ -1873,9 +1887,11 @@ const leaveMine = () => {
   game.inputLocked = true;
   game.ui.hidePrompt();
   game.ui.fade(true);
+  game.ui.showMapLoading?.('FLORESTA DE VHAL', 8, 'Retornando à floresta...');
   ++mine.transitionToken;
   mine.loading = false;
   game.schedule(0.45, () => {
+    game.ui.updateMapLoading?.(72, 'Área da floresta restaurada');
     mine.active = false;
     mine.group.visible = false;
     mineKeeper.root.visible = false;
@@ -1890,7 +1906,9 @@ const leaveMine = () => {
     area.minimap.zones = surfaceMinimap.zones;
   });
   game.schedule(0.8, () => {
+    game.ui.updateMapLoading?.(100, 'Pronto');
     game.ui.fade(false);
+    game.ui.hideMapLoading?.();
     game.inputLocked = false;
   });
 };
