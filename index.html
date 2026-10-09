@@ -3,7 +3,14 @@
 <head>
   <meta charset="utf-8">
   <title>Ecos da Eternidade</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080b12">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icons/icon-192.svg">
+  <link rel="stylesheet" href="./pwa-mobile.css">
   <link rel="stylesheet" href="style.css?v=menu-capa-ux-20261009a">
   <link rel="icon" href="data:,">
   <script type="importmap">
@@ -12,6 +19,16 @@
 </head>
 <body>
   <div id="game"></div>
+  <div id="touch-controls" aria-label="Controles de toque">
+    <div id="touch-joystick" aria-label="Movimentação"><div id="touch-stick"></div></div>
+    <div id="touch-actions">
+      <button type="button" data-key="Space" class="touch-action touch-attack">ATACAR</button>
+      <button type="button" data-key="KeyQ" class="touch-action touch-ability">HABILIDADE</button>
+      <button type="button" data-key="ShiftLeft" class="touch-action touch-dash">ESQUIVA</button>
+      <button type="button" data-key="KeyR" class="touch-action touch-ultimate">ULTIMATE</button>
+      <button type="button" data-key="KeyE" class="touch-action touch-interact">INTERAGIR</button>
+    </div>
+  </div>
 
   <div id="ui">
     <div id="vignette"></div>
@@ -280,6 +297,7 @@
     <div id="loading">Carregando…</div>
   </div>
 
-  <script type="module" src="src/main.js?v=blacksmith-curved-roof-20261009c"></script>
+  <script src="./pwa-mobile.js" defer></script>
+  <script type="module" src="src/main.js?v=pwa-mobile-20261009a"></script>
 </body>
 </html>
