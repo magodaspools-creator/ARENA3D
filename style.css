@@ -1601,3 +1601,109 @@ button:hover { filter: brightness(1.1); }
   .tutorial-controls > div { min-height: 0; }
   #tutorial { padding: 10px; }
 }
+
+
+/* ---------- Bottom-center combat HUD layout ---------- */
+/* Resource orbs flank the item action bar; combat abilities sit in a separate row below it. */
+#player-panel .resource-orbs { display: none; }
+#hp-orb, #mana-orb {
+  position: fixed;
+  bottom: 99px;
+  z-index: 52;
+  width: 58px;
+  height: 58px;
+}
+#hp-orb { left: calc(50% - 286px); }
+#mana-orb { left: calc(50% + 228px); }
+#action-bar { bottom: 88px; }
+#skills {
+  position: fixed;
+  left: 50%;
+  top: auto;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  z-index: 51;
+}
+#skills .skill {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  padding: 0;
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(31,34,44,.97), rgba(6,8,14,.98));
+  border: 1px solid rgba(232,199,122,.48);
+  box-shadow: 0 4px 14px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.08);
+}
+#skills .skill .skill-icon {
+  font-size: 27px;
+  transition: filter .12s, opacity .12s;
+}
+#skills .skill .key {
+  top: 3px;
+  left: 4px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: rgba(0,0,0,.7);
+  font-size: 10px;
+}
+#skills .skill .label {
+  bottom: 3px;
+  font-size: 8px;
+  text-shadow: 0 1px 3px #000;
+}
+#skills .skill .cd {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: conic-gradient(rgba(0,0,0,.76) 0 var(--cd-progress, 0%), rgba(0,0,0,0) var(--cd-progress, 0%) 100%);
+  transform: rotate(-90deg);
+  transform-origin: center;
+  pointer-events: none;
+  transition: none;
+}
+#skills .skill.cooling .skill-icon {
+  filter: grayscale(1) brightness(.42);
+  opacity: .72;
+}
+#skills .skill.cooling {
+  border-color: rgba(145,151,165,.45);
+  box-shadow: inset 0 0 12px rgba(0,0,0,.45);
+}
+#skills .skill.ready .skill-icon {
+  filter: none;
+  opacity: 1;
+}
+#skills .ultimate-skill::before,
+#skills .ultimate-skill::after { z-index: 4; }
+@media (max-width: 700px) {
+  #action-bar {
+    bottom: 78px;
+    grid-template-columns: repeat(6, 50px);
+    gap: 4px;
+    padding: 4px;
+  }
+  #hp-orb, #mana-orb {
+    bottom: 88px;
+    width: 46px;
+    height: 46px;
+  }
+  #hp-orb { left: calc(50% - 231px); }
+  #mana-orb { left: calc(50% + 185px); }
+  #skills { bottom: 8px; gap: 5px; }
+  #skills .skill { width: 48px; height: 48px; min-width: 48px; }
+  #skills .skill .skill-icon { font-size: 22px; }
+  #skills .skill .label { display: none; }
+}
+@media (max-width: 390px) {
+  #hp-orb { left: 5px; }
+  #mana-orb { left: auto; right: 5px; }
+  #action-bar { grid-template-columns: repeat(6, minmax(0, 1fr)); width: min(316px, calc(100vw - 76px)); }
+  .action-slot { width: 100%; height: 44px; }
+  #skills .skill { width: 43px; height: 43px; min-width: 43px; }
+}
