@@ -26,6 +26,9 @@ export function createArea1(game) {
 
   // ---------- walkable space ----------
   collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
+  // East-side clearing for the blacksmith: expands the playable forest instead
+  // of placing the hut over the pre-existing rune stone at (10, 24).
+  collision.addRectZone(12, 30, 14, 34);
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
   // West route: this MUST overlap the main entrance and courtyard by area,
@@ -64,11 +67,17 @@ export function createArea1(game) {
     if (pd < 2.8) c.lerp(dirt, smooth(1 - pd / 2.8) * 0.85);
     if (x > -23 && x < 23 && z > -21 && z < 13.5) c.lerp(stone, 0.75);
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 16) c.lerp(stone, 0.85);
+    // A natural dirt clearing and short approach connect the new east-side forge
+    // to the entrance without covering the existing rune stone.
+    const forgeClearing = Math.hypot((x - 20.2) * 0.82, z - 23.2);
+    if (forgeClearing < 7.5) c.lerp(dirt, (1 - forgeClearing / 7.5) * 0.72);
+    if (x > 10 && x < 18 && z > 20.5 && z < 26.0) c.lerp(dirt, 0.48);
     const d = collision.sdf(x, z);
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
 
-  // Dedicated blacksmith hut at the east edge of the forest safe-zone approach.
+  // Dedicated blacksmith hut in a newly expanded east-side clearing.
+  // The original rune stone remains at (10, 24), outside the hut footprint.
   const forgeScene = createForgeScene(game);
 
   const decor = new Decor();
