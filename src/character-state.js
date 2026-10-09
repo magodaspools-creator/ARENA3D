@@ -106,23 +106,29 @@ export class CharacterState {
 
   sanitizeEquipmentUpgrades(source) {
     const result = {};
-    for (const slot of EQUIPMENT_SLOTS) {
-      const level = Math.max(0, Math.min(5, Math.floor(Number(source?.[slot]) || 0)));
-      if (level) result[slot] = level;
+    if (!source || typeof source !== 'object') return result;
+    for (const [key, value] of Object.entries(source)) {
+      if (!/^(head|armor|legs|boots|weapon|shield|amulet|ring):[a-z0-9_]+$/.test(key)) continue;
+      const level = Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
+      if (level) result[key] = level;
     }
     return result;
   }
 
-  getUpgradeLevel(slot) {
-    return Math.max(0, Math.min(5, Math.floor(Number(this.data.equipmentUpgrades?.[slot]) || 0)));
+  getUpgradeLevel(slot, itemId = this.data.equipment?.[slot]) {
+    if (!EQUIPMENT_SLOTS.includes(slot) || !itemId) return 0;
+    const key = slot + ':' + itemId;
+    return Math.max(0, Math.min(5, Math.floor(Number(this.data.equipmentUpgrades?.[key]) || 0)));
   }
 
   setUpgradeLevel(slot, level) {
-    if (!EQUIPMENT_SLOTS.includes(slot) || !this.data.equipment?.[slot]) return false;
+    const itemId = this.data.equipment?.[slot];
+    if (!EQUIPMENT_SLOTS.includes(slot) || !itemId) return false;
     this.data.equipmentUpgrades ||= {};
+    const key = slot + ':' + itemId;
     const next = Math.max(0, Math.min(5, Math.floor(Number(level) || 0)));
-    if (next) this.data.equipmentUpgrades[slot] = next;
-    else delete this.data.equipmentUpgrades[slot];
+    if (next) this.data.equipmentUpgrades[key] = next;
+    else delete this.data.equipmentUpgrades[key];
     this.save();
     return true;
   }
@@ -164,7 +170,7 @@ export class CharacterState {
 
     const equipment = this.equipment;
     const equipmentBonus = Object.entries(equipment).reduce((sum, [slot, id]) => {
-      const bonus = id ? this.getEquipmentBonus(id, this.getUpgradeLevel(slot)) : {};
+      const bonus = id ? this.getEquipmentBonus(id, this.getUpgradeLevel(slot, id)) : {};
       for (const [key, value] of Object.entries(bonus)) sum[key] = (sum[key] || 0) + Number(value || 0);
       return sum;
     }, {});
@@ -210,9 +216,6 @@ export class CharacterState {
     const removed = this.removeItem(itemId, 1);
     if (!removed) return { ok: false, reason: 'missing' };
     this.data.equipment[slot] = itemId;
-    this.data.equipmentUpgrades ||= {};
-    // Upgrade levels belong to the equipped slot; changing the item resets that slot.
-    delete this.data.equipmentUpgrades[slot];
     if (previous) this.addItem(previous, 1, getItem(previous)?.maxStack || 1);
     this.save();
     return { ok: true, slot, previous };
@@ -226,7 +229,6 @@ export class CharacterState {
     const result = this.addItem(itemId, 1, def?.maxStack || 1);
     if (!result.added) return { ok: false, reason: 'inventory_full' };
     delete this.data.equipment[slot];
-    if (this.data.equipmentUpgrades) delete this.data.equipmentUpgrades[slot];
     this.save();
     return { ok: true, itemId };
   }
