@@ -30,6 +30,8 @@ export class UI {
       worldMap: $('world-map-canvas'),
       worldMapOverlay: $('world-map'),
       worldMapClose: $('world-map-close'),
+      tutorial: $('tutorial'),
+      tutorialClose: $('tutorial-close'),
       pause: $('pause'), pauseControls: $('pause-controls'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
 
@@ -48,6 +50,7 @@ export class UI {
       ? new WorldMap({ canvas: this.el.worldMap, title: 'MAPA DE VHAL', subtitle: 'Cartografia da área atual' })
       : null;
     this.el.worldMapClose?.addEventListener('click', () => this.game.closeWorldMap?.());
+    this.el.tutorialClose?.addEventListener('click', () => this.closeTutorial());
   }
 
   // ---------- world anchored ----------
@@ -329,7 +332,7 @@ export class UI {
     }
     this.setProgress(character);
     this.setActionBar(character);
-    setTimeout(() => (this.el.help.style.opacity = 0.35), 25000);
+    this.showTutorialIfNeeded();
   }
   setUltimate(progress) {
     const el = this.el.skUltimate;
@@ -339,7 +342,19 @@ export class UI {
     el.classList.toggle('ready', pct >= 100);
   }
 
-  toggleHelp() { this.el.help.classList.toggle('hidden'); }
+  showTutorialIfNeeded() {
+    if (!this.el.tutorial) return;
+    let seen = false;
+    try { seen = localStorage.getItem('arena3d-controls-tutorial-seen') === '1'; } catch {}
+    if (!seen) this.el.tutorial.classList.remove('hidden');
+  }
+
+  closeTutorial() {
+    this.el.tutorial?.classList.add('hidden');
+    try { localStorage.setItem('arena3d-controls-tutorial-seen', '1'); } catch {}
+  }
+
+  toggleHelp() { this.el.help?.classList.toggle('hidden'); }
   showPause() { this.el.pause?.classList.remove('hidden'); }
   hidePause() { this.el.pause?.classList.add('hidden'); }
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
