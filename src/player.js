@@ -93,6 +93,7 @@ export class Player {
     this.maxMana = initialStats?.maxMana ?? 100;
     this.mana = this.maxMana;
     this.vel = new THREE.Vector3();
+    this._moveDir = new THREE.Vector3();
     this.facing = 0;
     this.attackCd = 0; this.abilityCd = 0; this.dashCd = 0;
     this.ultimateCharge = 0;
@@ -277,7 +278,7 @@ export class Player {
       if (input.down('KeyA') || input.down('ArrowLeft')) mx -= 1;
     }
     g.rig.forward(F); g.rig.right(R);
-    const dir = new THREE.Vector3().addScaledVector(F, mz).addScaledVector(R, mx);
+    const dir = this._moveDir.set(0, 0, 0).addScaledVector(F, mz).addScaledVector(R, mx);
     if (dir.lengthSq() > 0) dir.normalize();
 
     if (!locked && (input.wasPressed('ShiftLeft') || input.wasPressed('ShiftRight')) && this.dashCd <= 0) {
