@@ -312,8 +312,8 @@ class Game {
     });
     document.getElementById('main-menu')?.classList.remove('hidden');
     document.getElementById('select')?.classList.add('hidden');
-    document.getElementById('menu-new-game')?.addEventListener('click', () => window.dispatchEvent(new Event('arena:new-character')));
-    document.getElementById('menu-continue')?.addEventListener('click', () => window.dispatchEvent(new Event('arena:continue')));
+    document.getElementById('menu-new-game')?.addEventListener('click', async () => { await window.__arenaAccountMenuReady; window.dispatchEvent(new Event('arena:new-character')); });
+    document.getElementById('menu-continue')?.addEventListener('click', async () => { await window.__arenaAccountMenuReady; window.dispatchEvent(new Event('arena:continue')); });
     document.getElementById('menu-settings')?.addEventListener('click', () => this.openMainMenuSettings());
     document.getElementById('menu-exit')?.addEventListener('click', () => {
       this.showMenuMessage('Até a próxima', 'Você pode fechar esta aba do navegador quando quiser. O jogo não pode fechar a aba automaticamente por segurança.');
@@ -1454,4 +1454,4 @@ class Game {
 }
 
 window.game = new Game();
-import('./account-menu.js?v=menu-account-20261009a').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => console.error('[ARENA] Account menu failed to load:', error));
+window.__arenaAccountMenuReady = import('./account-menu.js?v=menu-account-20261009a').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => { console.error('[ARENA] Account menu failed to load:', error); return null; });
