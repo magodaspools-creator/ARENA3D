@@ -254,6 +254,54 @@ export class KayKitEnvironment {
     this.torchLights = [];
     this.torchPhase = Math.random() * 10;
     this.floorUnderlay = null;
+    this.propColliders = [];
+    this.debugCollision = new URLSearchParams(location.search).get('debug') === 'colisao';
+  }
+
+  registerSolidPropCollider(prop, kind) {
+    const collision = this.game.collision;
+    if (!collision?.addOrientedBox || !prop) return;
+    // Measure the final scaled model with no placement rotation first. The
+    // collision footprint uses these local dimensions plus the prop rotation.
+    prop.rotation.y = 0;
+    prop.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(prop);
+    if (box.isEmpty()) return;
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const margin = Math.min(0.18, Math.max(0.06, Math.min(size.x, size.z) * 0.08));
+    const halfX = Math.max(0.08, size.x * 0.5 - margin);
+    const halfZ = Math.max(0.08, size.z * 0.5 - margin);
+    const rotationY = prop.userData.arenaPropRotationY || 0;
+    const ox = center.x - prop.position.x, oz = center.z - prop.position.z;
+    const cs = Math.cos(rotationY), sn = Math.sin(rotationY);
+    const worldX = prop.position.x + ox * cs + oz * sn;
+    const worldZ = prop.position.z - ox * sn + oz * cs;
+    prop.rotation.y = rotationY;
+    prop.updateMatrixWorld(true);
+    const collider = collision.addOrientedBox(worldX, worldZ, halfX, halfZ, rotationY, { projectiles: true });
+    collider.arenaKayKitProp = kind;
+    this.propColliders.push(collider);
+
+    if (this.debugCollision) {
+      const debugGroup = new THREE.Group();
+      debugGroup.name = 'ARENA_CollisionDebug_' + kind;
+      debugGroup.position.copy(prop.position);
+      debugGroup.rotation.y = rotationY;
+      const geometry = new THREE.BoxGeometry(
+        Math.max(0.08, size.x - margin * 2), Math.max(0.12, size.y), Math.max(0.08, size.z - margin * 2)
+      );
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xff32d2, wireframe: true, transparent: true, opacity: 0.95,
+        depthTest: false, toneMapped: false,
+      });
+      const wire = new THREE.Mesh(geometry, material);
+      wire.position.set(ox, center.y - prop.position.y, oz);
+      wire.renderOrder = 999;
+      debugGroup.add(wire);
+      this.root.add(debugGroup);
+      collider.debugObject = debugGroup;
+    }
   }
 
   clear() {
@@ -265,6 +313,19 @@ export class KayKitEnvironment {
         for (const material of materials) material?.dispose?.();
       }
     });
+    for (const collider of this.propColliders) {
+      const index = this.game.collision?.obstacles?.indexOf(collider) ?? -1;
+      if (index >= 0) this.game.collision.obstacles.splice(index, 1);
+      if (collider.debugObject) {
+        collider.debugObject.traverse((object) => {
+          object.geometry?.dispose?.();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) material?.dispose?.();
+        });
+        collider.debugObject.parent?.remove(collider.debugObject);
+      }
+    }
+    this.propColliders.length = 0;
     if (this.floorUnderlay) {
       this.floorUnderlay.geometry?.dispose?.();
       const materials = Array.isArray(this.floorUnderlay.material) ? this.floorUnderlay.material : [this.floorUnderlay.material];
@@ -376,20 +437,26 @@ export class KayKitEnvironment {
         if (placed % 47 === 0) {
           const p = SkeletonUtils.clone(pillar.scene);
           p.position.copy(tile.position);
+          p.userData.arenaPropRotationY = 0;
           this.root.add(p);
+          this.registerSolidPropCollider(p, 'pillar');
         }
         if (placed % 83 === 0) {
           const c = SkeletonUtils.clone(chest.scene);
           c.position.copy(tile.position);
           c.position.y += 0.02;
-          c.rotation.y = (placed % 4) * Math.PI * 0.5;
+          c.userData.arenaPropRotationY = (placed % 4) * Math.PI * 0.5;
+          c.rotation.y = c.userData.arenaPropRotationY;
           this.root.add(c);
+          this.registerSolidPropCollider(c, 'chest');
         }
         if (placed % 107 === 0) {
           const b = SkeletonUtils.clone(banner.scene);
           b.position.copy(tile.position);
           b.position.y += 1.6;
+          b.userData.arenaPropRotationY = 0;
           this.root.add(b);
+          this.registerSolidPropCollider(b, 'banner');
         }
         if (placed % 61 === 0) {
           const rr = SkeletonUtils.clone(rubble.scene);
@@ -406,8 +473,10 @@ export class KayKitEnvironment {
         if (edge && placed % 2 === 0) {
           const w = SkeletonUtils.clone(wall.scene);
           w.position.set(gx, this.groundY(gx, gz), gz);
-          w.rotation.y = !collision.inside(gx + stepX, gz, 0) ? Math.PI * 0.5 : 0;
+          w.userData.arenaPropRotationY = !collision.inside(gx + stepX, gz, 0) ? Math.PI * 0.5 : 0;
+          w.rotation.y = w.userData.arenaPropRotationY;
           this.root.add(w);
+          this.registerSolidPropCollider(w, 'wall');
           if (placed % 6 === 0) {
             const t = SkeletonUtils.clone(torch.scene);
             t.position.copy(w.position);
