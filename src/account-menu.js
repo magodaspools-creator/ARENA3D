@@ -137,14 +137,16 @@ export async function installAccountMenu(game) {
   }
 
   function validateCharacterName(rawValue) {
+    // Keep this in sync with public.arena_characters_name_format and
+    // public.arena_characters_name_length in Supabase. Uppercase/lowercase
+    // letters and accents are allowed; digits and other punctuation are not.
     const name = String(rawValue || '').trim();
     if (!name) return { valid: false, message: 'Digite um nome para continuar.' };
     if (name.length < 3) return { valid: false, message: 'Use pelo menos 3 caracteres.' };
     if (name.length > 24) return { valid: false, message: 'O limite é de 24 caracteres.' };
-    if (/^\s|\s$/.test(String(rawValue))) return { valid: false, message: 'Não comece nem termine com espaço.' };
-    if (/\s{2,}/.test(name)) return { valid: false, message: 'Use apenas um espaço entre palavras.' };
-    if (!/^[\p{L}\p{M}\p{N}_ -]+$/u.test(name)) return { valid: false, message: 'Use só letras, números, espaço, _ ou -.' };
-    if (!/[\p{L}\p{N}]/u.test(name)) return { valid: false, message: 'Inclua ao menos uma letra ou número.' };
+    if (!/^[\\p{L}_ -]+$/u.test(name)) {
+      return { valid: false, message: 'Use apenas letras (maiúsculas ou minúsculas), espaços, _ ou -.' };
+    }
     return { valid: true, message: 'Nome válido.' };
   }
 
@@ -233,7 +235,14 @@ export async function installAccountMenu(game) {
         await launch(data, true);
       } catch (error) {
         console.error('[ARENA] Character creation failed:', error);
-        feedback.textContent = error?.message || 'Não foi possível criar o personagem.';
+        const constraint = error?.code === '23514' ? String(error?.message || '') : '';
+        if (constraint.includes('arena_characters_name_format')) {
+          feedback.textContent = 'Nome inválido. Use apenas letras, espaços, _ ou - (sem números).';
+        } else if (constraint.includes('arena_characters_name_length')) {
+          feedback.textContent = 'O nome precisa ter entre 3 e 24 caracteres.';
+        } else {
+          feedback.textContent = error?.message || 'Não foi possível criar o personagem.';
+        }
         feedback.className = 'menu-auth-feedback error';
         button.disabled = false;
       }
