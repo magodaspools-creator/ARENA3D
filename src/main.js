@@ -363,7 +363,7 @@ class Game {
       this.ui.hidePause();
       this.mapEditor.toggle(true);
     };
-    document.getElementById('pause-menu').onclick = () => this.returnToCharacterSelect();
+    document.getElementById('pause-menu').onclick = () => this.returnToMainMenu();
     document.getElementById('controls-back').onclick = () => this.showPauseMenu();
     document.getElementById('shop-cancel').onclick = () => this.closeShop();
 
@@ -1022,7 +1022,9 @@ class Game {
     this.ui.showPause();
   }
 
-  returnToCharacterSelect() {
+  returnToMainMenu() {
+    // Save the current world before leaving gameplay so a graphics-quality
+    // change (which reloads the page) does not discard progress.
     this.saveWorldState();
     if (this.area !== this.startArea) {
       this.area?.dispose?.();
@@ -1030,14 +1032,17 @@ class Game {
       this.returnEnemies = null;
       this.area = this.startArea;
     }
+
     this.ui.hidePauseControls();
     this.ui.hidePause();
     this.ui.hideInventory();
     this.ui.hideProfile();
     this.ui.hideShop();
     this.ui.closeWorldMap?.();
-    this.state = 'select';
-    this.inputLocked = false;
+    this.ui.hideSelect();
+    this.closeMenuDialog();
+
+    this.inputLocked = true;
     this.player?.dispose();
     this.player = null;
     this.character = null;
@@ -1046,7 +1051,12 @@ class Game {
     this.groundLoot = [];
     this.deathBackpacks = [];
     this.ui.el.hud.classList.add('hidden');
-    this.ui.showSelect(VOCATIONS, (id) => this.preview(id), (id) => this.start(id));
+
+    // Return to the new "Ecos da Eternidade" menu, not the legacy vocation
+    // picker. Settings here can reload the game with a lighter quality tier.
+    this.state = 'menu';
+    document.getElementById('select')?.classList.add('hidden');
+    document.getElementById('main-menu')?.classList.remove('hidden');
   }
 
   openShop({ npcName, stock = [] }) {
