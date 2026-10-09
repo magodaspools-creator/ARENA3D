@@ -113,7 +113,8 @@ export async function installAccountMenu(game) {
   }
 
   async function launch(character, isNew = false) {
-    const vocationId = Object.keys(window.game ? (await import('./vocations.js')).VOCATIONS : {}).find(id => (await import('./vocations.js')).VOCATIONS[id].name === character.vocation);
+    const { VOCATIONS } = await import('./vocations.js');
+    const vocationId = Object.keys(VOCATIONS).find(id => VOCATIONS[id].name === character.vocation);
     if (!vocationId) throw new Error('A vocação desse personagem não existe nesta versão do jogo.');
     await waitForGraphics();
     const gameState = character.game_state || {};
