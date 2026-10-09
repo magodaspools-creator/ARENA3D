@@ -1563,3 +1563,41 @@ button:hover { filter: brightness(1.1); }
 #quality-indicator { top: 8px; }
 #fps-counter { top: 27px; }
 #debug-counter { top: 46px; max-width: min(60vw, 520px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* First-session controls tutorial; replaces the persistent keyboard strip. */
+#help { display: none !important; }
+#tutorial {
+  position: fixed; inset: 0; z-index: 1200;
+  display: grid; place-items: center; padding: 18px;
+  background: rgba(5, 9, 7, .78); backdrop-filter: blur(5px);
+}
+#tutorial.hidden { display: none; }
+.tutorial-panel {
+  width: min(620px, 100%); max-height: min(88vh, 760px); overflow: auto;
+  padding: clamp(22px, 4vw, 34px); border: 1px solid rgba(232,199,122,.42);
+  border-radius: 16px; color: #e8e2d0;
+  background: linear-gradient(145deg, rgba(31,39,30,.98), rgba(12,18,14,.99));
+  box-shadow: 0 24px 80px rgba(0,0,0,.58);
+}
+.tutorial-kicker { color: #e8c77a; font-size: 11px; font-weight: 800; letter-spacing: .18em; }
+.tutorial-panel h2 { margin: 8px 0 6px; color: #f4dfad; font: 700 clamp(25px, 4vw, 34px) Georgia, serif; }
+.tutorial-panel p { margin: 0 0 20px; color: #aeb9a7; line-height: 1.5; }
+.tutorial-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.tutorial-controls > div {
+  display: flex; flex-direction: column; gap: 4px; min-height: 54px; padding: 10px 12px;
+  border: 1px solid rgba(210,220,192,.12); border-radius: 9px; background: rgba(255,255,255,.035);
+}
+.tutorial-controls b { color: #e8c77a; font-size: 12px; }
+.tutorial-controls span { color: #d0d5c8; font-size: 12px; line-height: 1.35; }
+#tutorial-close {
+  display: block; width: 100%; margin-top: 22px; padding: 13px 18px;
+  border: 1px solid #e8c77a; border-radius: 9px; background: #c9a65d;
+  color: #19180f; font-weight: 800; cursor: pointer;
+}
+#tutorial-close:hover { background: #efd38d; }
+@media (max-width: 520px) {
+  .tutorial-controls { grid-template-columns: 1fr; gap: 7px; }
+  .tutorial-controls > div { min-height: 0; }
+  #tutorial { padding: 10px; }
+}
