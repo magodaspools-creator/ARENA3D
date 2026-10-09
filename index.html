@@ -52,9 +52,27 @@
 
       <div id="toasts"></div>
 
-      <div id="help">
-        <b>WASD</b> mover · <b>Mouse</b> mirar · <b>LMB / Espaço</b> atacar · <b>Q</b> habilidade ·
-        <b>Shift</b> esquiva · <b>R</b> Ultimate · <b>E</b> interagir · <b>Botão direito + arrastar</b> girar câmera · <b>Scroll</b> zoom · <b>H</b> ajuda · <b>M</b> mapa · <b>I</b> inventário · <b>P</b> perfil
+      <div id="help" class="hidden" aria-hidden="true"></div>
+    </div>
+
+    <div id="tutorial" class="hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+      <div class="tutorial-panel">
+        <div class="tutorial-kicker">GUIA RÁPIDO</div>
+        <h2 id="tutorial-title">Como jogar</h2>
+        <p>Você está no controle. Use estas teclas para explorar, lutar e seguir a missão.</p>
+        <div class="tutorial-controls">
+          <div><b>W A S D</b><span>Mover o personagem</span></div>
+          <div><b>Mouse</b><span>Mirar e orientar ataques</span></div>
+          <div><b>Botão esquerdo / Espaço</b><span>Atacar</span></div>
+          <div><b>Q</b><span>Usar habilidade</span></div>
+          <div><b>Shift</b><span>Esquivar / dash</span></div>
+          <div><b>E</b><span>Interagir com NPCs e objetos</span></div>
+          <div><b>M</b><span>Abrir o mapa e localizar o objetivo atual</span></div>
+          <div><b>I</b><span>Abrir inventário</span></div>
+          <div><b>1–6</b><span>Usar a barra de ações</span></div>
+          <div><b>Botão direito + arrastar</b><span>Girar a câmera · Scroll para zoom</span></div>
+        </div>
+        <button id="tutorial-close" type="button">Entendi, vamos jogar</button>
       </div>
     </div>
 
