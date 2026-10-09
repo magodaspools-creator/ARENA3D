@@ -2293,7 +2293,9 @@ const leaveMine = () => {
 
   const blacksmith = new NPC(game, {
     name: 'Brom, o Ferreiro da Mina',
-    x: 16.0, z: 35.2, facing: -1.0,
+    // Keep Brom inside the actual entrance clearing's walkable zone.
+    // The previous x=16 position sat outside the entrance collision zone.
+    x: 8.5, z: 42.0, facing: -0.8,
     look: { skin: 0x9a7257, body: 0x473b32, legs: 0x25221f, robe: 0x594337, hood: 0x302823, head: null, accent: 0xc78a43, npcRole: 'merchant' },
     dialogue: () => ({
       lines: [
@@ -2313,9 +2315,17 @@ const leaveMine = () => {
     radius: 3.0,
     height: 3.2,
     label: 'Entrar no portal para o Deserto',
-    enabled: () => portal.active && prog.reached('portal'),
+    // Let the player inspect the awakened portal even before Maren
+    // authorizes the transition. This gives a clear next step instead of
+    // making the portal look broken.
+    enabled: () => portal.active,
     onInteract: () => {
-      if (!portal.active || !prog.reached('portal')) return;
+      if (!portal.active) return;
+      if (!prog.reached('portal')) {
+        game.ui.toast('O portal está desperto, mas o caminho ainda não foi liberado. Volte à entrada da floresta e fale com Maren, a Vigia.');
+        game.ui.banner('PORTAL SELADO', 'Reporte a derrota de Morvhal a Maren para liberar a passagem.', 'info', 4.5);
+        return;
+      }
       prog.advance('complete');
       game.enterArea2();
     },
