@@ -235,10 +235,28 @@ export async function installAccountMenu(game) {
         await launch(data, true);
       } catch (error) {
         console.error('[ARENA] Character creation failed:', error);
-        const constraint = error?.code === '23514' ? String(error?.message || '') : '';
-        if (constraint.includes('arena_characters_name_format')) {
+        const constraint = String(error?.message || '');
+        const nameInput = custom.querySelector('#menu-character-name');
+        const nameIcon = custom.querySelector('#menu-character-name-icon');
+        const nameFeedback = custom.querySelector('#menu-character-name-feedback');
+        if (error?.code === '23505' && constraint.includes('arena_characters_name_lower_unique')) {
+          // The database compares lower(name), so names differing only by
+          // uppercase/lowercase are duplicates too.
+          nameInput?.classList.remove('is-valid');
+          nameInput?.classList.add('is-invalid');
+          nameInput?.setAttribute('aria-invalid', 'true');
+          if (nameIcon) {
+            nameIcon.textContent = '×';
+            nameIcon.className = 'menu-name-icon invalid';
+          }
+          if (nameFeedback) {
+            nameFeedback.textContent = 'Esse nome já está em uso. Escolha outro.';
+            nameFeedback.className = 'menu-name-feedback invalid';
+          }
+          feedback.textContent = 'Esse nome já está em uso, mesmo que você mude maiúsculas e minúsculas.';
+        } else if (error?.code === '23514' && constraint.includes('arena_characters_name_format')) {
           feedback.textContent = 'Nome inválido. Use apenas letras, espaços, _ ou - (sem números).';
-        } else if (constraint.includes('arena_characters_name_length')) {
+        } else if (error?.code === '23514' && constraint.includes('arena_characters_name_length')) {
           feedback.textContent = 'O nome precisa ter entre 3 e 24 caracteres.';
         } else {
           feedback.textContent = error?.message || 'Não foi possível criar o personagem.';
