@@ -63,7 +63,7 @@ function resolveQuality() {
   const mobile = matchMedia('(max-width: 800px)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
   const gpu = detectGpuRenderer();
   if (isWeakGpu(gpu)) return { name: 'leve', explicit: false, reason: 'GPU fraca' };
-  if (mobile) return { name: 'baixa', explicit: false, reason: 'celular' };
+  if (mobile) return { name: 'leve', explicit: false, reason: 'celular' };
   return { name: 'media', explicit: false, reason: 'padrão' };
 }
 
