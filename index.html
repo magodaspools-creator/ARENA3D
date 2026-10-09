@@ -150,6 +150,28 @@
       </div>
     </div>
 
+    <div id="forge" class="hidden">
+      <div class="forge-panel">
+        <div class="forge-head">
+          <div>
+            <div class="forge-kicker">OFICINA DA MINA</div>
+            <div id="forge-title">Forja de Vhal</div>
+            <div id="forge-subtitle">Aprimore, recicle e crie equipamentos.</div>
+          </div>
+          <button id="forge-close" class="overlay-close" type="button" aria-label="Fechar ferreiro">×</button>
+        </div>
+        <div id="forge-tabs" class="forge-tabs" role="tablist" aria-label="Serviços do ferreiro">
+          <button type="button" data-forge-mode="upgrade" class="active">Aprimorar</button>
+          <button type="button" data-forge-mode="recycle">Reciclar</button>
+          <button type="button" data-forge-mode="recipes">Receitas</button>
+          <button type="button" data-forge-mode="exclusive">Exclusivos</button>
+        </div>
+        <div id="forge-feedback" aria-live="polite"></div>
+        <div id="forge-items"></div>
+        <div class="forge-footer"><span>Falha consome os materiais e o ouro da tentativa, mas não destrói nem rebaixa o equipamento.</span></div>
+      </div>
+    </div>
+
     <div id="inventory" class="hidden">
       <div class="inventory-panel">
         <div class="inventory-head">
