@@ -238,6 +238,11 @@ export function createForgeScene(game) {
   createForgeFloor(root);
 
   // Three walls only: the south (+Z) face stays open for a clear approach.
+  // Stone footings visually ground the timber walls into the forest terrain.
+  for (const x of [-2.72, 2.72]) {
+    addMesh(root, new THREE.BoxGeometry(0.28, 0.52, 4.58), MAT.stone, x, 0.28, -0.05);
+  }
+  addMesh(root, new THREE.BoxGeometry(5.58, 0.52, 0.28), MAT.stone, 0, 0.28, -2.22);
   for (const x of [-2.72, 2.72]) {
     addMesh(root, new THREE.BoxGeometry(0.22, 2.85, 4.55), MAT.wood, x, 1.45, -0.05);
     for (let y = 0.38; y < 2.6; y += 0.52) {
