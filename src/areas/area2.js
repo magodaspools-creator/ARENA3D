@@ -806,6 +806,7 @@ export function createArea2(game) {
         loot: [
           { itemId: 'hollow_core', amount: 1 },
           { itemId: 'moon_ring', amount: 1 },
+          { itemId: 'azhur_sun_ember', amount: 1 },
         ],
       }, desertBoss.pos);
       game.stats.bossTime = game.time - fightStart;
