@@ -220,8 +220,8 @@ export async function cloneKayKit(key) {
 }
 
 // Facing corrections are isolated from gameplay-facing/attack calculations.
-// KayKit skeleton assets use +Z as forward; the previous unconditional PI flip
-// caused the visible model to face away from its movement direction.
+// Start with no correction instead of the old unconditional PI flip; each rig
+// can be tuned independently after checking its rendered walk/attack direction.
 const KAYKIT_RIG_FACING = Object.freeze({
   skeletonMinion: 0,
   skeletonMage: 0,
@@ -248,8 +248,7 @@ export async function loadKayKitEnemyRig(type, targetHeight = 2) {
   model.rotation.y = 0;
   model.updateMatrixWorld(true);
 
-  // Per-source-rig facing correction. The previous unconditional PI rotation
-  // flipped every enemy regardless of its authored forward axis.
+  // Per-source-rig facing correction is applied only inside this visual wrapper.
   const root = new THREE.Group();
   root.name = 'KayKitEnemyRig';
   const facingCorrection = new THREE.Group();
