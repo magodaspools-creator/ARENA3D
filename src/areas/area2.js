@@ -405,49 +405,120 @@ export function createArea2(game) {
   caravan.position.set(171, 0, -30);
   scene.add(caravan);
 
-  const caravanWood = new THREE.MeshStandardMaterial({ color: 0x68452d, roughness: 0.95 });
-  const caravanCloth = new THREE.MeshStandardMaterial({ color: 0x8f6b3d, roughness: 1, side: THREE.DoubleSide });
-  const caravanMetal = new THREE.MeshStandardMaterial({ color: 0x8b6a3f, roughness: 0.65, metalness: 0.25 });
+  const caravanWood = new THREE.MeshStandardMaterial({ color: 0x513522, roughness: 0.92 });
+  const caravanWoodLight = new THREE.MeshStandardMaterial({ color: 0x92613a, roughness: 0.9 });
+  const caravanCloth = new THREE.MeshStandardMaterial({
+    color: 0x287e82, roughness: 0.95, side: THREE.DoubleSide,
+    emissive: 0x103638, emissiveIntensity: 0.18,
+  });
+  const caravanClothTorn = new THREE.MeshStandardMaterial({
+    color: 0xb65e36, roughness: 1, side: THREE.DoubleSide,
+  });
+  const caravanMetal = new THREE.MeshStandardMaterial({
+    color: 0xd3a84e, roughness: 0.55, metalness: 0.48,
+    emissive: 0x57340b, emissiveIntensity: 0.22,
+  });
+  const caravanSandMat = new THREE.MeshStandardMaterial({ color: 0xd9b76b, roughness: 1 });
 
-  const wagon = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.25, 2.0), caravanWood);
-  wagon.position.y = 0.65;
-  wagon.rotation.y = -0.2;
+  // A wrecked, partly buried merchant wagon: exposed timber, broken canopy,
+  // brass fittings and teal cloth make it read differently from desert rocks.
+  const wagon = new THREE.Mesh(new THREE.BoxGeometry(3.35, 0.42, 1.95), caravanWood);
+  wagon.position.set(0, 0.42, 0);
+  wagon.rotation.z = -0.09;
   caravan.add(wagon);
 
-  for (const x of [-1.25, 1.25]) {
-    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.12, 8, 16), caravanWood);
-    wheel.rotation.y = Math.PI / 2;
-    wheel.position.set(x, 0.6, -0.65);
-    caravan.add(wheel);
+  const wagonBed = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, 1.62), caravanWoodLight);
+  wagonBed.position.set(-0.06, 0.68, 0.02);
+  wagonBed.rotation.z = -0.09;
+  caravan.add(wagonBed);
+
+  // Raised side rails, with one broken rail leaning into the sand.
+  for (const z of [-0.82, 0.82]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 0.12), caravanWoodLight);
+    rail.position.set(-0.08, 0.9, z);
+    rail.rotation.z = -0.09;
+    caravan.add(rail);
+  }
+  for (const x of [-1.42, 1.34]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.72, 0.14), caravanWood);
+    post.position.set(x, 0.9, 0.0);
+    post.rotation.z = x > 0 ? -0.2 : 0.08;
+    caravan.add(post);
   }
 
-  const cloth = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.8, 0.12), caravanCloth);
-  cloth.position.set(0, 1.55, 0.55);
-  cloth.rotation.x = -0.35;
-  caravan.add(cloth);
+  // Wheels are sunk into the dune rather than sitting neatly on top.
+  for (const x of [-1.28, 1.22]) {
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.57, 0.13, 8, 18), caravanWood);
+    wheel.rotation.y = Math.PI / 2;
+    wheel.position.set(x, 0.34, -0.66);
+    wheel.rotation.z = x > 0 ? 0.22 : -0.12;
+    caravan.add(wheel);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 10), caravanMetal);
+    hub.rotation.z = Math.PI / 2;
+    hub.position.set(x + (x > 0 ? 0.08 : -0.08), 0.34, -0.66);
+    caravan.add(hub);
+  }
 
-  const buriedSand = new THREE.Mesh(
-    new THREE.ConeGeometry(2.0, 0.9, 7),
-    new THREE.MeshStandardMaterial({ color: 0xd9b76b, roughness: 1 })
-  );
-  buriedSand.position.set(0, 0.35, -0.2);
-  buriedSand.scale.set(1.5, 0.7, 0.8);
+  // Bent canopy poles and two torn, contrasting fabric panels.
+  for (const [x, z, lean] of [[-1.0, 0.18, -0.24], [0.45, 0.28, 0.16], [1.1, 0.22, 0.32]]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 2.15, 7), caravanWoodLight);
+    pole.position.set(x, 1.25, z);
+    pole.rotation.z = lean;
+    pole.rotation.x = z > 0.2 ? -0.18 : 0.12;
+    caravan.add(pole);
+  }
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.12, 1.62), caravanCloth);
+  canopy.position.set(-0.12, 2.05, 0.2);
+  canopy.rotation.z = -0.16;
+  canopy.rotation.x = -0.12;
+  caravan.add(canopy);
+  const tornCanopy = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.08, 1.18), caravanClothTorn);
+  tornCanopy.position.set(0.86, 1.87, 0.16);
+  tornCanopy.rotation.z = 0.35;
+  tornCanopy.rotation.x = 0.28;
+  caravan.add(tornCanopy);
+
+  // A broken axle and a half-buried sand drift sell the wrecked silhouette.
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 3.8, 8), caravanWood);
+  axle.rotation.z = Math.PI / 2;
+  axle.position.set(0, 0.28, -0.62);
+  caravan.add(axle);
+  const brokenBeam = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 0.16), caravanWoodLight);
+  brokenBeam.position.set(1.35, 0.58, 0.8);
+  brokenBeam.rotation.set(0.2, 0.18, -0.48);
+  caravan.add(brokenBeam);
+
+  const buriedSand = new THREE.Mesh(new THREE.ConeGeometry(2.0, 0.9, 7), caravanSandMat);
+  buriedSand.position.set(0.05, 0.25, -0.55);
+  buriedSand.scale.set(1.55, 0.72, 0.82);
   caravan.add(buriedSand);
+
+  // Distinctive brass sun emblem, visible from a distance without a heavy light.
+  const sunDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.13, 12), caravanMetal);
+  sunDisc.rotation.x = Math.PI / 2;
+  sunDisc.position.set(-0.15, 1.72, 0.98);
+  caravan.add(sunDisc);
+  const sunCore = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.22),
+    new THREE.MeshStandardMaterial({ color: 0xffd66b, emissive: 0xffa91f, emissiveIntensity: 1.15, metalness: 0.18 })
+  );
+  sunCore.position.set(-0.15, 1.72, 1.08);
+  caravan.add(sunCore);
 
   const shard = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.34),
     new THREE.MeshStandardMaterial({ color: 0xffcf5b, emissive: 0xf2a51a, emissiveIntensity: 1.8, metalness: 0.25 })
   );
-  shard.position.set(0, 2.25, 0.15);
+  shard.position.set(0, 2.55, 0.15);
   shard.visible = progression.reached('return');
   caravan.add(shard);
 
   const caravanHalo = new THREE.Mesh(
-    new THREE.RingGeometry(0.75, 1.05, 24),
-    new THREE.MeshBasicMaterial({ color: 0xffc44d, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+    new THREE.RingGeometry(1.15, 1.42, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffc44d, transparent: true, opacity: 0.62, side: THREE.DoubleSide })
   );
   caravanHalo.rotation.x = -Math.PI / 2;
-  caravanHalo.position.y = 0.06;
+  caravanHalo.position.y = 0.055;
   caravan.add(caravanHalo);
 
   const investigateCaravan = () => {
