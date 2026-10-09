@@ -540,10 +540,11 @@ class Game {
     if (saved?.area === 'area2') {
       this.returnEnemies = this.enemies;
       this.enemies = [];
+      // Clear forest props before Area 2 snapshots collision/interaction registries,
+      // so its dispose() baseline never counts stale forest-only entries.
+      this.kaykitEnvironment?.clear?.();
       const area2 = createArea2(this);
       this.area = area2;
-      // The forest's KayKit tiles/underlay must never survive into the desert.
-      this.kaykitEnvironment?.clear?.();
       this.returnArea = this.startArea;
       const s = saved.checkpoint || area2.checkpoint || area2.spawn;
       this.player.place(s.x, s.z, s.facing);
@@ -747,10 +748,10 @@ class Game {
         await preloadKayKitEnemyAssets();
       },
       build: async () => {
+        // Discard forest-only props before Area 2 snapshots its registry baselines.
+        this.kaykitEnvironment?.clear?.();
         const area2 = createArea2(this);
         this.area = area2;
-        // Discard forest-only KayKit tiles and underlay before revealing Map 2.
-        this.kaykitEnvironment?.clear?.();
         this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
         this.rig.snap(this.player.pos);
         this.area.onStart();
