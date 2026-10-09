@@ -28,7 +28,7 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
   // East-side clearing for the blacksmith: expands the playable forest instead
   // of placing the hut over the pre-existing rune stone at (10, 24).
-  collision.addRectZone(12, 30, 14, 34);
+  collision.addRectZone(12, 32, 14, 34);
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
   // West route: this MUST overlap the main entrance and courtyard by area,
@@ -67,16 +67,16 @@ export function createArea1(game) {
     if (pd < 2.8) c.lerp(dirt, smooth(1 - pd / 2.8) * 0.85);
     if (x > -23 && x < 23 && z > -21 && z < 13.5) c.lerp(stone, 0.75);
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 16) c.lerp(stone, 0.85);
-    // A natural dirt clearing and short approach connect the new east-side forge
-    // to the entrance without covering the existing rune stone.
-    const forgeClearing = Math.hypot((x - 20.2) * 0.82, z - 23.2);
-    if (forgeClearing < 7.5) c.lerp(dirt, (1 - forgeClearing / 7.5) * 0.72);
+    // A broader natural dirt clearing gives the enlarged east-side forge room
+    // without covering the existing rune stone.
+    const forgeClearing = Math.hypot((x - 21.5) * 0.82, z - 23.2);
+    if (forgeClearing < 10.5) c.lerp(dirt, (1 - forgeClearing / 10.5) * 0.72);
     if (x > 10 && x < 18 && z > 20.5 && z < 26.0) c.lerp(dirt, 0.48);
     const d = collision.sdf(x, z);
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
 
-  // Dedicated blacksmith hut in a newly expanded east-side clearing.
+  // Dedicated, doubled-size blacksmith hut in the east-side clearing.
   // The original rune stone remains at (10, 24), outside the hut footprint.
   const forgeScene = createForgeScene(game);
 
@@ -105,13 +105,17 @@ export function createArea1(game) {
   decor.pine(-25, 0, 8, 1.4, r);
   // Keep the former tree position at the grove doorway visually clear.
   // Its collision used to behave like an invisible barrier at the entrance.
+  // Keep the oversized rock cluster away from the enlarged forge footprint.
+  const forgeRockClear = (x, z, radius = 0) => Math.hypot(x - 21.5, z - 23.2) > 11.5 + radius;
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
+    if (!forgeRockClear(x, z, s)) continue;
     decor.rock(x, 0, z, s, r);
     collision.addCircle(x, z, s * 0.95);
   }
   for (let i = 0; i < 70; i++) {
     const x = -46 + r() * 92, z = -70 + r() * 124, d = collision.sdf(x, z);
-    if (d > 0.5 && d < 12) decor.rock(x, terrain.height(x, z), z, 0.4 + r() * 1.2, r, [0x4a4d52, 0x55585c, 0x3f4a42][Math.floor(r() * 3)]);
+    const rockScale = 0.4 + r() * 1.2;
+    if (d > 0.5 && d < 12 && forgeRockClear(x, z, rockScale)) decor.rock(x, terrain.height(x, z), z, rockScale, r, [0x4a4d52, 0x55585c, 0x3f4a42][Math.floor(r() * 3)]);
   }
   // grass + glowing mushrooms
   for (let i = 0; i < 1400; i++) {
