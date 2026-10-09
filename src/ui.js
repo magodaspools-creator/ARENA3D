@@ -33,6 +33,7 @@ export class UI {
       tutorial: $('tutorial'),
       tutorialClose: $('tutorial-close'),
       pause: $('pause'), pauseControls: $('pause-controls'),
+      forge: $('forge'), forgeTitle: $('forge-title'), forgeSubtitle: $('forge-subtitle'), forgeTabs: $('forge-tabs'), forgeFeedback: $('forge-feedback'), forgeItems: $('forge-items'), forgeClose: $('forge-close'),
       shop: $('shop'), shopTitle: $('shop-title'), shopSubtitle: $('shop-subtitle'), shopTabs: $('shop-tabs'), shopFeedback: $('shop-feedback'), shopItem: $('shop-item'), shopBuy: $('shop-buy'), shopClose: $('shop-close'), shopCancel: $('shop-cancel'),
 
     };
@@ -367,6 +368,96 @@ export class UI {
   hidePause() { this.el.pause?.classList.add('hidden'); }
   showPauseControls() { this.el.pauseControls?.classList.remove('hidden'); }
   hidePauseControls() { this.el.pauseControls?.classList.add('hidden'); }
+
+  showForge({ initialMode = 'upgrade', getEntries, onUpgrade, onRecycle, onCraft, onClose }) {
+    if (!this.el.forge || !this.el.forgeItems) return;
+    let mode = ['upgrade', 'recycle', 'recipes', 'exclusive'].includes(initialMode) ? initialMode : 'upgrade';
+    const labels = {
+      upgrade: ['Aprimoramento', 'Melhore os atributos de equipamentos que já estão equipados.'],
+      recycle: ['Reciclagem', 'Transforme itens da mochila em materiais de forja.'],
+      recipes: ['Receitas', 'Fabrique equipamentos usando ouro e materiais.'],
+      exclusive: ['Equipamentos exclusivos', 'Receitas especiais que exigem materiais obtidos de bosses.'],
+    };
+    const render = (nextMode = mode) => {
+      mode = nextMode;
+      const [title, subtitle] = labels[mode];
+      this.el.forgeTitle.textContent = title;
+      this.el.forgeSubtitle.textContent = subtitle;
+      this.el.forgeItems.replaceChildren();
+      const entries = getEntries?.(mode) || [];
+      if (!entries.length) {
+        const empty = document.createElement('div');
+        empty.className = 'forge-empty';
+        empty.textContent = mode === 'upgrade'
+          ? 'Equipe um item para aprimorá-lo.'
+          : mode === 'recycle'
+            ? 'Não há itens recicláveis na mochila.'
+            : 'Ainda não há receitas disponíveis.';
+        this.el.forgeItems.appendChild(empty);
+      }
+      for (const entry of entries) {
+        const card = document.createElement('div');
+        card.className = 'forge-item-card';
+        const info = document.createElement('div');
+        const name = document.createElement('div');
+        name.className = 'forge-item-name';
+        name.textContent = entry.name || entry.id;
+        const desc = document.createElement('div');
+        desc.className = 'forge-item-desc';
+        desc.textContent = entry.description || '';
+        const meta = document.createElement('div');
+        meta.className = 'forge-item-meta';
+        meta.textContent = entry.meta || '';
+        info.append(name, desc, meta);
+        const actions = document.createElement('div');
+        actions.className = 'forge-item-actions';
+        const makeButton = (label, callback, secondary = false) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'forge-action-btn' + (secondary ? ' secondary' : '');
+          button.textContent = label;
+          button.disabled = !!entry.disabled;
+          button.onclick = callback;
+          actions.appendChild(button);
+        };
+        if (mode === 'upgrade') {
+          makeButton(entry.actionLabel || 'Aprimorar', () => onUpgrade?.(entry.id));
+        } else if (mode === 'recycle') {
+          makeButton(entry.actionLabel || 'Reciclar 1', () => onRecycle?.(entry.id, 1));
+          if ((entry.owned || 0) > 1) makeButton('Reciclar tudo (' + entry.owned + ')', () => onRecycle?.(entry.id, entry.owned), true);
+        } else {
+          makeButton(entry.actionLabel || 'Forjar', () => onCraft?.(entry.id));
+        }
+        card.append(info, actions);
+        this.el.forgeItems.appendChild(card);
+      }
+      this.el.forgeTabs?.querySelectorAll('button').forEach((button) => {
+        button.classList.toggle('active', button.dataset.forgeMode === mode);
+      });
+    };
+    this.el.forgeTabs?.querySelectorAll('button').forEach((button) => {
+      button.onclick = () => {
+        this.el.forgeFeedback?.classList.remove('show', 'error');
+        render(button.dataset.forgeMode || 'upgrade');
+      };
+    });
+    this.el.forgeClose.onclick = onClose;
+    render(mode);
+    this.el.forge.classList.remove('hidden');
+  }
+
+  showForgeFeedback(message, error = false) {
+    const el = this.el.forgeFeedback;
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle('error', !!error);
+    el.classList.add('show');
+  }
+
+  hideForge() {
+    this.el.forge?.classList.add('hidden');
+    this.el.forgeFeedback?.classList.remove('show', 'error');
+  }
 
   showShop({ npcName, stock = [], sellStock = [], onBuy, onSell, onSellAllItem, onClose, onModeChange, initialMode = 'buy', initialScrollTop = 0 }) {
     if (!this.el.shop) return;
