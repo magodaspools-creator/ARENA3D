@@ -776,8 +776,11 @@ export class UI {
   }
   setCooldown(which, frac) {
     const el = { attack: this.el.skAttack, ability: this.el.skAbility, dash: this.el.skDash }[which];
-    el.firstChild.style.height = `${Math.max(0, Math.min(1, frac)) * 100}%`;
-    el.classList.toggle('ready', frac <= 0);
+    if (!el) return;
+    const remaining = Math.max(0, Math.min(1, Number(frac) || 0));
+    el.style.setProperty('--cd-progress', `${remaining * 100}%`);
+    el.classList.toggle('cooling', remaining > 0.001);
+    el.classList.toggle('ready', remaining <= 0.001);
   }
   hurtFlash() {
     this.el.vignette.classList.add('hurt');
