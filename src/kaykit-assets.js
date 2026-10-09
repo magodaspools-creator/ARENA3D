@@ -131,8 +131,8 @@ const idleTurn = () => new Promise((resolve) => {
 export async function preloadKayKitAssetsSpaced(onProgress = null) {
   const results = [];
   for (let i = 0; i < PRELOAD_KEYS.length; i++) {
-    await idleTurn();
     const key = PRELOAD_KEYS[i];
+    if (!loadPromises.has(kaykitPath(key))) await idleTurn();
     try {
       const asset = await loadKayKitAsset(key);
       // Force world matrices and bounds once while outside the transition.
@@ -156,8 +156,8 @@ export async function preloadKayKitAssetsSpaced(onProgress = null) {
 export async function preloadKayKitEnemyAssets(onProgress = null) {
   const results = [];
   for (let i = 0; i < ENEMY_ASSET_KEYS.length; i++) {
-    await idleTurn();
     const key = ENEMY_ASSET_KEYS[i];
+    if (!loadPromises.has(kaykitPath(key))) await idleTurn();
     try {
       results.push({ status: 'fulfilled', value: await loadKayKitAsset(key) });
     } catch (reason) {
