@@ -20,7 +20,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
-import { createArea1 } from './areas/area1.js?v=forge-east-clearing-stage1b-20261009';
+import { createArea1 } from './areas/area1.js?v=forge-hut-roof-fade-20261009';
 import { createArea2 } from './areas/area2.js';
 import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js';
 
