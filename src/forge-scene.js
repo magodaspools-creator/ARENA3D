@@ -301,7 +301,7 @@ export function createForgeScene(game) {
         const a = row * (cols + 1) + col;
         const b = a + 1, c = a + cols + 1, d = c + 1;
         if (side < 0) indices.push(a, c, b, b, c, d);
-        else indices.push(a, b, c, b, d, c);
+        else indices.push(a, c, b, b, c, d);
       }
     }
     const geometry = new THREE.BufferGeometry();
@@ -326,7 +326,7 @@ export function createForgeScene(game) {
     for (let z = -2.0; z <= 2.01; z += 0.82) {
       const offset = row % 2 ? 0.36 : 0;
       roofMeshes.push(addMesh(root, new THREE.BoxGeometry(1.34, 0.075, 0.76), row % 2 ? roofMaterialB : roofMaterialA,
-        x, 3.2 + Math.abs(x) * 0.27, z + offset, { rz: x < 0 ? -0.27 : 0.27 }));
+        x, 2.48 + (1 - Math.abs(x) / 3.0) * 1.36 + 0.075, z + offset, { rz: x < 0 ? -0.27 : 0.27 }));
     }
   }
   // Exposed front lintel and paired braces frame the open entrance.
