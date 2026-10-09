@@ -24,6 +24,7 @@ const PATHS = {
 };
 
 const loader = new GLTFLoader();
+const compareTorchDistance = (a, b) => a.distanceSq - b.distanceSq;
 
 let minimaHaloTexture = null;
 let minimaTorchGlowTexture = null;
@@ -377,7 +378,7 @@ export class KayKitEnvironment {
         const dx = item.light.position.x - p.x, dz = item.light.position.z - p.z;
         item.distanceSq = dx * dx + dz * dz;
       }
-      ranked.sort((a, b) => a.distanceSq - b.distanceSq);
+      ranked.sort(compareTorchDistance);
       for (let i = 0; i < ranked.length; i++) ranked[i].rank = i;
     }
     const activeCount = this.game.qualityName === 'alta' ? 6 : 4;
