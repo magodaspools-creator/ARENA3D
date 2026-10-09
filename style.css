@@ -1829,3 +1829,22 @@ button:hover { filter: brightness(1.1); }
   #main-menu .menu-backdrop, .game-brand { animation: none; }
   .main-menu-btn, .main-menu-btn b { transition: none; }
 }
+
+
+/* Menu account + character creation */
+.menu-dialog-custom, #menu-dialog-custom { width: 100%; }
+.menu-auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+.menu-auth-tabs button { border:1px solid rgba(255,255,255,.16); border-radius:7px; padding:10px; background:#15171b; color:#bfc3ca; font-weight:800; cursor:pointer; }
+.menu-auth-tabs button.active { border-color:#c9a65d; color:#f4d58c; background:#282115; }
+.menu-auth-form { display:flex; flex-direction:column; gap:12px; }
+.menu-auth-form label { display:flex; flex-direction:column; gap:6px; color:#d0d2d6; font-size:12px; font-weight:800; letter-spacing:.04em; }
+.menu-auth-form input, .menu-auth-form select { width:100%; box-sizing:border-box; padding:12px; border:1px solid #373b42; border-radius:7px; background:#080a0e; color:#f5f2eb; font:500 14px Inter, sans-serif; }
+.menu-auth-form input:focus, .menu-auth-form select:focus { outline:1px solid #c6a052; border-color:#c6a052; }
+.menu-auth-feedback { min-height:18px; margin:0; color:#d8bd8a; font-size:12px; line-height:1.45; overflow-wrap:anywhere; }
+.menu-auth-feedback.error { color:#f08f83; }
+.menu-character-list { display:flex; flex-direction:column; gap:8px; margin:14px 0; max-height:38vh; overflow:auto; }
+.menu-character-card { display:flex; flex-direction:column; gap:4px; width:100%; padding:13px; text-align:left; border:1px solid #373b42; border-radius:8px; background:#111419; color:#f3f0e8; cursor:pointer; }
+.menu-character-card:hover { border-color:#c6a052; background:#211b12; }
+.menu-character-card span { color:#a6aab1; font-size:12px; }
+.menu-character-list p { color:#b9bdc4; font-size:13px; }
+@media(max-width:560px) { #menu-dialog { padding:12px; } .menu-dialog-panel { max-height:88vh; overflow:auto; } }
