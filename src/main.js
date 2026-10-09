@@ -18,6 +18,7 @@ import { createHumanoid } from './models.js';
 import { VOCATIONS } from './vocations.js';
 import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
+import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js';
 import { createArea2 } from './areas/area2.js';
@@ -309,6 +310,7 @@ class Game {
       if (e.code === 'KeyP' && (this.state === 'play' || this.state === 'profile')) this.toggleProfile();
       if (e.code === 'Escape' && (this.state === 'inventory' || this.state === 'profile')) this.closeOverlay();
       if (e.code === 'Escape' && this.state === 'shop') this.closeShop();
+      if (e.code === 'Escape' && this.state === 'forge') this.closeForge();
     });
     document.getElementById('main-menu')?.classList.remove('hidden');
     document.getElementById('select')?.classList.add('hidden');
@@ -349,6 +351,7 @@ class Game {
     document.getElementById('inventory-close').onclick = () => this.closeOverlay();
     document.getElementById('profile-close').onclick = () => this.closeOverlay();
     document.getElementById('shop-close').onclick = () => this.closeShop();
+    document.getElementById('forge-close').onclick = () => this.closeForge();
     document.getElementById('pause-resume').onclick = () => this.resumeGame();
     document.getElementById('pause-controls-btn').onclick = () => this.showPauseControls();
     document.getElementById('map-editor-btn').onclick = () => {
@@ -1195,6 +1198,165 @@ class Game {
 
     render();
   }
+  openForge({ npcName = 'Ferreiro da Mina' } = {}) {
+    if (!this.character || this.player?.dead) return;
+    this.forgeNpcName = npcName;
+    this.state = 'forge';
+    this.inputLocked = true;
+    this.renderForge('upgrade');
+  }
+
+  renderForge(mode = 'upgrade', feedback = null, isError = false) {
+    if (!this.character || this.state !== 'forge') return;
+    this.forgeMode = ['upgrade', 'recycle', 'recipes', 'exclusive'].includes(mode) ? mode : 'upgrade';
+    this.ui.showForge({
+      initialMode: this.forgeMode,
+      getEntries: (activeMode) => this.getForgeEntries(activeMode),
+      onUpgrade: (slot, activeMode) => this.forgeUpgrade(slot, activeMode || this.forgeMode),
+      onRecycle: (itemId, quantity, activeMode) => this.forgeRecycle(itemId, quantity, activeMode || this.forgeMode),
+      onCraft: (recipeId, activeMode) => this.forgeCraft(recipeId, activeMode || this.forgeMode),
+      onClose: () => this.closeForge(),
+    });
+    if (feedback) this.ui.showForgeFeedback(feedback, isError);
+  }
+
+  getForgeEntries(mode = 'upgrade') {
+    const character = this.character;
+    if (!character) return [];
+    if (mode === 'upgrade') {
+      return Object.entries(character.equipment || {}).filter(([, id]) => !!getItem(id)?.equipment?.slot).map(([slot, id]) => {
+        const item = getItem(id);
+        const level = character.getUpgradeLevel(slot);
+        const next = FORGE_UPGRADES[level];
+        return {
+          id: slot, name: item.name + ' · +' + level, description: item.description,
+          meta: level >= 5 ? 'Nível máximo alcançado.' : 'Próximo nível: +' + (level + 1) + '\nChance de sucesso: ' + Math.round(next.chance * 100) + '%\nCusto: ' + next.cost + ' ouro · Fragmento de Ferro x' + next.iron,
+          actionLabel: level >= 5 ? 'Nível máximo' : 'Aprimorar +' + (level + 1),
+          disabled: level >= 5,
+        };
+      });
+    }
+    if (mode === 'recycle') {
+      const counts = new Map();
+      for (const slot of character.inventory) counts.set(slot.id, (counts.get(slot.id) || 0) + slot.qty);
+      return [...counts.entries()].map(([id, owned]) => {
+        const item = getItem(id);
+        const yields = FORGE_RECYCLE[id];
+        if (!item || item.category === 'quest' || item.sellable === false || !yields) return null;
+        const output = Object.entries(yields).map(([outId, amount]) => getItem(outId)?.name + ' x' + (amount * owned)).join(' · ');
+        return {
+          id, name: item.name + ' · na mochila: ' + owned, description: item.description,
+          meta: 'Reciclar 1: ' + Object.entries(yields).map(([outId, amount]) => getItem(outId)?.name + ' x' + amount).join(' · ') + '\nReciclar tudo: ' + output,
+          owned, actionLabel: 'Reciclar 1',
+        };
+      }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    }
+    const recipes = FORGE_RECIPES.filter((recipe) => mode === 'exclusive' ? recipe.exclusive : !recipe.exclusive);
+    return recipes.map((recipe) => {
+      const item = getItem(recipe.itemId);
+      const materialsText = Object.entries(recipe.materials).map(([id, qty]) => getItem(id)?.name + ' x' + qty).join(' · ');
+      const enoughMaterials = Object.entries(recipe.materials).every(([id, qty]) => character.getItemCount(id) >= qty);
+      const enoughGold = character.gold >= recipe.cost;
+      const hasSpace = character.inventory.length < 24;
+      return {
+        id: recipe.id, name: recipe.name, description: recipe.description,
+        meta: 'Custo: ' + recipe.cost + ' ouro\nMateriais: ' + materialsText + (recipe.exclusive ? '\nReceita exclusiva de boss' : ''),
+        actionLabel: character.inventory.some((slot) => slot.id === recipe.itemId) ? 'Forjar outra' : 'Forjar',
+        disabled: !item || !enoughMaterials || !enoughGold || !hasSpace,
+      };
+    });
+  }
+
+  forgeUpgrade(slot, mode = this.forgeMode) {
+    const character = this.character;
+    const itemId = character?.equipment?.[slot];
+    const item = getItem(itemId);
+    if (!character || !item?.equipment?.slot) return;
+    const level = character.getUpgradeLevel(slot);
+    const config = FORGE_UPGRADES[level];
+    if (!config) return this.renderForge(mode, 'Este equipamento já está no nível máximo.', true);
+    if (character.gold < config.cost) return this.renderForge(mode, 'Ouro insuficiente: são necessários ' + config.cost + ' ouro.', true);
+    if (character.getItemCount('iron_scrap') < config.iron) return this.renderForge(mode, 'Faltam Fragmentos de Ferro: são necessários ' + config.iron + '.', true);
+
+    character.removeItem('iron_scrap', config.iron);
+    character.spendGold(config.cost);
+    const success = Math.random() < config.chance;
+    if (success) character.setUpgradeLevel(slot, level + 1);
+    this.ui.setProgress(character);
+    this.ui.setInventory(character);
+    this.ui.setActionBar(character);
+    if (success) {
+      this.fx.ring(this.player.pos, 0xffc66b, 1.4, 0.7, 0.8);
+      this.renderForge(mode, 'Sucesso! ' + item.name + ' agora está no nível +' + (level + 1) + '.', false);
+    } else {
+      this.fx.ring(this.player.pos, 0xa45a43, 1.0, 0.45, 0.6);
+      this.renderForge(mode, 'A tentativa falhou. Os materiais e o ouro foram consumidos; o equipamento foi preservado.', true);
+    }
+  }
+
+  forgeRecycle(itemId, quantity = 1, mode = this.forgeMode) {
+    const character = this.character;
+    const item = getItem(itemId);
+    const yields = FORGE_RECYCLE[itemId];
+    const owned = character?.getItemCount(itemId) || 0;
+    const qty = Math.max(1, Math.min(owned, Math.floor(Number(quantity) || 1)));
+    if (!character || !item || item.category === 'quest' || item.sellable === false || !yields || !owned) {
+      return this.renderForge(mode, 'Esse item não pode ser reciclado ou não está mais na mochila.', true);
+    }
+    if (character.removeItem(itemId, qty) !== qty) return this.renderForge(mode, 'Não foi possível retirar os itens da mochila.', true);
+    const addedOutputs = [];
+    let success = true;
+    for (const [outputId, perItem] of Object.entries(yields)) {
+      const amount = perItem * qty;
+      const output = getItem(outputId);
+      const result = character.addItem(outputId, amount, output?.maxStack || 99);
+      addedOutputs.push({ id: outputId, amount: result.added });
+      if (result.remaining > 0) { success = false; break; }
+    }
+    if (!success) {
+      for (const output of addedOutputs) if (output.amount) character.removeItem(output.id, output.amount);
+      character.addItem(itemId, qty, item.maxStack || 99);
+      return this.renderForge(mode, 'Sem espaço para receber os materiais. Nenhum item foi perdido.', true);
+    }
+    const resultText = Object.entries(yields).map(([id, amount]) => getItem(id)?.name + ' x' + (amount * qty)).join(' · ');
+    this.ui.setInventory(character);
+    this.ui.setActionBar(character);
+    this.ui.setProgress(character);
+    this.renderForge(mode, 'Reciclagem concluída: ' + resultText + '.', false);
+  }
+
+  forgeCraft(recipeId, mode = this.forgeMode) {
+    const character = this.character;
+    const recipe = FORGE_RECIPES.find((entry) => entry.id === recipeId);
+    const item = recipe && getItem(recipe.itemId);
+    if (!character || !recipe || !item) return;
+    if (character.gold < recipe.cost) return this.renderForge(mode, 'Ouro insuficiente: são necessários ' + recipe.cost + ' ouro.', true);
+    const missing = Object.entries(recipe.materials).filter(([id, qty]) => character.getItemCount(id) < qty);
+    if (missing.length) return this.renderForge(mode, 'Materiais insuficientes: ' + missing.map(([id, qty]) => getItem(id)?.name + ' x' + qty).join(', ') + '.', true);
+    if (character.inventory.length >= 24) return this.renderForge(mode, 'Mochila cheia. Libere um espaço antes de forjar.', true);
+
+    for (const [id, qty] of Object.entries(recipe.materials)) character.removeItem(id, qty);
+    character.spendGold(recipe.cost);
+    const added = character.addItem(recipe.itemId, 1, item.maxStack || 1);
+    if (added.added !== 1) {
+      for (const [id, qty] of Object.entries(recipe.materials)) character.addItem(id, qty, getItem(id)?.maxStack || 99);
+      character.addGold(recipe.cost);
+      return this.renderForge(mode, 'A forja foi cancelada porque não havia espaço no inventário. Custos devolvidos.', true);
+    }
+    this.ui.setInventory(character);
+    this.ui.setActionBar(character);
+    this.ui.setProgress(character);
+    this.fx.ring(this.player.pos, 0xffc66b, 1.5, 0.8, 0.9);
+    this.renderForge(mode, 'Equipamento forjado: ' + item.name + '.', false);
+  }
+
+  closeForge() {
+    if (this.state !== 'forge') return;
+    this.ui.hideForge();
+    this.state = 'play';
+    this.inputLocked = false;
+  }
+
   openPotionShop({ npcName, itemId = 'red_potion', price = 20 }) {
     this.openShop({
       npcName,
