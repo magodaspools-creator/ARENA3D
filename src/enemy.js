@@ -561,9 +561,38 @@ export class Enemy {
       this.zombieSprite = false;
       this.scorpion = false;
       this.spider = false;
-      console.info('[ARENA] KayKit enemy visual ready:', type);
+      let meshCount = 0, skinnedMeshCount = 0, visibleMeshCount = 0;
+      const visualBox = new THREE.Box3().setFromObject(root);
+      const visualSize = visualBox.getSize(new THREE.Vector3());
+      root.traverse((object) => {
+        if (!object.isMesh) return;
+        meshCount++;
+        if (object.isSkinnedMesh) skinnedMeshCount++;
+        if (object.visible && object.material) visibleMeshCount++;
+      });
+      console.info('[ARENA] KayKit enemy rig loaded and attached:', {
+        enemyType: type,
+        rig: rig.rigKey,
+        loaded: true,
+        parent: root.parent?.name || this.root.name,
+        worldY: Number(this.root.position.y.toFixed(3)),
+        visualOffsetY: Number(rig.model.position.y.toFixed(3)),
+        height: Number(visualSize.y.toFixed(3)),
+        meshCount,
+        skinnedMeshCount,
+        visibleMeshCount,
+        fallbackReplaced: true,
+      });
     }).catch((error) => {
-      console.warn('[ARENA] KayKit enemy visual unavailable; keeping gameplay fallback.', type, error);
+      let fallbackMeshes = 0;
+      fallbackRoot?.traverse?.((object) => { if (object.isMesh) fallbackMeshes++; });
+      console.warn('[ARENA] KayKit enemy rig FAILED; keeping gameplay fallback.', {
+        enemyType: type,
+        loaded: false,
+        fallbackMeshes,
+        worldY: Number(this.root.position.y.toFixed(3)),
+        error,
+      });
     });
 
     this.mats = uniqueMaterials(this.root);
