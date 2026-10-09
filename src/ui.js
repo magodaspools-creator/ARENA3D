@@ -319,9 +319,15 @@ export class UI {
   // ---------- HUD ----------
   showHud(voc, character = null) {
     this.el.hud.classList.remove('hidden');
-    this.el.pname.innerHTML = `${voc.name}<small>${voc.title}</small>`;
+    const displayName = this.game.activeCharacterName || voc.name;
+    this.el.pname.textContent = '';
+    const nameEl = document.createElement('span');
+    nameEl.textContent = displayName;
+    const titleEl = document.createElement('small');
+    titleEl.textContent = voc.title;
+    this.el.pname.append(nameEl, titleEl);
     this.el.portrait.style.setProperty('--vc', voc.color);
-    this.el.portrait.textContent = voc.name[0];
+    this.el.portrait.textContent = displayName[0]?.toUpperCase() || voc.name[0];
     this.el.skAttack.querySelector('.label').textContent = voc.attack.name;
     this.el.skAbility.querySelector('.label').textContent = `${voc.ability.name}${voc.ability.manaCost ? ` · ${voc.ability.manaCost} MP` : ''}`;
     if (this.el.skUltimate) {
