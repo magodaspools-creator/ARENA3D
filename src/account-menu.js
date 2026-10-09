@@ -201,10 +201,11 @@ export async function installAccountMenu(game) {
       const form = event.currentTarget;
       const feedback = custom.querySelector('#menu-character-feedback');
       const button = custom.querySelector('#menu-character-submit');
-      const name = form.elements.name.value.trim();
+      const rawName = form.elements.name.value;
+      const name = rawName.trim();
       const gender = form.elements.gender.value;
       const vocationId = form.elements.vocation.value;
-      const nameCheck = validateCharacterName(name);
+      const nameCheck = validateCharacterName(rawName);
       if (!nameCheck.valid) {
         updateCharacterNameStatus(name, true);
         feedback.textContent = nameCheck.message;
