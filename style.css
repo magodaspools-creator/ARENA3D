@@ -1848,3 +1848,70 @@ button:hover { filter: brightness(1.1); }
 .menu-character-card span { color:#a6aab1; font-size:12px; }
 .menu-character-list p { color:#b9bdc4; font-size:13px; }
 @media(max-width:560px) { #menu-dialog { padding:12px; } .menu-dialog-panel { max-height:88vh; overflow:auto; } }
+
+
+/* Validação visual do nome do personagem */
+.menu-name-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.menu-auth-form .menu-name-field input {
+  padding-right: 46px;
+  border: 1px solid #424750;
+  box-shadow: 0 0 0 1px transparent;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.menu-auth-form .menu-name-field input.is-invalid {
+  border-color: #ed5b5b;
+  background: linear-gradient(90deg, rgba(110, 20, 25, .22), rgba(8, 10, 14, .96) 72%);
+  box-shadow: 0 0 0 1px rgba(237, 91, 91, .18), 0 0 13px rgba(237, 65, 65, .09);
+}
+.menu-auth-form .menu-name-field input.is-valid {
+  border-color: #42c982;
+  background: linear-gradient(90deg, rgba(14, 94, 53, .22), rgba(8, 10, 14, .96) 72%);
+  box-shadow: 0 0 0 1px rgba(66, 201, 130, .18), 0 0 13px rgba(40, 205, 120, .08);
+}
+.menu-auth-form .menu-name-field input.is-invalid:focus {
+  outline: 1px solid #ed5b5b;
+  border-color: #ed5b5b;
+}
+.menu-auth-form .menu-name-field input.is-valid:focus {
+  outline: 1px solid #42c982;
+  border-color: #42c982;
+}
+.menu-name-icon {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font: 800 17px/1 Arial, sans-serif;
+  pointer-events: none;
+}
+.menu-name-icon.invalid {
+  color: #ff7373;
+  background: rgba(237, 91, 91, .13);
+}
+.menu-name-icon.valid {
+  color: #54e59a;
+  background: rgba(66, 201, 130, .13);
+  font-size: 14px;
+}
+.menu-name-feedback {
+  display: block;
+  min-height: 16px;
+  margin-top: 1px;
+  color: #9ba1aa;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.menu-name-feedback.invalid { color: #ff7777; }
+.menu-name-feedback.valid { color: #5be39c; }
