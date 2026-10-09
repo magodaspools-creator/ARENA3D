@@ -91,6 +91,8 @@ export function createArea1(game) {
     if (d < 1.3 || d > 16) continue;
     if (x > -24 && x < 24 && z > -22 && z < 14.5) continue; // inside courtyard walls
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 18.5) continue;
+    // Keep the blacksmith clearing free of trees that can overlap the roof or entrance.
+    if (Math.hypot(x - 24.5, z - 23.2) < 14.5) continue;
     if (!farEnough(x, z, 1.5 + d * 0.08)) continue;
     trees.push([x, z]);
     decor.pine(x, terrain.height(x, z), z, 0.9 + r() * 0.9 + d * 0.03, r);
@@ -124,12 +126,14 @@ export function createArea1(game) {
     if (d > 7 || distToPath(x, z, PATH) < 2.2) continue;
     if (x > -23.5 && x < 23.5 && z > -21.5 && z < 14) continue;
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 17) continue;
+    if (Math.hypot(x - 24.5, z - 23.2) < 11.5) continue;
     decor.tuft(x, terrain.height(x, z), z, r);
   }
   for (let i = 0; i < 400; i++) {
     const x = -30 + r() * 60, z = -64 + r() * 112, d = collision.sdf(x, z);
     if (d < 0.5 || d > 4) continue;
     if (x > -24 && x < 24 && z > -22 && z < 14.5 && !(z > 12)) continue;
+    if (Math.hypot(x - 24.5, z - 23.2) < 11.5) continue;
     if (r() < 0.12) decor.mushrooms(x, terrain.height(x, z), z, r);
   }
 
