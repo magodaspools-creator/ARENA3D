@@ -52,6 +52,10 @@ export class UI {
       : null;
     this.el.worldMapClose?.addEventListener('click', () => this.game.closeWorldMap?.());
     this.el.tutorialClose?.addEventListener('click', () => this.closeTutorial());
+    $('tutorial-dismiss')?.addEventListener('click', () => this.closeTutorial());
+    $('tutorial')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.closeTutorial(); }
+    });
   }
 
   // ---------- world anchored ----------
