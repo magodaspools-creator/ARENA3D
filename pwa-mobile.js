@@ -2,20 +2,47 @@
   // Register on desktop and mobile, and check for a newer deployed worker whenever
   // the app is reopened or returns to the foreground.
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    let updatePending = false;
     let refreshingForUpdate = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshingForUpdate) return;
+
+    // Apply an update automatically, but never reload in the middle of gameplay.
+    const canReloadForUpdate = () => {
+      const hud = document.getElementById('hud');
+      const menu = document.getElementById('main-menu');
+      return !hud || hud.classList.contains('hidden') ||
+        (menu && !menu.classList.contains('hidden'));
+    };
+    const applyUpdateWhenSafe = () => {
+      if (!updatePending || refreshingForUpdate || !canReloadForUpdate()) return;
       refreshingForUpdate = true;
       window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      updatePending = true;
+      applyUpdateWhenSafe();
     });
+
     window.addEventListener('load', async () => {
+      const hud = document.getElementById('hud');
+      const menu = document.getElementById('main-menu');
+      if ('MutationObserver' in window) {
+        const observer = new MutationObserver(applyUpdateWhenSafe);
+        [hud, menu].filter(Boolean).forEach((node) => {
+          observer.observe(node, { attributes: true, attributeFilter: ['class'] });
+        });
+      }
       try {
-        const registration = await navigator.serviceWorker.register('./service-worker.js');
+        const registration = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
         await registration.update();
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') registration.update().catch(() => {});
         });
         window.addEventListener('focus', () => registration.update().catch(() => {}));
+        // A worker may already be waiting when the page opens.
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
       } catch (error) {
         console.warn('[PWA] Service worker registration/update failed:', error);
       }
