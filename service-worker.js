@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecos-arena-shell-v2';
+const CACHE_NAME = 'ecos-arena-shell-v3';
 const SHELL = [
   './',
   './index.html',
@@ -15,20 +15,34 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
-  event.respondWith(caches.match(request).then((cached) => {
-    if (cached) return cached;
-    return fetch(request).then((response) => {
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Network-first prevents installed copies from keeping old HTML/CSS/JS forever.
+  // Successful responses refresh the offline cache; cached files remain available offline.
+  event.respondWith(
+    fetch(request).then((response) => {
       if (response && response.ok) {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
       }
       return response;
-    }).catch(() => caches.match('./index.html'));
-  }));
+    }).catch(async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      if (request.mode === 'navigate') {
+        return (await caches.match('./index.html')) || Response.error();
+      }
+      return Response.error();
+    })
+  );
 });
