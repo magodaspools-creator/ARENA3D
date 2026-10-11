@@ -191,3 +191,25 @@ html:not(.has-touch-controls) .tutorial-controls-desktop,
 html:not(.has-touch-controls) .tutorial-intro-desktop { display: block; }
 html.has-touch-controls #tutorial .tutorial-controls { gap: 7px; }
 html.has-touch-controls #tutorial .tutorial-controls > div { grid-template-columns: minmax(112px, 38%) 1fr; }
+
+
+/* Keep the inventory launcher compact on touch devices; never inherit full-width button styles. */
+html.has-touch-controls #inventory-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: min(116px, 32vw);
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 7px 10px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+html.has-touch-controls #inventory-btn span {
+  margin-left: 4px;
+  font-size: 9px !important;
+}
