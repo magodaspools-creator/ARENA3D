@@ -401,3 +401,50 @@ html.has-touch-controls #quality-indicator {
   html.has-touch-controls #mana-orb { bottom: max(5px, env(safe-area-inset-bottom)); }
 }
 
+/* Landscape-first HUD: dock resources and item slots against the lower safe edge. */
+html.has-touch-controls .touch-action .touch-icon {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 700;
+  text-shadow: 0 2px 4px #000, 0 0 9px currentColor;
+  pointer-events: none;
+}
+html.has-touch-controls .touch-attack .touch-icon { font-size: 32px; color: #ffe0a0; }
+html.has-touch-controls .touch-ability .touch-icon { color: #e5d6ff; }
+html.has-touch-controls .touch-dash .touch-icon { font-size: 29px; color: #d8e8e6; }
+html.has-touch-controls .touch-ultimate .touch-icon { color: #d8c8ff; }
+html.has-touch-controls .touch-interact .touch-icon { font-size: 25px; color: #e5d7bd; }
+
+@media (orientation: landscape) and (max-width: 950px) {
+  html.has-touch-controls #action-bar {
+    bottom: max(5px, env(safe-area-inset-bottom)) !important;
+    width: min(228px, 30vw);
+    padding: 4px;
+    gap: 3px;
+  }
+  html.has-touch-controls #action-bar .action-slot {
+    height: 38px;
+  }
+  html.has-touch-controls #action-bar .action-slot .action-icon {
+    width: 29px;
+    height: 29px;
+  }
+  html.has-touch-controls #hp-orb,
+  html.has-touch-controls #mana-orb {
+    bottom: max(5px, env(safe-area-inset-bottom)) !important;
+    width: 36px;
+    height: 36px;
+  }
+  html.has-touch-controls #hp-orb { left: calc(50% - 151px); }
+  html.has-touch-controls #mana-orb { left: calc(50% + 115px); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  html.has-touch-controls #action-bar .action-slot { height: 34px; }
+  html.has-touch-controls #hp-orb,
+  html.has-touch-controls #mana-orb { width: 34px; height: 34px; }
+  html.has-touch-controls #hp-orb { left: calc(50% - 149px); }
+  html.has-touch-controls #mana-orb { left: calc(50% + 115px); }
+}
+
