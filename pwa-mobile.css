@@ -178,3 +178,16 @@ html.has-touch-controls .tutorial-dismiss {
   html.has-touch-controls #touch-actions { width: 48vw; }
   html.has-touch-controls .touch-attack { width: 72px; height: 72px; }
 }
+
+/* Tutorial is a modal: hide all gameplay touch controls while it is open. */
+html.has-touch-controls:has(#tutorial:not(.hidden)) #touch-controls { display: none !important; }
+html.has-touch-controls .tutorial-controls-mobile,
+html.has-touch-controls .tutorial-intro-mobile { display: block; }
+html.has-touch-controls .tutorial-controls-desktop,
+html.has-touch-controls .tutorial-intro-desktop { display: none; }
+html:not(.has-touch-controls) .tutorial-controls-mobile,
+html:not(.has-touch-controls) .tutorial-intro-mobile { display: none; }
+html:not(.has-touch-controls) .tutorial-controls-desktop,
+html:not(.has-touch-controls) .tutorial-intro-desktop { display: block; }
+html.has-touch-controls #tutorial .tutorial-controls { gap: 7px; }
+html.has-touch-controls #tutorial .tutorial-controls > div { grid-template-columns: minmax(112px, 38%) 1fr; }
