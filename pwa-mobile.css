@@ -245,3 +245,38 @@ html.has-touch-controls #inventory-btn span {
   line-height: 1 !important;
   margin-left: 3px !important;
 }
+
+
+/* Mobile HUD: hide the desktop quality badge and space touch actions clearly. */
+html.has-touch-controls #quality-indicator {
+  display: none !important;
+}
+
+@media (orientation: portrait) {
+  html.has-touch-controls #touch-actions {
+    width: min(48vw, 210px);
+    height: 220px;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  html.has-touch-controls .touch-attack {
+    width: 72px; height: 72px; right: 0; bottom: 0;
+  }
+  html.has-touch-controls .touch-ability {
+    width: 58px; height: 58px; right: 80px; bottom: 0;
+  }
+  html.has-touch-controls .touch-dash {
+    width: 48px; height: 48px; right: 44px; bottom: 75px;
+  }
+  html.has-touch-controls .touch-ultimate {
+    width: 50px; height: 50px; right: 0; bottom: 130px;
+  }
+  html.has-touch-controls .touch-interact {
+    width: 44px; height: 44px; right: 100px; bottom: 75px;
+  }
+}
+
+@media (max-height: 420px) and (orientation: landscape) {
+  html.has-touch-controls .touch-interact { right: 108px; }
+  html.has-touch-controls .touch-dash { right: 54px; }
+}
