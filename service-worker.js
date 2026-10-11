@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecos-arena-shell-v10';
+const CACHE_NAME = 'ecos-arena-shell-v11';
 const SHELL = [
   './',
   './index.html',
