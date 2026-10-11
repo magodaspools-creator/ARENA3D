@@ -121,8 +121,9 @@
       button.classList.add('pressed');
       if (key === 'Space' || key === 'KeyQ' || key === 'ShiftLeft' || key === 'KeyR' || key === 'KeyE') {
         // Combat actions are triggered by the game's existing keyboard input handlers.
+        // Keep the key down until pointerup. Some gameplay actions (especially
+        // attacks) are consumed by the game loop and miss an instantaneous tap.
         setKey(key, true);
-        if (key !== 'ShiftLeft') setKey(key, false);
       }
     });
     const release = (event) => { event.preventDefault(); button.classList.remove('pressed'); setKey(key, false); };
