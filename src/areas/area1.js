@@ -77,7 +77,7 @@ export function createArea1(game) {
   });
 
   // Grand blacksmith workshop in the expanded east-side clearing.
-  // The original rune stone remains at (10, 24), outside the hut footprint.
+  // Keep the rune stone's landmark and interaction clear of the blacksmith hut.
   const forgeScene = createForgeScene(game);
 
   const decor = new Decor();
@@ -2088,7 +2088,7 @@ const leaveMine = () => {
   // ---------- set pieces ----------
   const campfire = createCampfire(game, 0.1, 35.2);
   createSign(game, 2.8, 43.5, -0.4);
-  const runeStone = createRuneStone(game, 10, 24);
+  const runeStone = createRuneStone(game, 17, 42);
   // Hide the lever deeper in the ruined courtyard, beside the broken wall.
   const secretLever = createLever(game, 20.8, 8.6, -0.8);
   // The old chest used to sit outside the secret passage. It now lives inside
