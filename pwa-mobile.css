@@ -213,3 +213,35 @@ html.has-touch-controls #inventory-btn span {
   margin-left: 4px;
   font-size: 9px !important;
 }
+
+
+/* Hard cap for the mobile inventory launcher, regardless of generic button rules. */
+html.has-touch-controls #ui #inventory-btn,
+html.has-touch-controls #inventory-btn {
+  position: fixed !important;
+  top: max(10px, env(safe-area-inset-top)) !important;
+  right: max(10px, env(safe-area-inset-right)) !important;
+  bottom: auto !important;
+  left: auto !important;
+  display: inline-flex !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: 108px !important;
+  height: 30px !important;
+  min-height: 0 !important;
+  max-height: 30px !important;
+  padding: 5px 9px !important;
+  margin: 0 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  letter-spacing: .02em !important;
+  white-space: nowrap !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+html.has-touch-controls #ui #inventory-btn span,
+html.has-touch-controls #inventory-btn span {
+  font-size: 9px !important;
+  line-height: 1 !important;
+  margin-left: 3px !important;
+}
