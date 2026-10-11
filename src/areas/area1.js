@@ -8,7 +8,7 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createForgeScene } from '../forge-scene.js?v=blacksmith-rock-clearance-20261010a';
+import { createForgeScene } from '../forge-scene.js?v=blacksmith-west-rock-clearance-20261010b';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
@@ -109,7 +109,10 @@ export function createArea1(game) {
   // Its collision used to behave like an invisible barrier at the entrance.
   // Keep a wide, fully clear approach on the west/north sides of the forge.
   // The larger radius also removes the dense rock cluster visible beside the hut.
-  const forgeRockClear = (x, z, radius = 0) => Math.hypot(x - 24.5, z - 23.2) > 30.0 + radius;
+  const forgeRockClear = (x, z, radius = 0) => {
+    const westForgeClear = x > 5 - radius && x < 23.5 + radius && z > 10 - radius && z < 39 + radius;
+    return !westForgeClear && Math.hypot(x - 24.5, z - 23.2) > 18.0 + radius;
+  };
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
     if (!forgeRockClear(x, z, s)) continue;
     decor.rock(x, 0, z, s, r);
