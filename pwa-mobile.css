@@ -280,3 +280,124 @@ html.has-touch-controls #quality-indicator {
   html.has-touch-controls .touch-interact { right: 108px; }
   html.has-touch-controls .touch-dash { right: 54px; }
 }
+
+/* Gothic mobile combat dock: dark clawed life/mana vessels fused to the item bar. */
+@media (max-width: 700px) {
+  html.has-touch-controls #action-bar {
+    display: grid !important;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(228px, calc(100vw - 92px));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 3px;
+    padding: 5px;
+    border: 1px solid rgba(145, 112, 73, .82);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(35, 28, 27, .98), rgba(5, 7, 11, .99)),
+      #090b10;
+    box-shadow: 0 5px 18px #000d, inset 0 1px rgba(255, 220, 163, .13),
+      0 0 0 2px rgba(10, 10, 13, .92), 0 0 15px rgba(126, 37, 31, .18);
+    z-index: 94;
+  }
+  html.has-touch-controls #action-bar::before {
+    content: "";
+    position: absolute;
+    inset: -4px -7px;
+    border: 1px solid rgba(190, 150, 94, .24);
+    border-radius: 10px;
+    pointer-events: none;
+  }
+  html.has-touch-controls #action-bar .action-slot {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    border-radius: 4px;
+    border-color: rgba(177, 151, 117, .35);
+    background: linear-gradient(145deg, rgba(45, 43, 44, .98), rgba(8, 10, 15, .99));
+    box-shadow: inset 0 1px rgba(255,255,255,.07), inset 0 -2px rgba(0,0,0,.6);
+  }
+  html.has-touch-controls #action-bar .action-slot .action-icon {
+    width: 27px;
+    height: 27px;
+  }
+  html.has-touch-controls #hp-orb,
+  html.has-touch-controls #mana-orb {
+    position: fixed !important;
+    top: auto !important;
+    bottom: max(11px, env(safe-area-inset-bottom));
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+    overflow: visible;
+    border: 2px solid rgba(133, 119, 104, .95);
+    background: radial-gradient(circle at 35% 25%, #4a4140, #14151b 52%, #050609 80%);
+    box-shadow: 0 4px 12px #000d, inset 0 0 9px #000, 0 0 0 2px rgba(6,7,10,.9);
+    z-index: 95;
+  }
+  html.has-touch-controls #hp-orb { left: calc(50% - 158px); right: auto; border-color: #7d3739; }
+  html.has-touch-controls #mana-orb { left: calc(50% + 120px); right: auto; border-color: #354f7f; }
+  html.has-touch-controls #hp-orb::after,
+  html.has-touch-controls #mana-orb::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: 38% 48% 42% 48%;
+    border: 3px solid #252329;
+    background: linear-gradient(145deg, #4b4240, #17171d 55%, #08090d);
+    box-shadow: inset 0 0 0 1px rgba(210, 187, 151, .24), 0 2px 5px #000b;
+    clip-path: polygon(29% 5%, 43% 13%, 56% 3%, 66% 15%, 82% 10%, 86% 27%, 98% 37%, 86% 51%, 95% 67%, 78% 73%, 72% 94%, 56% 84%, 42% 98%, 32% 82%, 12% 86%, 15% 66%, 2% 53%, 15% 40%, 7% 22%, 25% 23%);
+    z-index: -1;
+    pointer-events: none;
+  }
+  html.has-touch-controls #hp-orb .orb-fill,
+  html.has-touch-controls #mana-orb .orb-fill {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    clip-path: circle(47% at 50% 50%);
+    opacity: .95;
+  }
+  html.has-touch-controls #hp-orb:before,
+  html.has-touch-controls #mana-orb:before {
+    inset: 3px;
+    border-color: rgba(245, 223, 190, .28);
+  }
+  html.has-touch-controls #hp-orb .orb-value,
+  html.has-touch-controls #mana-orb .orb-value {
+    font-size: 10px;
+    font-weight: 900;
+    text-shadow: 0 1px 4px #000, 0 0 5px #000;
+  }
+  html.has-touch-controls #hp-orb b,
+  html.has-touch-controls #mana-orb b {
+    bottom: 1px;
+    font-size: 6px;
+    letter-spacing: .7px;
+  }
+  html.has-touch-controls #hp-orb .orb-fill {
+    background: linear-gradient(180deg, #ff7970, #a51f32 65%, #4a101d);
+    box-shadow: 0 0 12px rgba(221, 35, 49, .62);
+  }
+  html.has-touch-controls #mana-orb .orb-fill {
+    background: linear-gradient(180deg, #8ed8ff, #2868c5 65%, #17264f);
+    box-shadow: 0 0 12px rgba(49, 126, 255, .62);
+  }
+}
+@media (max-width: 360px) {
+  html.has-touch-controls #action-bar { width: min(218px, calc(100vw - 92px)); }
+  html.has-touch-controls #action-bar .action-slot { height: 33px; }
+  html.has-touch-controls #hp-orb { left: calc(50% - 153px); }
+  html.has-touch-controls #mana-orb { left: calc(50% + 115px); }
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  html.has-touch-controls #action-bar {
+    bottom: max(5px, env(safe-area-inset-bottom));
+    width: 228px;
+  }
+  html.has-touch-controls #hp-orb,
+  html.has-touch-controls #mana-orb { bottom: max(5px, env(safe-area-inset-bottom)); }
+}
+
