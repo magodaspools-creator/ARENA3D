@@ -1,4 +1,27 @@
 (() => {
+  // Register on desktop and mobile, and check for a newer deployed worker whenever
+  // the app is reopened or returns to the foreground.
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    let refreshingForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshingForUpdate) return;
+      refreshingForUpdate = true;
+      window.location.reload();
+    });
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('./service-worker.js');
+        await registration.update();
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update().catch(() => {});
+        });
+        window.addEventListener('focus', () => registration.update().catch(() => {}));
+      } catch (error) {
+        console.warn('[PWA] Service worker registration/update failed:', error);
+      }
+    });
+  }
+
   const isTouch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
   if (!isTouch) return;
 
@@ -121,7 +144,4 @@
     [...active].forEach((key) => setKey(key, false));
     clearDirections();
   });
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch((error) => console.warn('[PWA] Service worker registration failed:', error)));
-  }
 })();
