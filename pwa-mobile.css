@@ -80,3 +80,101 @@ html.has-touch-controls .tutorial-panel { max-height: 88dvh; overflow: auto; }
   button, .skill, .action-slot { -webkit-tap-highlight-color: transparent; }
   #game, #ui, #touch-controls { -webkit-user-select: none; user-select: none; }
 }
+
+/* Mobile HUD refinement: keep the current objective readable without the full quest list. */
+html.has-touch-controls #objective {
+  top: max(58px, calc(env(safe-area-inset-top) + 48px));
+  right: max(12px, env(safe-area-inset-right));
+  left: auto;
+  width: min(48vw, 300px);
+  max-width: 48vw;
+  max-height: 24vh;
+  overflow: hidden;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: linear-gradient(110deg, rgba(8,10,14,.76), rgba(8,10,14,.42));
+  border: 1px solid rgba(232,199,122,.18);
+  font-size: 11px;
+  line-height: 1.3;
+  text-shadow: 0 1px 3px #000;
+}
+html.has-touch-controls #objective .otitle { font-size: 9px; letter-spacing: 2px; margin-bottom: 4px; }
+html.has-touch-controls #quest-timeline { display: none !important; }
+html.has-touch-controls #obj-hint { display: none; }
+html.has-touch-controls #inventory-btn {
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 95;
+  padding: 7px 10px;
+  border-radius: 20px;
+  font: 700 10px/1.1 system-ui, sans-serif;
+  letter-spacing: .04em;
+  box-shadow: 0 2px 9px #0008;
+  background: rgba(20,24,28,.82);
+  border: 1px solid rgba(232,199,122,.42);
+  color: #f2e5c5;
+}
+html.has-touch-controls #inventory-btn span { opacity: .65; }
+html.has-touch-controls #touch-actions { z-index: 92; }
+html.has-touch-controls .touch-attack {
+  width: clamp(76px, 12vw, 92px);
+  height: clamp(76px, 12vw, 92px);
+  right: 0;
+  bottom: 0;
+  font-size: 12px;
+  border-width: 2px;
+  box-shadow: 0 3px 12px #000b, inset 0 1px #ffffff26;
+}
+html.has-touch-controls .touch-ability { right: 82px; bottom: 2px; }
+html.has-touch-controls .touch-dash { right: 62px; bottom: 83px; }
+html.has-touch-controls .touch-ultimate { right: 0; bottom: 94px; }
+html.has-touch-controls .touch-interact { right: 112px; bottom: 83px; }
+html.has-touch-controls #tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  pointer-events: auto;
+}
+html.has-touch-controls #tutorial .tutorial-panel {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 24px 18px 18px;
+}
+html.has-touch-controls .tutorial-dismiss {
+  position: sticky;
+  top: 0;
+  float: right;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -10px -6px 4px 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(232,199,122,.38);
+  background: rgba(255,255,255,.07);
+  color: #e8e2d4;
+  box-shadow: none;
+  font: 400 22px/1 system-ui, sans-serif;
+  letter-spacing: 0;
+}
+@media (orientation: portrait) {
+  html.has-touch-controls #objective {
+    width: min(56vw, 240px);
+    max-width: 56vw;
+    top: max(54px, calc(env(safe-area-inset-top) + 46px));
+    max-height: 22vh;
+  }
+  html.has-touch-controls #touch-actions { width: 48vw; }
+  html.has-touch-controls .touch-attack { width: 72px; height: 72px; }
+}
