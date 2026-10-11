@@ -522,3 +522,41 @@ html.has-touch-controls #touch-controls > .touch-interact .touch-label {
     height: 50px;
   }
 }
+
+
+/* Dark-fantasy resource gauntlets: lower mobile HUD and enlarge both orbs. */
+@media (orientation: landscape) {
+  html.has-touch-controls #action-bar { bottom: max(2px, env(safe-area-inset-bottom)) !important; }
+  html.has-touch-controls #hp-orb, html.has-touch-controls #mana-orb {
+    bottom: max(2px, env(safe-area-inset-bottom)) !important;
+    width: 58px !important; height: 58px !important; border-width: 3px; border-radius: 50%; z-index: 96;
+  }
+  html.has-touch-controls #hp-orb { left: calc(50% - 184px) !important; }
+  html.has-touch-controls #mana-orb { left: calc(50% + 126px) !important; }
+  html.has-touch-controls #hp-orb .orb-value, html.has-touch-controls #mana-orb .orb-value { font-size: 13px !important; }
+  html.has-touch-controls #hp-orb b, html.has-touch-controls #mana-orb b { font-size: 8px !important; bottom: 3px !important; }
+}
+@media (orientation: portrait) {
+  html.has-touch-controls #action-bar { bottom: max(3px, env(safe-area-inset-bottom)) !important; }
+  html.has-touch-controls #hp-orb, html.has-touch-controls #mana-orb {
+    bottom: max(3px, env(safe-area-inset-bottom)) !important; width: 48px !important; height: 48px !important;
+  }
+  html.has-touch-controls #hp-orb { left: calc(50% - 143px) !important; }
+  html.has-touch-controls #mana-orb { left: calc(50% + 95px) !important; }
+}
+/* Jagged, dark demonic gauntlets framing each glowing resource orb. */
+html.has-touch-controls #hp-orb::after, html.has-touch-controls #mana-orb::after {
+  content: ""; position: absolute; inset: -15px -12px -12px; z-index: -1; pointer-events: none;
+  border: 2px solid #17151a; border-radius: 42% 45% 40% 48%;
+  background: radial-gradient(ellipse at 50% 54%, rgba(65,57,61,.94) 0 30%, transparent 58%),
+    linear-gradient(145deg, #4b4549 0%, #252229 35%, #0b0b10 76%);
+  box-shadow: inset 0 0 0 1px rgba(203,177,151,.18), 0 3px 7px #000d;
+  clip-path: polygon(7% 36%, 0 21%, 12% 24%, 18% 3%, 30% 22%, 39% 0, 49% 22%, 63% 4%, 68% 27%, 87% 14%, 84% 35%, 100% 45%, 85% 58%, 95% 77%, 74% 74%, 65% 100%, 51% 80%, 38% 98%, 30% 78%, 9% 84%, 17% 62%);
+}
+html.has-touch-controls #hp-orb::before, html.has-touch-controls #mana-orb::before {
+  content: ""; position: absolute; inset: -18px -13px -13px; z-index: -2; pointer-events: none; background: #08080b;
+  clip-path: polygon(8% 34%, 0 15%, 17% 23%, 18% 0, 33% 19%, 43% 0, 52% 20%, 68% 0, 72% 22%, 93% 10%, 87% 34%, 100% 46%, 86% 60%, 96% 84%, 73% 78%, 64% 100%, 49% 82%, 35% 100%, 27% 80%, 4% 90%, 15% 63%);
+  filter: drop-shadow(0 2px 2px #000);
+}
+html.has-touch-controls #hp-orb { border-color: #a84a4d !important; }
+html.has-touch-controls #mana-orb { border-color: #537fc1 !important; }
