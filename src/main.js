@@ -607,6 +607,7 @@ class Game {
       // Map 2's desert scenery needs a wider framing to avoid an overly close,
       // visibly pixelated-looking view on mobile screens.
       this.rig.zoom = 22;
+      this.rig.distance = 22;
       this.returnEnemies = this.enemies;
       this.enemies = [];
       // Clear forest props before Area 2 snapshots collision/interaction registries,
