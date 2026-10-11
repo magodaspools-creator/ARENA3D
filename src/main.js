@@ -604,6 +604,9 @@ class Game {
 
     const saved = this.isNewCharacter ? null : this.loadWorldState();
     if (saved?.area === 'area2') {
+      // Map 2's desert scenery needs a wider framing to avoid an overly close,
+      // visibly pixelated-looking view on mobile screens.
+      this.rig.zoom = 22;
       this.returnEnemies = this.enemies;
       this.enemies = [];
       // Clear forest props before Area 2 snapshots collision/interaction registries,
@@ -809,6 +812,7 @@ class Game {
   enterArea2() {
     if (this.state !== 'play' || this.inputLocked || this.area?.name === 'Deserto do Sol Sepultado') return;
     this.returnArea = this.area;
+    this.returnCameraZoom = this.rig.zoom;
     this.returnEnemies = this.enemies;
     this.enemies = [];
     void this.runMapTransition({
@@ -821,6 +825,7 @@ class Game {
         this.kaykitEnvironment?.clear?.();
         const area2 = createArea2(this);
         this.area = area2;
+        this.rig.zoom = 22;
         this.player.place(area2.spawn.x, area2.spawn.z, area2.spawn.facing);
         this.rig.snap(this.player.pos);
         this.area.onStart();
@@ -844,6 +849,8 @@ class Game {
         this.area = target;
         this.enemies = this.returnEnemies || this.enemies;
         this.returnEnemies = null;
+        this.rig.zoom = this.returnCameraZoom ?? 17;
+        this.returnCameraZoom = null;
         const spawn = target.checkpoint || target.spawn;
         this.player.place(spawn.x, spawn.z, spawn.facing);
         this.rig.snap(this.player.pos);
