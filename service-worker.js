@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecos-arena-shell-v3';
+const CACHE_NAME = 'ecos-arena-shell-v4';
 const SHELL = [
   './',
   './index.html',
@@ -9,6 +9,10 @@ const SHELL = [
   './icons/icon-192.svg',
   './icons/icon-512.svg'
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
