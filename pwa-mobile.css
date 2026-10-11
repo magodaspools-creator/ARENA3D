@@ -282,11 +282,11 @@ html.has-touch-controls #quality-indicator {
 }
 
 /* Gothic mobile combat dock: dark clawed life/mana vessels fused to the item bar. */
-@media (max-width: 700px) {
+@media (max-width: 700px), (hover: none) and (pointer: coarse) {
   html.has-touch-controls #action-bar {
     display: grid !important;
     left: 50%;
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: max(92px, env(safe-area-inset-bottom));
     transform: translateX(-50%);
     width: min(228px, calc(100vw - 92px));
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -326,7 +326,7 @@ html.has-touch-controls #quality-indicator {
   html.has-touch-controls #mana-orb {
     position: fixed !important;
     top: auto !important;
-    bottom: max(11px, env(safe-area-inset-bottom));
+    bottom: max(91px, env(safe-area-inset-bottom));
     width: 38px;
     height: 38px;
     flex-basis: 38px;
