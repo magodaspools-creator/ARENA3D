@@ -8,7 +8,7 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createForgeScene } from '../forge-scene.js?v=blacksmith-curved-roof-20261009c';
+import { createForgeScene } from '../forge-scene.js?v=blacksmith-rock-clearance-20261010a';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
@@ -107,8 +107,9 @@ export function createArea1(game) {
   decor.pine(-25, 0, 8, 1.4, r);
   // Keep the former tree position at the grove doorway visually clear.
   // Its collision used to behave like an invisible barrier at the entrance.
-  // Remove all surface rocks from a broad safety radius around the enlarged forge.
-  const forgeRockClear = (x, z, radius = 0) => Math.hypot(x - 24.5, z - 23.2) > 19.0 + radius;
+  // Keep a wide, fully clear approach on the west/north sides of the forge.
+  // The larger radius also removes the dense rock cluster visible beside the hut.
+  const forgeRockClear = (x, z, radius = 0) => Math.hypot(x - 24.5, z - 23.2) > 30.0 + radius;
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
     if (!forgeRockClear(x, z, s)) continue;
     decor.rock(x, 0, z, s, r);
