@@ -239,6 +239,28 @@ export function createHumanoid(look = {}) {
       torso.add(badge);
     }
 
+    if (L.npcRole === 'blacksmith') {
+      // Brom, the forge master: compact silhouette, heavy beard and leather apron.
+      head.position.y = 0.84;
+      torso.scale.set(1.12, 0.92, 1.05);
+      legL.scale.set(1, 0.82, 1);
+      legR.scale.set(1, 0.82, 1);
+      const beardMat = mat(L.beard ?? 0x493026, { rough: 0.98, flat: false });
+      const apronMat = mat(L.apron ?? 0x513522, { rough: 0.95, flat: false });
+      const apron = smooth(new THREE.BoxGeometry(0.39, 0.48, 0.055), apronMat, 0, 0.25, 0.285);
+      apron.rotation.x = 0.04;
+      torso.add(apron);
+      const beard = smooth(new THREE.ConeGeometry(0.16, 0.31, 7), beardMat, 0, -0.15, 0.19);
+      beard.rotation.x = -0.12;
+      head.add(beard);
+      const moustache = smooth(new THREE.SphereGeometry(0.095, 10, 8), beardMat, 0, -0.07, 0.20);
+      moustache.scale.set(1.45, 0.58, 0.7);
+      head.add(moustache);
+      const bandMat = mat(0x77716a, { metal: 0.55, rough: 0.55, flat: false });
+      head.add(smooth(new THREE.TorusGeometry(0.215, 0.035, 7, 18), bandMat, 0, 0.17, -0.005));
+      torso.add(smooth(new THREE.BoxGeometry(0.18, 0.10, 0.06), bandMat, 0.22, 0.02, 0.24));
+    }
+
     if (L.npcRole === 'merchant') {
       // Merchant face sits slightly low in the shared rig; raise the whole head assembly
       // so Doran's face aligns with the body proportions without changing Maren.
