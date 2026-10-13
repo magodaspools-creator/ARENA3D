@@ -20,7 +20,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
-import { createArea1 } from './areas/area1.js?v=blacksmith-rock-clearance-restore-20261013b';
+import { createArea1 } from './areas/area1.js?v=forge-expansion-20261013c';
 import { createArea2 } from './areas/area2.js';
 import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js';
 
