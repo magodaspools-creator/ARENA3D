@@ -21,7 +21,7 @@ import { getItem } from './items.js';
 import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js?v=forge-smith-south-east-20261013e';
-import { createArea2 } from './areas/area2.js';
+import { createArea2 } from './areas/area2.js?v=desert-dune-arena-fix-20261013a';
 import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js?v=forge-rubble-clearance-20261013d';
 
 const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
