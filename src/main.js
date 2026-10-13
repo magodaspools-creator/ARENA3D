@@ -29,6 +29,7 @@ const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 // `?modelo=procedural` remains available only as a development fallback.
 const USE_GLTF_PLAYER = MODEL_MODE !== 'procedural';
 import { MapEditor } from './map-editor.js';
+import { RockRemovalTool } from './rock-removal-tool.js';
 
 const FOG = 0x080b12;
 const LOW_QUALITY_FOG = 0x10201d;
@@ -1640,4 +1641,7 @@ class Game {
 }
 
 window.game = new Game();
+if (new URLSearchParams(location.search).get('editarPedras') === '1') {
+  window.__arenaRockRemovalTool = new RockRemovalTool(window.game);
+}
 window.__arenaAccountMenuReady = import('./account-menu.js?v=unique-name-fix-20261009e').then(({ installAccountMenu }) => installAccountMenu(window.game)).catch((error) => { console.error('[ARENA] Account menu failed to load:', error); return null; });
