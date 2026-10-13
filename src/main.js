@@ -412,15 +412,17 @@ class Game {
     const isMinima = this.qualityName === 'minima';
     const isLeve = this.qualityName === 'leve';
 
+    // Lift midtones so forest floors, paths and enemy silhouettes stay readable
+    // without losing the cool, dark-fantasy atmosphere.
     const hemi = new THREE.HemisphereLight(
-      0x52706a,
-      0x14211d,
-      isMinima ? 0.60 : isLeve ? 0.60 : 0.48
+      0x69877b,
+      0x1c2922,
+      isMinima ? 0.68 : isLeve ? 0.68 : 0.56
     );
     this.scene.add(hemi);
 
     if (isMinima) {
-      this.scene.add(new THREE.AmbientLight(0x78958c, 0.25));
+      this.scene.add(new THREE.AmbientLight(0x879d91, 0.28));
     }
 
     // LEVE: one non-shadow directional. MINIMA: Ambient + Hemisphere only.
