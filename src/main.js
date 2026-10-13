@@ -22,7 +22,7 @@ import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
 import { createArea1 } from './areas/area1.js?v=forge-expansion-20261013c';
 import { createArea2 } from './areas/area2.js';
-import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js';
+import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js?v=forge-rubble-clearance-20261013d';
 
 const MODEL_MODE = new URLSearchParams(location.search).get('modelo');
 // The published game uses the finalized vocation GLTFs by default.
