@@ -2332,6 +2332,7 @@ const leaveMine = () => {
         'Por enquanto, dê uma olhada na forja e volte quando precisar de um equipamento digno de enfrentar as ruínas.',
       ],
     }),
+    service: () => game.openForge({ npcName: 'Brom, o Ferreiro' }),
   });
   brom.setMarker(0xffa34a);
   game.npcs.push(brom);
