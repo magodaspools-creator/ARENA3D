@@ -631,7 +631,8 @@ export class KayKitEnvironment {
           this.root.add(b);
           this.registerSolidPropCollider(b, 'banner');
         }
-        if (placed % 61 === 0) {
+        // Keep KayKit rubble out of the blacksmith's expanded footprint and approach.
+        if (placed % 61 === 0 && Math.hypot(gx - 28.5, gz - 26.0) > 14.0) {
           const rr = SkeletonUtils.clone(rubble.scene);
           rr.position.copy(tilePosition);
           rr.rotation.y = (placed % 4) * Math.PI * 0.5;
