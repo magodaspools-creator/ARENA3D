@@ -3,12 +3,12 @@ import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
   createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest, createSecretGate, createLever,
 } from '../world.js';
-import { NPC } from '../npc.js?v=npc-blacksmith-role-20261013e';
+import { NPC } from '../npc.js?v=npc-hammer-first-dialogue-20261013a';
 import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createForgeScene } from '../forge-scene.js?v=forge-smith-south-east-20261013e';
+import { createForgeScene } from '../forge-scene.js?v=forge-hot-sword-20261013a';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
