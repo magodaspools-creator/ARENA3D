@@ -60,7 +60,7 @@ export function createArea1(game) {
   collision.addBox(6.2, 23, 12.9, 14.3);
 
   const terrain = new Terrain(collision);
-  const cA = new THREE.Color(0x15241a), cB = new THREE.Color(0x2a4026), dirt = new THREE.Color(0x3b2e22), stone = new THREE.Color(0x26272b);
+  const cA = new THREE.Color(0x203326), cB = new THREE.Color(0x3a5635), dirt = new THREE.Color(0x4a3929), stone = new THREE.Color(0x34363a);
   createGround(scene, terrain, (x, z, c) => {
     c.copy(cA).lerp(cB, fbm(x * 0.13, z * 0.13));
     const pd = distToPath(x, z, PATH);
