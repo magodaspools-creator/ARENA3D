@@ -18,6 +18,11 @@ const MAT = {
     roughness: 0.65, flatShading: true,
   }),
   emberCore: new THREE.MeshBasicMaterial({ color: 0xffa044, toneMapped: false }),
+  hotSteel: new THREE.MeshStandardMaterial({
+    color: 0xff6329, emissive: 0xff2600, emissiveIntensity: 2.8,
+    metalness: 0.28, roughness: 0.38, toneMapped: false,
+  }),
+  hotCore: new THREE.MeshBasicMaterial({ color: 0xffd16a, toneMapped: false }),
   sign: new THREE.MeshStandardMaterial({ color: 0x38261b, roughness: 1, flatShading: true }),
   gold: new THREE.MeshStandardMaterial({ color: 0xc69b51, metalness: 0.42, roughness: 0.65, flatShading: true }),
 };
@@ -80,11 +85,31 @@ function createAnvil(parent, x = 0.55, z = -0.05) {
   addMesh(anvil, new THREE.BoxGeometry(0.72, 0.19, 0.42), MAT.ironEdge, 0, 0.77, 0);
   addMesh(anvil, new THREE.BoxGeometry(0.3, 0.14, 0.28), MAT.iron, -0.42, 0.79, 0);
   addMesh(anvil, new THREE.ConeGeometry(0.13, 0.27, 4), MAT.ironEdge, 0.47, 0.79, 0, { rz: -Math.PI / 2 });
-  // A simple sword laid across the anvil.
-  addMesh(anvil, new THREE.BoxGeometry(0.09, 0.045, 0.78), MAT.ironEdge, 0.03, 0.91, 0, { ry: -0.28 });
+  // Incandescent blade being worked: hot orange steel with a bright yellow
+  // center line so it reads as glowing metal even on low graphics settings.
+  const hotBlade = addMesh(anvil, new THREE.BoxGeometry(0.09, 0.055, 0.78), MAT.hotSteel, 0.03, 0.925, 0, { ry: -0.28 });
+  const hotEdge = addMesh(anvil, new THREE.BoxGeometry(0.035, 0.058, 0.62), MAT.hotCore, 0.03, 0.929, -0.025, { ry: -0.28 });
+  const hotGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture || (glowTexture = makeGlowTexture()),
+    color: 0xff6426, transparent: true, opacity: 0.62,
+    depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+  }));
+  hotGlow.position.set(0.03, 1.0, -0.02);
+  hotGlow.scale.set(0.9, 0.24, 1);
+  hotGlow.renderOrder = 2;
+  anvil.add(hotGlow);
   addMesh(anvil, new THREE.BoxGeometry(0.25, 0.07, 0.09), MAT.gold, 0.03, 0.91, 0.40, { ry: -0.28 });
   addMesh(anvil, new THREE.BoxGeometry(0.10, 0.13, 0.12), MAT.leather, 0.03, 0.91, 0.51, { ry: -0.28 });
-  return anvil;
+  return {
+    root: anvil,
+    update(time) {
+      const pulse = 2.2 + (Math.sin(time * 8.5) * 0.5 + 0.5) * 1.5;
+      MAT.hotSteel.emissiveIntensity = pulse;
+      hotGlow.material.opacity = 0.48 + (Math.sin(time * 7.2) * 0.5 + 0.5) * 0.24;
+      hotEdge.visible = Math.sin(time * 2.8) > -0.92;
+      hotBlade.material.emissiveIntensity = pulse;
+    },
+  };
 }
 
 function createFurnace(parent) {
@@ -347,7 +372,7 @@ export function createForgeScene(game) {
 
   createForgeSign(root);
   const furnace = createFurnace(root);
-  createAnvil(root, 0.35, 0.48);
+  const anvil = createAnvil(root, 0.35, 0.48);
   createWorkbench(root);
   createBarrel(root, 2.12, 1.52);
   createLogPile(root, -1.95, 1.45);
@@ -375,6 +400,7 @@ export function createForgeScene(game) {
     root,
     update(dt, time, playerPos) {
       furnace.update(dt, time, playerPos, center.x - 1.72 * footprintScale, center.z - 1.12 * footprintScale);
+      anvil.update(time);
       const inside = !!playerPos
         && Math.abs(playerPos.x - center.x) < 7.45
         && playerPos.z > center.z - 6.4
