@@ -230,12 +230,12 @@ function createWallWeapons(parent) {
 }
 
 export function createForgeScene(game) {
-  const center = { x: 24.5, z: 23.2 };
-  const footprintScale = 1.7;
+  const center = { x: 28.5, z: 26.0 };
+  const footprintScale = 2.0;
   const root = new THREE.Group();
   root.name = 'forest-blacksmith-hut';
   root.position.set(center.x, 0, center.z);
-  // Expand the hut to a grand workshop footprint while keeping the original height.
+  // Enlarged workshop footprint, shifted east and south into a wider forest clearing.
   root.scale.set(footprintScale, 1, footprintScale);
   game.scene.add(root);
   createForgeFloor(root);
