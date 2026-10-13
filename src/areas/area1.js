@@ -71,7 +71,7 @@ export function createArea1(game) {
     // without covering the existing rune stone.
     const forgeClearing = Math.hypot((x - 30.0) * 0.82, z - 27.5);
     if (forgeClearing < 17.5) c.lerp(dirt, (1 - forgeClearing / 17.5) * 0.72);
-    if (x > 10 && x < 18 && z > 20.5 && z < 27.5) c.lerp(dirt, 0.48);
+    if (x > 10 && x < 18 && z > 20.5 && z < 26.0) c.lerp(dirt, 0.48);
     const d = collision.sdf(x, z);
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
   });
@@ -214,7 +214,7 @@ export function createArea1(game) {
 
   const gravePositions = [
     [-32.0, 52.5, -0.10, 1.05, 1.20, false],
-    [-30.0, 54.0,  0.08, 0.95, 1.35, true],
+    [-28.5, 54.0,  0.08, 0.95, 1.35, true],
     [-24.8, 51.5, -0.16, 1.10, 1.10, false],
     [-21.3, 54.2,  0.12, 0.90, 1.25, false],
     [-30.2, 47.8,  0.18, 1.00, 1.05, true],
@@ -280,7 +280,7 @@ export function createArea1(game) {
   // Old cemetery fencing and scattered grave markers define the field without
   // blocking navigation. A few markers are intentionally fallen.
   for (const [x, z, rot] of [
-    [-34.0, 36.0, 0.12], [-30.5, 36.5, -0.08], [-27.5, 36.2, 0.16],
+    [-34.0, 36.0, 0.12], [-30.5, 36.5, -0.08], [-26.0, 36.2, 0.16],
     [-21.0, 37.0, -0.12], [-34.0, 56.0, 0.06], [-29.0, 57.0, -0.14],
   ]) {
     const marker = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.72, 0.18), graveStoneMats[1]);
@@ -485,7 +485,7 @@ export function createArea1(game) {
     depthTest: true,
   });
   for (const [x, y, z, sx, sy] of [
-    [27.5, 1.2, 5.5, 9, 4.5],
+    [26.0, 1.2, 5.5, 9, 4.5],
     [33.5, 1.0, 8.5, 11, 5],
     [37.0, 1.4, 12.5, 9, 4.5],
     [31.5, 1.1, 15.5, 10, 4.2],
@@ -1077,7 +1077,7 @@ for (const [x, z, sx, sy, sz, rot] of [
   [101.0, 111.5, 1.0, 3.6, 0.8, 0.1],
   [120.5, 112.0, 1.0, 3.8, 0.8, -0.08],
   [97.5, 118.0, 0.9, 3.0, 0.75, 0.18],
-  [127.5, 117.0, 0.9, 3.5, 0.75, -0.12],
+  [126.0, 117.0, 0.9, 3.5, 0.75, -0.12],
 ]) {
   const rib = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), mineLandmarkMat);
   rib.position.set(x, sy * 0.5, z);
@@ -1195,7 +1195,7 @@ for (const [x, y, z, s, rot] of [
   [97.0, 1.4, 121.5, 0.9, -0.2],
   [101.8, 1.2, 125.2, 0.65, 0.3],
   [124.8, 1.5, 116.0, 0.85, 0.1],
-  [127.5, 1.4, 121.5, 0.7, -0.25],
+  [126.0, 1.4, 121.5, 0.7, -0.25],
   [108.0, 1.5, 126.8, 0.75, 0.2],
 ]) {
   const vein = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7, 0), mineOreMat);
@@ -1330,7 +1330,7 @@ for (const [x, z, sx, sy, sz, ry] of [
   [95.2, 109.2, 0.8, 0.45, 0.6, 0.2],
   [96.0, 115.0, 0.65, 0.35, 0.5, -0.3],
   [124.8, 113.0, 0.75, 0.4, 0.55, 0.15],
-  [127.5, 118.0, 0.9, 0.5, 0.7, -0.2],
+  [126.0, 118.0, 0.9, 0.5, 0.7, -0.2],
   [104.5, 125.8, 0.8, 0.38, 0.6, 0.25],
   [117.8, 126.2, 0.7, 0.35, 0.5, -0.15],
 ]) {
@@ -1387,7 +1387,7 @@ for (const [x, z, sx, sz, rot] of [
 for (const [x, z, len, rot] of [
   [101.5, 111.0, 2.2, 0.35],
   [124.0, 114.8, 2.0, -0.4],
-  [106.0, 127.5, 2.4, 0.2],
+  [106.0, 126.0, 2.4, 0.2],
   [117.5, 125.0, 1.8, -0.25],
 ]) {
   mineBox(len, 0.18, 0.24, x, 0.11, z, mineWoodMat, rot, { colliderRadius: 0.34 });
@@ -1480,7 +1480,7 @@ addMineCart(121.5, 124.0, 0.02, 0.82);
 addOrePile(94.2, 121.8, 0.9);
 addOrePile(128.8, 105.5, 0.82);
 addOrePile(134.5, 126.2, 0.95);
-addPickaxe(97.0, 127.5, -0.4, 0.95);
+addPickaxe(97.0, 126.0, -0.4, 0.95);
 addPickaxe(135.5, 114.5, 0.6, 0.85);
 
 // Fine dust hanging in the air is handled by the existing particle ambience.
@@ -1590,7 +1590,7 @@ for (const [x,z,h,sx] of [
 
 // Cave floor rocks define the edges of the arena and leave the center open.
 for (const [x,z,s] of [
-  [112.5,131.8,0.8],[116,127.5,0.65],[119,134,0.9],
+  [112.5,131.8,0.8],[116,126.0,0.65],[119,134,0.9],
   [126,127.8,0.7],[129,132,0.85],[123,134.2,0.65],
 ]) {
   mineRock(x,z,s,0.7,s*0.9,r()*0.5,mineRockDarkMat, { colliderRadius: s * 0.7 });
@@ -1604,7 +1604,7 @@ const springMat = new THREE.MeshStandardMaterial({
 const spring = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16), springMat);
 spring.rotation.x = -Math.PI / 2;
 spring.scale.set(1.4, 0.7, 1);
-spring.position.set(127.5,0.018,133.0);
+spring.position.set(126.0,0.018,133.0);
 mineGroup.add(spring);
 
 const caveCrystalMat = new THREE.MeshStandardMaterial({
