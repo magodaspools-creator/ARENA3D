@@ -22,15 +22,15 @@ export class RockRemovalTool {
     });
     this.panel.innerHTML = `
       <strong style="font-size:15px">EDITOR DE OBJETOS — ARENA3D</strong>
-      <p style="margin:7px 0">Clique no objeto que invade a cabana — pode ser muro, pedra ou prop. A ferramenta seleciona objetos 3D para identificar o tipo e as coordenadas.</p>
+      <p style="margin:7px 0">Clique no objeto que invade a cabana e use Remover da cena. A remoção fica salva neste navegador; Desfazer última restaura.</p>
       <div id="rock-tool-selected" style="padding:8px;background:#222a2c;border-radius:6px;white-space:pre-wrap">Nenhum objeto selecionado.</div>
       <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
-        <button id="rock-tool-remove" type="button">Ocultar objeto (teste)</button>
+        <button id="rock-tool-remove" type="button">Remover da cena</button>
         <button id="rock-tool-restore" type="button">Desfazer última</button>
         <button id="rock-tool-copy" type="button">Copiar dados do objeto</button>
         <button id="rock-tool-close" type="button">Fechar ferramenta</button>
       </div>
-      <small style="display:block;margin-top:8px;color:#c9c3b8">Ocultar é apenas um teste local. Copie os dados do objeto e envie-os para eu corrigir a origem no mapa.</small>
+      <small style="display:block;margin-top:8px;color:#c9c3b8">A remoção persistente vale neste navegador. Para tornar definitiva para todos, ainda será necessário corrigir o mapa no código.</small>
     `;
     document.body.appendChild(this.panel);
     this.panel.querySelectorAll('button').forEach((b) => Object.assign(b.style, {
@@ -38,6 +38,7 @@ export class RockRemovalTool {
       background:'#303a3d', color:'#fff'
     }));
     this.panel.querySelector('#rock-tool-remove').onclick = () => this.removeSelected();
+    this.applySavedSceneRemovals();
     this.panel.querySelector('#rock-tool-restore').onclick = () => this.restoreLast();
     this.panel.querySelector('#rock-tool-copy').onclick = () => this.copyCoordinates();
     this.panel.querySelector('#rock-tool-close').onclick = () => {
@@ -63,6 +64,19 @@ export class RockRemovalTool {
 
   saveRemoved() {
     localStorage.setItem(STORE_KEY, JSON.stringify(this.removed));
+  }
+
+  applySavedSceneRemovals() {
+    if (!this.game?.scene || !this.removed.length) return;
+    this.game.scene.updateMatrixWorld(true);
+    this.game.scene.traverse((object) => {
+      if (!object?.isMesh) return;
+      const name = object.name || '(sem nome)';
+      const p = new THREE.Vector3();
+      object.getWorldPosition(p);
+      const match = this.removed.some((item) => item.name === name && Math.abs(p.x - item.x) < 0.35 && Math.abs(p.y - item.y) < 0.35 && Math.abs(p.z - item.z) < 0.35);
+      if (match) object.visible = false;
+    });
   }
 
   getRockMesh() {
@@ -175,7 +189,7 @@ export class RockRemovalTool {
   }
 
   async copyCoordinates() {
-    const text = JSON.stringify(this.removed, null, 2);
+    const text = JSON.stringify(this.selected ? [{ name: this.selected.name, type: this.selected.type, parent: this.selected.parent, x: this.selected.x, y: this.selected.y, z: this.selected.z, uuid: this.selected.uuid }] : this.removed, null, 2);
     try {
       await navigator.clipboard.writeText(text);
       this.updateLabel('Coordenadas copiadas. Cole-as aqui na conversa para corrigir o mapa definitivo.');
