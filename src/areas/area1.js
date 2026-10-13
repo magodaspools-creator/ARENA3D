@@ -107,11 +107,11 @@ export function createArea1(game) {
   decor.pine(-25, 0, 8, 1.4, r);
   // Keep the former tree position at the grove doorway visually clear.
   // Its collision used to behave like an invisible barrier at the entrance.
-  // Keep a wide, fully clear approach on the west/north sides of the forge.
-  // The larger radius also removes the dense rock cluster visible beside the hut.
+  // Keep a wide, fully clear approach around the entire forge, including its expanded roof/wall footprint.
+  // Extra clearance prevents newly added rock sprites from visually clipping into the cabin walls.
   const forgeRockClear = (x, z, radius = 0) => {
     const westForgeClear = x > 5 - radius && x < 23.5 + radius && z > 10 - radius && z < 39 + radius;
-    return !westForgeClear && Math.hypot(x - 24.5, z - 23.2) > 18.0 + radius;
+    return !westForgeClear && Math.hypot(x - 24.5, z - 23.2) > 23.0 + radius;
   };
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
     if (!forgeRockClear(x, z, s)) continue;
