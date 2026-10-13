@@ -143,19 +143,17 @@ export function createArea2(game) {
     const clearCircle = (cx, cz, radius) =>
       Math.max(0, 1 - Math.hypot(x - cx, z - cz) / radius);
 
-    const oasisClear = clearCircle(ORIGIN.x, 0, 12);
+    const oasisClear = clearCircle(ORIGIN.x, 0, 16);
     const nadirClear = clearCircle(142, 0, 7);
     const caravanClear = clearCircle(171, -30, 6);
     const loreClear = clearCircle(150, -17, 4.5);
     const chestClear = clearCircle(150, 22, 4.5);
     const entryPortalClear = clearCircle(ORIGIN.x, -45, 7);
-    const bossClear = clearCircle(ORIGIN.x, 37, 12);
+    const bossClear = clearCircle(ORIGIN.x, 37, 18);
 
     // The entire temple footprint is deliberately flat. The altar, stairs,
     // pillars and north/south ruin blocks all use fixed world-space heights.
-    const templeClearX = Math.max(0, 1 - Math.abs(x - ORIGIN.x) / 22);
-    const templeClearZ = Math.max(0, 1 - Math.abs(z - 37) / 15);
-    const templeClear = templeClearX * templeClearZ;
+    const templeClear = (x >= 128 && x <= 172 && z >= 22 && z <= 51) ? 1 : 0;
 
     const keepGround = Math.max(
       oasisClear,
@@ -200,7 +198,7 @@ export function createArea2(game) {
     if (Math.abs(x - ORIGIN.x) < 14 && Math.abs(z) < 9) continue;
     // Keep the boss arena open: random desert rocks must not spawn inside the
     // combat field and break movement around the guardian.
-    if (Math.hypot(x - ORIGIN.x, z - 40) < 9.5) continue;
+    if (Math.hypot(x - ORIGIN.x, z - 40) < 13.5) continue;
     const s = 0.5 + r() * 2.4;
     decor.rock(x, terrain.height(x, z), z, s, r, r() < 0.7 ? 0x6b523b : 0x806345);
     // Every gameplay-visible rock is also a physical obstacle.
@@ -652,9 +650,7 @@ export function createArea2(game) {
   // on top. Keep the stair mouth open in the center, but make the left and
   // right portions climbable from above and blocking from ground level.
   // Using walkableTop avoids the old invisible vertical-wall behavior.
-  collision.addBox(142.5,147.35,29.5,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
-  collision.addBox(147.35,152.65,30.4,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
-  collision.addBox(152.65,157.5,29.5,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
+  collision.addBox(142.5,157.5,29.5,40.5,{ walkableTop:true, topY:0.9, projectiles:false });
 
   for (const [x,z,h] of [[137,35,5.2],[163,35,5.2],[142,43,4],[158,43,4]]) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.95,h,6),stoneMat);
