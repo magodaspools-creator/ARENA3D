@@ -11,7 +11,7 @@ import { Effects } from './effects.js';
 import { Combat } from './combat.js';
 import { UI } from './ui.js?v=blacksmith-forge-20261009c';
 import { Interaction } from './interaction.js';
-import { Dialogue } from './npc.js';
+import { Dialogue } from './npc.js?v=npc-blacksmith-role-20261013e';
 import { Player } from './player.js';
 import { loadPlayerRig } from './gltf-humanoid.js';
 import { createHumanoid } from './models.js';
@@ -20,7 +20,7 @@ import { CharacterState } from './character-state.js';
 import { getItem } from './items.js';
 import { FORGE_UPGRADES, FORGE_RECIPES, FORGE_RECYCLE } from './forge.js';
 import { GroundLoot, DeathBackpack } from './ground-loot.js';
-import { createArea1 } from './areas/area1.js?v=forge-expansion-20261013c';
+import { createArea1 } from './areas/area1.js?v=forge-smith-south-east-20261013e';
 import { createArea2 } from './areas/area2.js';
 import { KayKitEnvironment, preloadKayKitEnemyAssets, preloadKayKitAssetsSpaced, loadKayKitEnemyRig } from './kaykit-assets.js?v=forge-rubble-clearance-20261013d';
 
