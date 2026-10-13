@@ -227,7 +227,9 @@ export class Decor {
   build(scene) {
     this.trunks.build(scene);
     this.leaves.forEach((b) => b.build(scene));
-    for (const b of [this.rocks, this.grass, this.stems, this.caps, this.blocks, this.columns, this.tiles]) b.build(scene);
+    const rockMesh = this.rocks.build(scene);
+    if (rockMesh) rockMesh.name = 'arena-procedural-rocks';
+    for (const b of [this.grass, this.stems, this.caps, this.blocks, this.columns, this.tiles]) b.build(scene);
   }
 }
 
