@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createHumanoid, createWeapon, glow, mesh, HumanoidAnimator } from './models.js';
+import { createHumanoid, createWeapon, glow, mesh, HumanoidAnimator } from './models.js?v=npc-blacksmith-role-20261013e';
 
 const tmp = new THREE.Vector3();
 
@@ -47,7 +47,20 @@ export class NPC {
     this.dialogue = dialogue;
     this.service = service;
     this.rig = createHumanoid({ ...look, npcStyle: true });
-    this.rig.handR.add(createWeapon('lanternStaff'));
+    if (look.npcRole === 'blacksmith') {
+      const hammer = new THREE.Group();
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.62, 6),
+        new THREE.MeshStandardMaterial({ color: 0x755035, roughness: 0.95 }));
+      handle.position.y = 0.08;
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.19),
+        new THREE.MeshStandardMaterial({ color: 0x777b80, metalness: 0.55, roughness: 0.6 }));
+      head.position.y = 0.38;
+      hammer.add(handle, head);
+      hammer.rotation.z = -0.25;
+      this.rig.handR.add(hammer);
+    } else {
+      this.rig.handR.add(createWeapon('lanternStaff'));
+    }
     this.root = this.rig.root;
     this.root.position.set(x, 0, z);
     this.root.rotation.y = facing;
