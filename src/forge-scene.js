@@ -230,8 +230,8 @@ function createWallWeapons(parent) {
 }
 
 export function createForgeScene(game) {
-  const center = { x: 28.5, z: 26.0 };
-  const footprintScale = 2.0;
+  const center = { x: 30.0, z: 27.5 };
+  const footprintScale = 2.08;
   const root = new THREE.Group();
   root.name = 'forest-blacksmith-hut';
   root.position.set(center.x, 0, center.z);
