@@ -21,16 +21,16 @@ export class RockRemovalTool {
       font: '13px/1.45 system-ui,sans-serif', boxShadow: '0 8px 30px #0009'
     });
     this.panel.innerHTML = `
-      <strong style="font-size:15px">EDITOR DE PEDRAS — ARENA3D</strong>
-      <p style="margin:7px 0">Clique diretamente na pedra que invade a cabana. Use WASD para se aproximar. O modo normal de ataque fica bloqueado enquanto esta ferramenta estiver ativa.</p>
-      <div id="rock-tool-selected" style="padding:8px;background:#222a2c;border-radius:6px;white-space:pre-wrap">Nenhuma pedra selecionada.</div>
+      <strong style="font-size:15px">EDITOR DE OBJETOS — ARENA3D</strong>
+      <p style="margin:7px 0">Clique no objeto que invade a cabana — pode ser muro, pedra ou prop. A ferramenta seleciona objetos 3D para identificar o tipo e as coordenadas.</p>
+      <div id="rock-tool-selected" style="padding:8px;background:#222a2c;border-radius:6px;white-space:pre-wrap">Nenhum objeto selecionado.</div>
       <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
-        <button id="rock-tool-remove" type="button">Remover pedra</button>
+        <button id="rock-tool-remove" type="button">Ocultar objeto (teste)</button>
         <button id="rock-tool-restore" type="button">Desfazer última</button>
-        <button id="rock-tool-copy" type="button">Copiar coordenadas</button>
+        <button id="rock-tool-copy" type="button">Copiar dados do objeto</button>
         <button id="rock-tool-close" type="button">Fechar ferramenta</button>
       </div>
-      <small style="display:block;margin-top:8px;color:#c9c3b8">Remoções ficam salvas neste navegador enquanto você testa. Copie as coordenadas e envie-as para aplicar a correção definitiva no jogo.</small>
+      <small style="display:block;margin-top:8px;color:#c9c3b8">Ocultar é apenas um teste local. Copie os dados do objeto e envie-os para eu corrigir a origem no mapa.</small>
     `;
     document.body.appendChild(this.panel);
     this.panel.querySelectorAll('button').forEach((b) => Object.assign(b.style, {
@@ -54,7 +54,6 @@ export class RockRemovalTool {
     };
     this.game.renderer.domElement.addEventListener('pointerdown', this.onPointerDown, true);
     window.addEventListener('keydown', this.onKeyDown, true);
-    this.applySavedRemovals();
   }
 
   readRemoved() {
@@ -118,18 +117,36 @@ export class RockRemovalTool {
     this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     this.game.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.game.camera);
-    const mesh = this.getRockMesh();
-    const hit = mesh ? this.raycaster.intersectObject(mesh, false)[0] : null;
+    const hits = this.raycaster.intersectObjects(this.game.scene.children, true).filter((h) => {
+      const o = h.object;
+      if (!o?.isMesh || !o.geometry) return false;
+      const n = String(o.name || '').toLowerCase();
+      return !/(ground|terrain|floor|water|player|enemy|npc|loot|particle|effect|projectile|attack|shadow)/.test(n);
+    });
+    const hit = hits[0] || null;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!hit || hit.instanceId == null) {
+    if (!hit) {
       this.selected = null;
-      this.updateLabel(mesh ? 'Nenhuma pedra atingida. Aproxime a câmera e clique no corpo da pedra.' : 'Pedras ainda não carregadas. Entre no mapa 1 e tente novamente.');
+      this.updateLabel('Nenhum objeto selecionável atingido. Tente clicar no meio do objeto, evitando o chão.');
       return;
     }
-    const pos = this.positionFor(hit.instanceId);
-    this.selected = { index: hit.instanceId, ...pos };
-    this.updateLabel('Pedra selecionada\nX: ' + pos.x.toFixed(3) + '\nZ: ' + pos.z.toFixed(3) + '\nÍndice: ' + hit.instanceId);
+    const object = hit.object;
+    const world = new THREE.Vector3();
+    object.getWorldPosition(world);
+    this.selected = {
+      object, name: object.name || '(sem nome)',
+      type: object.isInstancedMesh ? 'InstancedMesh' : object.type,
+      x: world.x, y: world.y, z: world.z,
+      uuid: object.uuid,
+      parent: object.parent?.name || object.parent?.type || '(sem pai)'
+    };
+    this.updateLabel('Objeto: ' + this.selected.name +
+      '\nTipo: ' + this.selected.type +
+      '\nPai: ' + this.selected.parent +
+      '\nX: ' + world.x.toFixed(3) +
+      '\nY: ' + world.y.toFixed(3) +
+      '\nZ: ' + world.z.toFixed(3));
   }
 
   updateLabel(text) {
@@ -138,46 +155,23 @@ export class RockRemovalTool {
   }
 
   removeSelected() {
-    if (!this.selected) { this.updateLabel('Selecione uma pedra primeiro.'); return; }
-    const mesh = this.getRockMesh();
-    if (!mesh) return;
-    const matrix = this.matrixFor(this.selected.index);
-    if (!matrix) return;
-    const pos = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    matrix.decompose(pos, quat, scale);
-    mesh.setMatrixAt(this.selected.index, new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(0,0,0)));
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-    this.removed.push({ x: this.selected.x, z: this.selected.z });
+    if (!this.selected?.object) { this.updateLabel('Selecione um objeto primeiro.'); return; }
+    const s = this.selected;
+    s.object.visible = false;
+    this.removed.push({ name: s.name, type: s.type, parent: s.parent, x: s.x, y: s.y, z: s.z, uuid: s.uuid });
     this.saveRemoved();
-    this.updateLabel('Pedra removida neste navegador.\nX: ' + this.selected.x.toFixed(3) + '\nZ: ' + this.selected.z.toFixed(3));
+    this.updateLabel('Objeto ocultado apenas nesta sessão.\n' + JSON.stringify({
+      name: s.name, type: s.type, parent: s.parent,
+      x: Number(s.x.toFixed(3)), y: Number(s.y.toFixed(3)), z: Number(s.z.toFixed(3))
+    }, null, 2) + '\nCopie os dados antes de recarregar.');
     this.selected = null;
   }
 
   restoreLast() {
-    const last = this.removed.pop();
+    if (!this.removed.length) { this.updateLabel('Nenhum objeto foi ocultado nesta sessão.'); return; }
+    this.removed.pop();
     this.saveRemoved();
-    const mesh = this.getRockMesh();
-    if (mesh && last) {
-      const matrix = new THREE.Matrix4();
-      const p = new THREE.Vector3();
-      const q = new THREE.Quaternion();
-      const s = new THREE.Vector3();
-      for (let i=0;i<mesh.count;i++) {
-        mesh.getMatrixAt(i,matrix); matrix.decompose(p,q,s);
-        if (Math.abs(p.x-last.x)<0.025 && Math.abs(p.z-last.z)<0.025) {
-          const source = new THREE.Matrix4();
-          // Restore the original transform from the seeded mesh by reloading the page.
-          this.updateLabel('Desfazer salvo. Recarregue a página para restaurar a pedra.');
-          location.reload();
-          return;
-        }
-      }
-    }
-    this.updateLabel(last ? 'Última remoção desfeita; recarregando o mapa.' : 'Não há remoções para desfazer.');
-    if (last) location.reload();
+    location.reload();
   }
 
   async copyCoordinates() {
