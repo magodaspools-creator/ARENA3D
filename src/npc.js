@@ -46,6 +46,8 @@ export class NPC {
     this.name = name;
     this.dialogue = dialogue;
     this.service = service;
+    this.hasSpoken = false;
+    this.isBlacksmith = look.npcRole === 'blacksmith';
     this.rig = createHumanoid({ ...look, npcStyle: true });
     if (look.npcRole === 'blacksmith') {
       const hammer = new THREE.Group();
@@ -91,6 +93,8 @@ export class NPC {
   }
   talk() {
     const d = this.dialogue();
+    if (this.hasSpoken && d.repeatLines) d.lines = d.repeatLines;
+    this.hasSpoken = true;
     const onDone = () => {
       if (d.onDone) d.onDone();
       if (this.service) this.service();
@@ -106,6 +110,16 @@ export class NPC {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.root.rotation.y += d * Math.min(1, dt * 4);
     this.anim.update(dt, 0);
+    // Brom keeps working the glowing blade until the first conversation.
+    // The animator resets arm transforms each frame, so apply the hammering
+    // pose afterward; once spoken to, leave him at rest permanently.
+    if (this.isBlacksmith && !this.hasSpoken) {
+      const phase = (this.game.time * 3.8) % (Math.PI * 2);
+      const strike = Math.max(0, Math.sin(phase));
+      this.rig.armR.rotation.x = -0.22 - strike * 1.18;
+      this.rig.armR.rotation.z = -0.22 - strike * 0.18;
+      this.rig.torso.rotation.x -= strike * 0.07;
+    }
     this.marker.rotation.y += dt * 2;
     this.marker.position.y = 2.75 + Math.sin(this.game.time * 2.5) * 0.08;
     this.light.intensity = 6 + Math.sin(this.game.time * 9) * 0.6;
