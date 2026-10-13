@@ -9,6 +9,7 @@ export class RockRemovalTool {
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.selected = null;
+    this.appliedMesh = null;
     this.removed = this.readRemoved();
     this.panel = document.createElement('section');
     this.panel.id = 'rock-removal-tool';
@@ -66,7 +67,12 @@ export class RockRemovalTool {
   }
 
   getRockMesh() {
-    return this.game.scene.getObjectByName('arena-procedural-rocks');
+    const mesh = this.game.scene.getObjectByName('arena-procedural-rocks');
+    if (mesh && mesh !== this.appliedMesh) {
+      this.appliedMesh = mesh;
+      this.applySavedRemovals(mesh);
+    }
+    return mesh;
   }
 
   matrixFor(index) {
@@ -84,8 +90,7 @@ export class RockRemovalTool {
     return { x: p.x, y: p.y, z: p.z };
   }
 
-  applySavedRemovals() {
-    const mesh = this.getRockMesh();
+  applySavedRemovals(mesh = this.game.scene.getObjectByName('arena-procedural-rocks')) {
     if (!mesh) return;
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3();
