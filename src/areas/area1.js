@@ -8,7 +8,7 @@ import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
 import { Progression } from '../progression.js';
-import { createForgeScene } from '../forge-scene.js?v=blacksmith-west-rock-clearance-20261010b';
+import { createForgeScene } from '../forge-scene.js?v=forge-east-south-expansion-20261013c';
 
 // Area 1 — Forest of Vhal.
 // Layout (north = -Z, the player walks "up" the screen):
@@ -28,7 +28,7 @@ export function createArea1(game) {
   collision.addRectZone(-14, 14, 10, 47);   // forest entrance (overlap keeps the north branch walkable)
   // East-side clearing for the blacksmith: expands the playable forest instead
   // of placing the hut over the pre-existing rune stone at (10, 24).
-  collision.addRectZone(12, 37, 13, 35);
+  collision.addRectZone(12, 43, 9, 42);
   // Expanded exploration branches. These connect to the main entrance/courtyard
   // but deliberately stay outside the Morvhal arena and boss trigger corridor.
   // West route: this MUST overlap the main entrance and courtyard by area,
@@ -69,8 +69,8 @@ export function createArea1(game) {
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 16) c.lerp(stone, 0.85);
     // A broader natural dirt clearing gives the enlarged east-side forge room
     // without covering the existing rune stone.
-    const forgeClearing = Math.hypot((x - 24.5) * 0.82, z - 23.2);
-    if (forgeClearing < 14.5) c.lerp(dirt, (1 - forgeClearing / 14.5) * 0.72);
+    const forgeClearing = Math.hypot((x - 28.5) * 0.82, z - 26.0);
+    if (forgeClearing < 17.5) c.lerp(dirt, (1 - forgeClearing / 17.5) * 0.72);
     if (x > 10 && x < 18 && z > 20.5 && z < 26.0) c.lerp(dirt, 0.48);
     const d = collision.sdf(x, z);
     if (d > 2) c.multiplyScalar(1 - Math.min(0.55, (d - 2) * 0.05));
@@ -92,7 +92,7 @@ export function createArea1(game) {
     if (x > -24 && x < 24 && z > -22 && z < 14.5) continue; // inside courtyard walls
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 18.5) continue;
     // Keep the blacksmith clearing free of trees that can overlap the roof or entrance.
-    if (Math.hypot(x - 24.5, z - 23.2) < 14.5) continue;
+    if (Math.hypot(x - 28.5, z - 26.0) < 18.5) continue;
     if (!farEnough(x, z, 1.5 + d * 0.08)) continue;
     trees.push([x, z]);
     decor.pine(x, terrain.height(x, z), z, 0.9 + r() * 0.9 + d * 0.03, r);
@@ -111,7 +111,7 @@ export function createArea1(game) {
   // Extra clearance prevents newly added rock sprites from visually clipping into the cabin walls.
   const forgeRockClear = (x, z, radius = 0) => {
     const westForgeClear = x > 5 - radius && x < 23.5 + radius && z > 10 - radius && z < 39 + radius;
-    return !westForgeClear && Math.hypot(x - 24.5, z - 23.2) > 18.0 + radius;
+    return !westForgeClear && Math.hypot(x - 28.5, z - 26.0) > 21.5 + radius;
   };
   for (const [x, z, s] of [[-5.5, 21, 1.1], [12, 18, 1.4], [6.5, 40, 0.8], [-12.5, 12, 1.2], [4, 26.5, 0.6]]) {
     if (!forgeRockClear(x, z, s)) continue;
@@ -125,12 +125,12 @@ export function createArea1(game) {
   }
   // grass + glowing mushrooms
   for (let i = 0; i < 1400; i++) {
-    const x = -30 + r() * 60, z = -64 + r() * 112;
+    const x = -30 + r() * 75, z = -64 + r() * 112;
     const d = collision.sdf(x, z);
     if (d > 7 || distToPath(x, z, PATH) < 2.2) continue;
     if (x > -23.5 && x < 23.5 && z > -21.5 && z < 14) continue;
     if (Math.hypot(x - ARENA.x, z - ARENA.z) < 17) continue;
-    if (Math.hypot(x - 24.5, z - 23.2) < 11.5) continue;
+    if (Math.hypot(x - 28.5, z - 26.0) < 14.0) continue;
     decor.tuft(x, terrain.height(x, z), z, r);
   }
   for (let i = 0; i < 400; i++) {
