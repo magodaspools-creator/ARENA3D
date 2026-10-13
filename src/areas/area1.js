@@ -2291,6 +2291,7 @@ const leaveMine = () => {
         'Não espere pechincha: a estrada até Vhal está cada vez mais perigosa.',
         'Escolha o que precisar e pague em ouro. Volte quando quiser reabastecer.',
       ],
+      repeatLines: ['Precisa de suprimentos? A loja está aberta.'],
     }),
     service: () => {
       game.openShop({
@@ -2331,6 +2332,7 @@ const leaveMine = () => {
         'Sou Brom, ferreiro de Vhal. Posso cuidar de armas e armaduras quando trouxer os materiais certos.',
         'Por enquanto, dê uma olhada na forja e volte quando precisar de um equipamento digno de enfrentar as ruínas.',
       ],
+      repeatLines: ['Vamos ao trabalho. A forja está aberta.'],
     }),
     service: () => game.openForge({ npcName: 'Brom, o Ferreiro' }),
   });
