@@ -1939,7 +1939,7 @@ button:hover { filter: brightness(1.1); }
 #forge-feedback { display: none; margin: 10px 18px 0; padding: 9px 12px; border-radius: 7px; background: rgba(88,130,93,.18); color: #bce7c0; font-size: 12px; }
 #forge-feedback.show { display: block; }
 #forge-feedback.error { background: rgba(155,62,52,.18); color: #ffb9a9; }
-#forge-items { padding: 12px 18px 18px; overflow-y: auto; min-height: 130px; }
+#forge-items { flex: 1 1 auto; min-height: 0; padding: 12px 18px 18px; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .forge-item-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 13px 14px; margin-bottom: 9px; border: 1px solid rgba(169,183,171,.14); border-radius: 9px; background: rgba(255,255,255,.025); }
 .forge-item-name { font-size: 14px; color: #f1dfbd; font-weight: 750; }
 .forge-item-desc { color: #a7b1aa; font-size: 11px; line-height: 1.45; margin-top: 4px; }
