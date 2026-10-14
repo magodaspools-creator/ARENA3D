@@ -457,45 +457,38 @@ export class UI {
     this.forgeRitualTimers = [];
     overlay.className = 'forge-ritual is-charging';
     overlay.setAttribute('aria-hidden', 'false');
-    const title = overlay.querySelector('.forge-ritual-title');
+    const name = overlay.querySelector('.forge-ritual-name');
     const item = overlay.querySelector('.forge-ritual-item');
-    const subtitle = overlay.querySelector('.forge-ritual-subtitle');
     const result = overlay.querySelector('.forge-ritual-result');
+    const subtitle = overlay.querySelector('.forge-ritual-subtitle');
     const meter = overlay.querySelector('.forge-ritual-meter');
-    item.textContent = itemName + '  →  +' + targetLevel;
-    title.textContent = 'O ferreiro começa o ritual…';
-    subtitle.textContent = 'Cada golpe decide o destino do equipamento.';
+    name.textContent = itemName;
+    item.textContent = '';
     result.textContent = '';
+    subtitle.textContent = '';
     meter.style.setProperty('--ritual-progress', '0%');
-    // Result is already rolled by the game logic before this spectacle begins.
+    // The outcome is rolled by forgeUpgrade before this visual sequence begins.
     this.forgeRitualTimers.push(setTimeout(() => {
-      title.textContent = 'A energia está ficando instável…';
-      subtitle.textContent = 'As runas queimam. O último golpe se aproxima.';
       overlay.classList.add('is-surging');
-      meter.style.setProperty('--ritual-progress', '72%');
-    }, 1250));
+      meter.style.setProperty('--ritual-progress', '64%');
+    }, 1100));
     this.forgeRitualTimers.push(setTimeout(() => {
-      title.textContent = 'O ÚLTIMO GOLPE!';
-      subtitle.textContent = '…';
       overlay.classList.remove('is-surging');
       overlay.classList.add('is-release');
       meter.style.setProperty('--ritual-progress', '100%');
-    }, 2550));
+    }, 2200));
     this.forgeRitualTimers.push(setTimeout(() => {
       overlay.classList.remove('is-charging', 'is-release');
       overlay.classList.add(success ? 'is-success' : 'is-failure');
-      title.textContent = success ? 'APRIMORAMENTO CONCLUÍDO!' : 'A ENERGIA SE DESFEZ…';
-      subtitle.textContent = success
-        ? 'A arma respondeu ao poder da forja.'
-        : 'Desta vez, o metal resistiu. O equipamento foi preservado.';
-      result.textContent = success ? '✦  +' + targetLevel + '  ✦' : 'FALHA';
-    }, 3250));
+      result.textContent = success ? '+' + targetLevel : '×';
+      subtitle.textContent = success ? 'APRIMORADO' : 'FALHOU';
+    }, 2850));
     this.forgeRitualTimers.push(setTimeout(() => {
       overlay.className = 'forge-ritual';
       overlay.setAttribute('aria-hidden', 'true');
       this.forgeRitualTimers = [];
       onComplete?.();
-    }, 5100));
+    }, 4550));
   }
 
   showForgeFeedback(message, error = false) {
