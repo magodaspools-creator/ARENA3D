@@ -2001,3 +2001,43 @@ button:hover { filter: brightness(1.1); }
   .tutorial-controls span { font-size: 12px; }
   #tutorial-close { margin-top: 12px; padding: 12px; }
 }
+
+
+/* Forge upgrade ritual: dramatic anticipation without expensive 3D effects. */
+.forge-ritual { position: fixed; inset: 0; z-index: 140; display: none; place-items: center; overflow: hidden; background: rgba(5, 6, 8, .96); color: #f7e9ca; }
+.forge-ritual.is-charging, .forge-ritual.is-surging, .forge-ritual.is-release, .forge-ritual.is-success, .forge-ritual.is-failure { display: grid; }
+.forge-ritual-backdrop { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 43%, rgba(171, 89, 25, .18), transparent 48%), linear-gradient(180deg, rgba(5,7,8,.45), rgba(5,7,8,.94)); }
+.forge-ritual-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: min(560px, 92vw); padding: 28px 22px; text-align: center; }
+.forge-ritual-kicker { color: #d5a456; font-size: 10px; font-weight: 900; letter-spacing: .28em; }
+.forge-ritual-sigil { position: relative; display: grid; place-items: center; width: 190px; height: 190px; margin: 24px auto 6px; border: 1px solid rgba(239,183,88,.28); border-radius: 50%; background: radial-gradient(circle, rgba(249,173,56,.13), transparent 65%); box-shadow: 0 0 40px rgba(228,124,27,.08), inset 0 0 35px rgba(228,124,27,.06); }
+.forge-ritual-sigil:before, .forge-ritual-sigil:after { content: ""; position: absolute; inset: 12px; border: 1px dashed rgba(239,183,88,.34); border-radius: 50%; }
+.forge-ritual-sigil:after { inset: 30px; border-style: solid; transform: rotate(45deg); border-radius: 20%; }
+.forge-ritual-rune { position: absolute; color: rgba(255,210,120,.55); font-size: 110px; }
+.forge-ritual-sword { position: relative; z-index: 1; color: #fff0bd; font-size: 68px; text-shadow: 0 0 9px #ffbf4e, 0 0 28px #ff8d24; transform: rotate(-15deg); }
+.forge-ritual-sparks { position: absolute; top: 20px; right: 18px; color: #fff2b0; font-size: 28px; text-shadow: 0 0 16px #ff9f28; }
+.forge-ritual-hammer { position: absolute; top: 34%; left: calc(50% + 82px); font-size: 36px; transform-origin: 15% 85%; opacity: .85; }
+.forge-ritual-title { margin-top: 18px; color: #ffe0a0; font-size: clamp(19px, 4vw, 27px); font-weight: 950; letter-spacing: .06em; text-shadow: 0 0 20px rgba(239,154,41,.35); }
+.forge-ritual-item { margin-top: 9px; color: #c9b99b; font-size: 14px; }
+.forge-ritual-meter { width: min(330px, 82vw); height: 5px; margin-top: 24px; overflow: hidden; border-radius: 10px; background: rgba(255,255,255,.1); }
+.forge-ritual-meter span { display: block; width: var(--ritual-progress, 0%); height: 100%; background: linear-gradient(90deg, #a65a1c, #ffd46f, #fff6c9); box-shadow: 0 0 15px #ffb13b; transition: width 1.4s cubic-bezier(.18,.68,.23,1); }
+.forge-ritual-subtitle { min-height: 20px; margin-top: 14px; color: #9f9b8f; font-size: 12px; }
+.forge-ritual-result { min-height: 32px; margin-top: 18px; color: #ffe7a3; font-size: 25px; font-weight: 1000; letter-spacing: .12em; }
+.forge-ritual.is-charging .forge-ritual-sigil { animation: forge-sigil-pulse .9s ease-in-out infinite alternate; }
+.forge-ritual.is-charging .forge-ritual-hammer { animation: forge-hammer-strike .38s ease-in-out infinite alternate; }
+.forge-ritual.is-surging .forge-ritual-sigil { animation: forge-sigil-pulse .23s ease-in-out infinite alternate; box-shadow: 0 0 65px rgba(255,163,35,.48), inset 0 0 55px rgba(255,189,58,.3); }
+.forge-ritual.is-surging .forge-ritual-hammer { animation: forge-hammer-strike .19s ease-in-out infinite alternate; }
+.forge-ritual.is-release .forge-ritual-content { animation: forge-impact .3s ease-out 1; }
+.forge-ritual.is-success .forge-ritual-backdrop { background: radial-gradient(ellipse at 50% 42%, rgba(255,193,65,.35), transparent 48%), rgba(4,7,8,.9); }
+.forge-ritual.is-success .forge-ritual-sword { color: #fffbdc; text-shadow: 0 0 12px #fff2a5, 0 0 34px #ffcb3d, 0 0 68px #ff9b25; animation: forge-success-reveal .7s cubic-bezier(.16,1,.3,1) both; }
+.forge-ritual.is-success .forge-ritual-title { color: #ffe69a; }
+.forge-ritual.is-failure .forge-ritual-backdrop { background: radial-gradient(ellipse at 50% 42%, rgba(113,61,48,.25), transparent 48%), rgba(4,7,8,.94); }
+.forge-ritual.is-failure .forge-ritual-sigil { filter: grayscale(.7); opacity: .55; }
+.forge-ritual.is-failure .forge-ritual-sword { color: #c7a99a; text-shadow: 0 0 15px rgba(167,76,57,.55); }
+.forge-ritual.is-failure .forge-ritual-result { color: #ff9b82; }
+@keyframes forge-sigil-pulse { from { transform: scale(.97) rotate(-3deg); filter: brightness(.9); } to { transform: scale(1.04) rotate(3deg); filter: brightness(1.5); } }
+@keyframes forge-hammer-strike { from { transform: rotate(-28deg) translateY(-4px); } to { transform: rotate(24deg) translateY(5px); } }
+@keyframes forge-impact { 0% { transform: scale(1.03); filter: brightness(2); } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes forge-success-reveal { from { transform: rotate(-15deg) scale(.55); opacity: .25; } to { transform: rotate(-15deg) scale(1.2); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .forge-ritual.is-charging .forge-ritual-sigil, .forge-ritual.is-charging .forge-ritual-hammer, .forge-ritual.is-surging .forge-ritual-sigil, .forge-ritual.is-surging .forge-ritual-hammer, .forge-ritual.is-release .forge-ritual-content, .forge-ritual.is-success .forge-ritual-sword { animation: none; }
+}
