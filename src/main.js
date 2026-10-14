@@ -11,7 +11,7 @@ import { Effects } from './effects.js';
 import { Combat } from './combat.js';
 import { UI } from './ui.js?v=forge-scroll-reset-20261014a';
 import { Interaction } from './interaction.js';
-import { Dialogue } from './npc.js?v=blacksmith-yanes-sprite-20261014a';
+import { Dialogue } from './npc.js?v=blacksmith-billboard-fix-20261014b';
 import { Player } from './player.js';
 import { loadPlayerRig } from './gltf-humanoid.js';
 import { createHumanoid } from './models.js';
