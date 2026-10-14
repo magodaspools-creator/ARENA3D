@@ -114,11 +114,39 @@ export class NPC {
     // The animator resets arm transforms each frame, so apply the hammering
     // pose afterward; once spoken to, leave him at rest permanently.
     if (this.isBlacksmith && !this.hasSpoken) {
-      const phase = (this.game.time * 3.8) % (Math.PI * 2);
-      const strike = Math.max(0, Math.sin(phase));
-      this.rig.armR.rotation.x = -0.22 - strike * 1.18;
-      this.rig.armR.rotation.z = -0.22 - strike * 0.18;
-      this.rig.torso.rotation.x -= strike * 0.07;
+      // A readable forging cycle: raise the hammer, accelerate into the strike,
+      // then recoil slightly. Keep the feet planted and the torso working over
+      // the anvil instead of swinging only the forearm on an upright body.
+      const phase = (this.game.time * 2.65) % (Math.PI * 2);
+      const cycle = phase / (Math.PI * 2);
+      const raise = cycle < 0.34 ? Math.sin((cycle / 0.34) * Math.PI * 0.5) : 1;
+      const impact = cycle >= 0.34 && cycle < 0.53
+        ? Math.sin(((cycle - 0.34) / 0.19) * Math.PI * 0.5)
+        : cycle >= 0.53 && cycle < 0.68
+          ? Math.cos(((cycle - 0.53) / 0.15) * Math.PI * 0.5)
+          : 0;
+      const strike = cycle >= 0.34 && cycle < 0.53 ? impact : 0;
+      const recovery = cycle >= 0.53 && cycle < 0.68 ? impact : 0;
+
+      this.rig.body.position.y = -0.035 - strike * 0.045;
+      this.rig.torso.rotation.x = 0.16 + strike * 0.24 - recovery * 0.06;
+      this.rig.head.rotation.x = 0.12 + strike * 0.1;
+      this.rig.armR.rotation.x = -0.05 - raise * 1.12 + strike * 0.78 + recovery * 0.12;
+      this.rig.armR.rotation.z = -0.34 - raise * 0.1 + strike * 0.12;
+      // The free hand steadies the hot blade while the hammer hand swings.
+      this.rig.armL.rotation.x = -0.62 + strike * 0.12;
+      this.rig.armL.rotation.z = 0.12;
+      this.rig.legL.rotation.x = -0.06;
+      this.rig.legR.rotation.x = -0.06;
+    } else if (this.isBlacksmith) {
+      // Restore a relaxed stance after the first conversation.
+      this.rig.body.position.y = 0;
+      this.rig.torso.rotation.x = 0;
+      this.rig.head.rotation.x = 0;
+      this.rig.armR.rotation.set(0, 0, 0);
+      this.rig.armL.rotation.set(0, 0, 0);
+      this.rig.legL.rotation.x = 0;
+      this.rig.legR.rotation.x = 0;
     }
     this.marker.rotation.y += dt * 2;
     this.marker.position.y = 2.75 + Math.sin(this.game.time * 2.5) * 0.08;
