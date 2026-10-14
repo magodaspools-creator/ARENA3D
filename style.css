@@ -2107,3 +2107,22 @@ button:hover { filter: brightness(1.1); }
 @keyframes ritual-ember { 0% { transform:translate(0,0) scale(.6); opacity:0; } 15% {opacity:.8} 100% {transform:translate(var(--drift),-80vh) scale(0);opacity:0} }
 @media(max-height:560px) { .forge-ritual-stage{min-height:360px;transform:scale(.82)} .forge-ritual-orbit{top:calc(50% - min(32vw,170px))} .forge-ritual-sword{top:calc(50% - 170px);height:230px} .forge-ritual-anvil{top:calc(50% + 55px)} .forge-ritual-name{top:calc(50% + 130px)} .forge-ritual-meter{top:calc(50% + 158px)} .forge-ritual-result{top:calc(50% + 185px)} .forge-ritual-subtitle{top:calc(50% + 240px)} }
 @media(prefers-reduced-motion:reduce){.forge-ritual *{animation:none!important;transition:none!important}}
+
+
+/* Forge ritual: use authored image sprites, not CSS-drawn geometric props. */
+.forge-ritual-orbit,.forge-ritual-anvil,.forge-ritual-hammer { display:none !important; }
+.forge-ritual-stage { min-height:430px; }
+.forge-ritual-sword { position:absolute; z-index:3; top:calc(50% - 190px); width:clamp(190px,36vw,300px); height:clamp(260px,47vh,370px); display:grid; place-items:center; transform-origin:50% 78%; filter:drop-shadow(0 0 14px rgba(255,166,55,.42)); }
+.forge-ritual-sword img { display:block; width:100%; height:100%; object-fit:contain; user-select:none; pointer-events:none; }
+.forge-ritual-impact { position:absolute; z-index:2; top:calc(50% - 50px); left:50%; width:clamp(220px,50vw,420px); aspect-ratio:1; transform:translate(-50%,-50%) scale(.25); opacity:0; background:url('./assets/forge/impact-sprite.svg') center/contain no-repeat; pointer-events:none; }
+.forge-embers i { position:absolute; bottom:-8%; width:clamp(24px,5vw,44px); height:clamp(24px,5vw,44px); background:url('./assets/forge/ember-sprite.svg') center/contain no-repeat; opacity:0; filter:drop-shadow(0 0 9px rgba(255,118,32,.55)); animation:forge-sprite-rise 2.7s ease-out infinite; }
+.forge-embers i:nth-child(1){left:12%;animation-delay:-.3s}.forge-embers i:nth-child(2){left:23%;animation-delay:-1.8s}.forge-embers i:nth-child(3){left:35%;animation-delay:-.9s}.forge-embers i:nth-child(4){left:47%;animation-delay:-2.2s}.forge-embers i:nth-child(5){left:58%;animation-delay:-.6s}.forge-embers i:nth-child(6){left:69%;animation-delay:-1.4s}.forge-embers i:nth-child(7){left:80%;animation-delay:-2.5s}.forge-embers i:nth-child(8){left:89%;animation-delay:-1.1s}.forge-embers i:nth-child(9){left:17%;animation-delay:-2.1s}.forge-embers i:nth-child(10){left:42%;animation-delay:-1.6s}.forge-embers i:nth-child(11){left:64%;animation-delay:-.4s}.forge-embers i:nth-child(12){left:75%;animation-delay:-2.8s}
+@keyframes forge-sprite-rise { 0%{transform:translate3d(0,0,0) rotate(-15deg) scale(.45);opacity:0} 18%{opacity:.85} 100%{transform:translate3d(18px,-82vh,0) rotate(45deg) scale(1.1);opacity:0} }
+.forge-ritual.is-charging .forge-ritual-sword { animation:ritual-weapon-float 1.3s ease-in-out infinite alternate; }
+.forge-ritual.is-surging .forge-ritual-sword { animation:ritual-charge .24s ease-in-out infinite alternate; filter:drop-shadow(0 0 24px #ff9f32); }
+.forge-ritual.is-release .forge-ritual-impact { animation:forge-sprite-impact .48s ease-out forwards; }
+.forge-ritual.is-success .forge-ritual-sword { animation:ritual-reveal .65s cubic-bezier(.15,1,.25,1) both; filter:drop-shadow(0 0 25px #ffcd65) drop-shadow(0 0 50px rgba(255,143,27,.8)); }
+.forge-ritual.is-failure .forge-ritual-sword { filter:grayscale(.8) brightness(.72); opacity:.7; }
+@keyframes forge-sprite-impact { 0%{opacity:0;transform:translate(-50%,-50%) scale(.25)} 30%{opacity:1;transform:translate(-50%,-50%) scale(1.15)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.6)} }
+@media(max-height:560px) { .forge-ritual-sword{top:calc(50% - 160px);height:230px}.forge-ritual-impact{top:calc(50% - 30px)} }
+@media(prefers-reduced-motion:reduce){.forge-embers i{animation:none!important}}
