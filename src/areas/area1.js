@@ -3,7 +3,7 @@ import {
   rng, fbm, smooth, distToPath, Terrain, createGround, Decor, deadTree,
   createCampfire, createBrazier, createGate, createPortal, createRuneStone, createSign, createChest, createSecretGate, createLever,
 } from '../world.js';
-import { NPC } from '../npc.js?v=blacksmith-yanes-sprite-20261014a';
+import { NPC } from '../npc.js?v=blacksmith-billboard-fix-20261014b';
 import { Enemy } from '../enemy.js';
 import { Boss } from '../boss.js';
 import { MineBoss } from '../mine-boss.js';
