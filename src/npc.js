@@ -105,7 +105,11 @@ export class NPC {
   update(dt) {
     const p = this.game.player;
     let want = this.baseFacing;
-    if (p && this.pos.distanceTo(p.pos) < 7) want = Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
+    // While working, Brom keeps his attention on the anvil; he only turns to
+    // face the player after the player starts a conversation.
+    if (!(this.isBlacksmith && !this.hasSpoken) && p && this.pos.distanceTo(p.pos) < 7) {
+      want = Math.atan2(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
+    }
     let d = want - this.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.root.rotation.y += d * Math.min(1, dt * 4);
