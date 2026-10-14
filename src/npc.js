@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { createHumanoid, createWeapon, glow, mesh, HumanoidAnimator } from './models.js?v=npc-blacksmith-role-20261013e';
 
+const BLACKSMITH_SPRITES = {
+  work: './uploads/03_[Work_Loop].png',
+  idle: './uploads/01_[Idle].png',
+  dialog: './uploads/11_[Dialog_I[Stand]].png',
+};
+
 const tmp = new THREE.Vector3();
 
 /** Speech bubble conversation anchored in the world, typed out letter by letter. */
@@ -49,17 +55,37 @@ export class NPC {
     this.hasSpoken = false;
     this.isBlacksmith = look.npcRole === 'blacksmith';
     this.rig = createHumanoid({ ...look, npcStyle: true });
-    if (look.npcRole === 'blacksmith') {
-      const hammer = new THREE.Group();
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.62, 6),
-        new THREE.MeshStandardMaterial({ color: 0x755035, roughness: 0.95 }));
-      handle.position.y = 0.08;
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.17, 0.19),
-        new THREE.MeshStandardMaterial({ color: 0x777b80, metalness: 0.55, roughness: 0.6 }));
-      head.position.y = 0.38;
-      hammer.add(handle, head);
-      hammer.rotation.z = -0.25;
-      this.rig.handR.add(hammer);
+    if (this.isBlacksmith) {
+      // Use the artist's original pixel-art animation strips instead of the
+      // procedural humanoid/hammer. Keep the rig only as the interaction root.
+      this.rig.root.traverse((object) => {
+        if (object.isMesh || object.isSkinnedMesh) object.visible = false;
+      });
+      this.blacksmithSprite = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.65, 1.65),
+        new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, depthWrite: false })
+      );
+      this.blacksmithSprite.position.set(0, 0.83, 0);
+      this.blacksmithSprite.renderOrder = 2;
+      this.rig.root.add(this.blacksmithSprite);
+      this.blacksmithTextures = {};
+      this.blacksmithAnimation = 'work';
+      this.blacksmithFrameElapsed = 0;
+      const loader = new THREE.TextureLoader();
+      for (const [state, url] of Object.entries(BLACKSMITH_SPRITES)) {
+        loader.load(url, (texture) => {
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+          texture.generateMipmaps = false;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.userData = { frameWidth: 64, frameCount: Math.max(1, Math.round(texture.image.width / 64)) };
+          texture.repeat.set(1 / texture.userData.frameCount, 1);
+          this.blacksmithTextures[state] = texture;
+          if (state === this.blacksmithAnimation) this.blacksmithSprite.material.map = texture;
+          this.blacksmithSprite.material.needsUpdate = true;
+        });
+      }
     } else {
       this.rig.handR.add(createWeapon('lanternStaff'));
     }
@@ -95,6 +121,7 @@ export class NPC {
     const d = this.dialogue();
     if (this.hasSpoken && d.repeatLines) d.lines = d.repeatLines;
     this.hasSpoken = true;
+    if (this.isBlacksmith) this.blacksmithAnimation = 'dialog';
     const onDone = () => {
       if (d.onDone) d.onDone();
       if (this.service) this.service();
@@ -113,44 +140,28 @@ export class NPC {
     let d = want - this.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.root.rotation.y += d * Math.min(1, dt * 4);
-    this.anim.update(dt, 0);
-    // Brom keeps working the glowing blade until the first conversation.
-    // The animator resets arm transforms each frame, so apply the hammering
-    // pose afterward; once spoken to, leave him at rest permanently.
-    if (this.isBlacksmith && !this.hasSpoken) {
-      // A readable forging cycle: raise the hammer, accelerate into the strike,
-      // then recoil slightly. Keep the feet planted and the torso working over
-      // the anvil instead of swinging only the forearm on an upright body.
-      const phase = (this.game.time * 2.65) % (Math.PI * 2);
-      const cycle = phase / (Math.PI * 2);
-      const raise = cycle < 0.34 ? Math.sin((cycle / 0.34) * Math.PI * 0.5) : 1;
-      const impact = cycle >= 0.34 && cycle < 0.53
-        ? Math.sin(((cycle - 0.34) / 0.19) * Math.PI * 0.5)
-        : cycle >= 0.53 && cycle < 0.68
-          ? Math.cos(((cycle - 0.53) / 0.15) * Math.PI * 0.5)
-          : 0;
-      const strike = cycle >= 0.34 && cycle < 0.53 ? impact : 0;
-      const recovery = cycle >= 0.53 && cycle < 0.68 ? impact : 0;
-
-      this.rig.body.position.y = -0.035 - strike * 0.045;
-      this.rig.torso.rotation.x = 0.16 + strike * 0.24 - recovery * 0.06;
-      this.rig.head.rotation.x = 0.12 + strike * 0.1;
-      this.rig.armR.rotation.x = -0.05 - raise * 1.12 + strike * 0.78 + recovery * 0.12;
-      this.rig.armR.rotation.z = -0.34 - raise * 0.1 + strike * 0.12;
-      // The free hand steadies the hot blade while the hammer hand swings.
-      this.rig.armL.rotation.x = -0.62 + strike * 0.12;
-      this.rig.armL.rotation.z = 0.12;
-      this.rig.legL.rotation.x = -0.06;
-      this.rig.legR.rotation.x = -0.06;
-    } else if (this.isBlacksmith) {
-      // Restore a relaxed stance after the first conversation.
-      this.rig.body.position.y = 0;
-      this.rig.torso.rotation.x = 0;
-      this.rig.head.rotation.x = 0;
-      this.rig.armR.rotation.set(0, 0, 0);
-      this.rig.armL.rotation.set(0, 0, 0);
-      this.rig.legL.rotation.x = 0;
-      this.rig.legR.rotation.x = 0;
+    if (!this.isBlacksmith) {
+      this.anim.update(dt, 0);
+    } else {
+      // Advance one frame of the real sprite strip; no per-frame allocations.
+      const state = this.hasSpoken ? 'dialog' : 'work';
+      if (this.blacksmithAnimation !== state) {
+        this.blacksmithAnimation = state;
+        this.blacksmithFrameElapsed = 0;
+        const texture = this.blacksmithTextures[state];
+        if (texture) this.blacksmithSprite.material.map = texture;
+        this.blacksmithSprite.material.needsUpdate = true;
+      }
+      const texture = this.blacksmithTextures[state];
+      if (texture?.image?.width) {
+        const frames = texture.userData.frameCount;
+        this.blacksmithFrameElapsed += dt;
+        if (this.blacksmithFrameElapsed >= 0.12) {
+          this.blacksmithFrameElapsed = 0;
+          const frame = Math.floor(this.game.time / 0.12) % frames;
+          texture.offset.x = frame / frames;
+        }
+      }
     }
     this.marker.rotation.y += dt * 2;
     this.marker.position.y = 2.75 + Math.sin(this.game.time * 2.5) * 0.08;
