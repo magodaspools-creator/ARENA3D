@@ -649,7 +649,7 @@ export class KayKitEnvironment {
         if (edge && placed % 2 === 0) {
           const w = SkeletonUtils.clone(wall.scene);
           w.position.set(gx, this.groundY(gx, gz), gz);
-          w.userData.arenaPropRotationY = !collision.inside(gx + stepX, gz, 0) ? Math.PI * 0.5 : 0;
+          w.userData.arenaPropRotationY = (!collision.inside(gx + stepX, gz, 0) || !collision.inside(gx - stepX, gz, 0)) ? Math.PI * 0.5 : 0;
           w.rotation.y = w.userData.arenaPropRotationY;
           this.root.add(w);
           this.registerSolidPropCollider(w, 'wall');
