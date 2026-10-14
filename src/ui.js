@@ -450,7 +450,7 @@ export class UI {
     this.el.forge.classList.remove('hidden');
   }
 
-  playForgeRitual({ itemName, targetLevel, success, onComplete }) {
+  playForgeRitual({ itemName, itemSprite, targetLevel, success, onComplete }) {
     const overlay = document.getElementById('forge-ritual');
     if (!overlay) { onComplete?.(); return; }
     if (this.forgeRitualTimers) this.forgeRitualTimers.forEach(clearTimeout);
@@ -458,11 +458,14 @@ export class UI {
     overlay.className = 'forge-ritual is-charging';
     overlay.setAttribute('aria-hidden', 'false');
     const name = overlay.querySelector('.forge-ritual-name');
+    const sprite = overlay.querySelector('.forge-ritual-sword img');
     const result = overlay.querySelector('.forge-ritual-result');
     const subtitle = overlay.querySelector('.forge-ritual-subtitle');
     const meter = overlay.querySelector('.forge-ritual-meter');
-    if (!name || !result || !subtitle || !meter) { overlay.className = 'forge-ritual'; overlay.setAttribute('aria-hidden', 'true'); onComplete?.(); return; }
+    if (!name || !sprite || !result || !subtitle || !meter) { overlay.className = 'forge-ritual'; overlay.setAttribute('aria-hidden', 'true'); onComplete?.(); return; }
     name.textContent = itemName;
+    sprite.src = itemSprite || 'uploads/01_espada_de_ferro.png';
+    sprite.alt = itemName;
     result.textContent = '';
     subtitle.textContent = '';
     meter.style.setProperty('--ritual-progress', '0%');
