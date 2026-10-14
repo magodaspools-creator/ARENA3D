@@ -2320,7 +2320,9 @@ const leaveMine = () => {
   // Brom, the blacksmith, works inside the enlarged open-front forge.
   const brom = new NPC(game, {
     name: 'Brom, o Ferreiro',
-    x: 30.0, z: 30.9, facing: Math.PI,
+    // Keep Brom beside the anvil near the open/front half of the hut so
+    // the roof and wall silhouette do not swallow his working pose.
+    x: 31.6, z: 29.1, facing: -Math.PI / 2,
     look: {
       skin: 0xc98f68, body: 0x514039, legs: 0x302720, boots: 0x211a16,
       accent: 0x77716a, npcRole: 'blacksmith', beard: 0x493026, apron: 0x513522,
