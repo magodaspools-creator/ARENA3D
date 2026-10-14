@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icons/icon-192.svg">
   <link rel="stylesheet" href="./pwa-mobile.css?v=skills-interact-separated-20261011a">
-  <link rel="stylesheet" href="style.css?v=forge-visual-redesign-20261014b">
+  <link rel="stylesheet" href="style.css?v=forge-sprite-ritual-20261014c">
   <link rel="icon" href="data:,">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
@@ -202,21 +202,8 @@
         <div class="forge-ritual-backdrop"></div>
         <div class="forge-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="forge-ritual-stage">
-          <div class="forge-ritual-orbit orbit-a"></div><div class="forge-ritual-orbit orbit-b"></div>
-          <div class="forge-ritual-anvil"></div>
-          <div class="forge-ritual-hammer"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M20 13 L45 38 L37 46 L12 21 Z" fill="#b8c0c6"/><path d="M39 39 L49 49 L23 81 L16 74 Z" fill="#79543a"/><path d="M14 13 L30 5 L50 25 L40 37 Z" fill="#e4e8e8" stroke="#5d6267" stroke-width="3"/></svg></div>
-          <div class="forge-ritual-sword">
-            <svg viewBox="0 0 180 300" role="img" aria-label="Espada sendo imbuída de energia">
-              <defs><linearGradient id="ritual-blade" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff8ce"/><stop offset=".35" stop-color="#d9e9ee"/><stop offset=".62" stop-color="#8ba7b6"/><stop offset="1" stop-color="#fff4bd"/></linearGradient><linearGradient id="ritual-grip" x1="0" x2="1"><stop stop-color="#5d3526"/><stop offset=".5" stop-color="#d4a15d"/><stop offset="1" stop-color="#4b2b20"/></linearGradient></defs>
-              <path class="blade-glow" d="M90 8 L119 163 L90 198 L61 163 Z" fill="#ffbe54" opacity=".5"/>
-              <path d="M90 12 L109 158 L90 187 L71 158 Z" fill="url(#ritual-blade)" stroke="#fff2bd" stroke-width="2"/>
-              <path d="M90 24 L90 180" stroke="#fff" stroke-width="2" opacity=".8"/>
-              <path d="M48 163 Q90 177 132 163 L126 178 Q90 194 54 178 Z" fill="#bd8b45" stroke="#f4d391" stroke-width="3"/>
-              <path d="M82 179 L98 179 L101 244 L79 244 Z" fill="url(#ritual-grip)" stroke="#e5bd79" stroke-width="2"/>
-              <path d="M76 191 L104 203 M77 207 L103 219 M78 223 L101 235" stroke="#e8ca8e" stroke-width="4"/>
-              <path d="M70 244 L110 244 L90 267 Z" fill="#d5a75d" stroke="#fff0bd" stroke-width="2"/>
-            </svg>
-          </div>
+          <div class="forge-ritual-sword"><img src="./uploads/01_espada_de_ferro.png" alt="" draggable="false"></div>
+          <div class="forge-ritual-impact" aria-hidden="true"></div>
           <div class="forge-ritual-name"></div>
           <div class="forge-ritual-meter"><span></span></div>
           <div class="forge-ritual-result"></div>
