@@ -9,7 +9,7 @@ import { CameraRig } from './camera.js';
 import { Collision } from './collision.js';
 import { Effects } from './effects.js';
 import { Combat } from './combat.js';
-import { UI } from './ui.js?v=blacksmith-forge-20261009c';
+import { UI } from './ui.js?v=forge-ritual-20261014a';
 import { Interaction } from './interaction.js';
 import { Dialogue } from './npc.js?v=npc-blacksmith-role-20261013e';
 import { Player } from './player.js';
