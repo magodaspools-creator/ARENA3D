@@ -61,11 +61,15 @@ export class NPC {
       this.rig.root.traverse((object) => {
         if (object.isMesh || object.isSkinnedMesh) object.visible = false;
       });
-      this.blacksmithSprite = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.65, 1.65),
-        new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, depthWrite: false })
+      // THREE.Sprite is a camera-facing billboard; a flat PlaneGeometry was
+      // seen edge-on from the isometric camera and made the blacksmith look
+      // like a tiny paper cutout. The source frames are 64x64 with transparent
+      // padding, so scale the billboard up to give the character proper height.
+      this.blacksmithSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.04, depthWrite: false, sizeAttenuation: true })
       );
-      this.blacksmithSprite.position.set(0, 0.83, 0);
+      this.blacksmithSprite.scale.set(2.75, 2.75, 1);
+      this.blacksmithSprite.position.set(0, 1.38, 0);
       this.blacksmithSprite.renderOrder = 2;
       this.rig.root.add(this.blacksmithSprite);
       this.blacksmithTextures = {};
