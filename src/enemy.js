@@ -843,8 +843,8 @@ export class Enemy {
           if (directClear) {
             this.navPath = null;
             this.navTimer = 0;
-          } else if (this.navTimer <= 0 || !this.navPath?.length) {
-            this.navPath = findEnemyPath(g.collision, this.pos, p.pos, this.radius);
+          } else if (this.navTimer <= 0 || this.navPath === null) {
+            this.navPath = findEnemyPath(g.collision, this.pos, p.pos, this.radius) ?? [];
             this.navTimer = 0.55;
           }
           if (this.navPath?.length) {
