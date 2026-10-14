@@ -387,6 +387,9 @@ export class UI {
       const [title, subtitle] = labels[mode];
       this.el.forgeTitle.textContent = title;
       this.el.forgeSubtitle.textContent = subtitle;
+      // Rebuilds after a forge attempt can leave scroll anchoring at a stale offset.
+      // Reset the list before and after replacing cards so scrolling works in both directions.
+      this.el.forgeItems.scrollTop = 0;
       this.el.forgeItems.replaceChildren();
       const entries = getEntries?.(mode) || [];
       if (!entries.length) {
