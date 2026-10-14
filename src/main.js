@@ -1300,20 +1300,32 @@ class Game {
     if (character.gold < config.cost) return this.renderForge(mode, 'Ouro insuficiente: são necessários ' + config.cost + ' ouro.', true);
     if (character.getItemCount('iron_scrap') < config.iron) return this.renderForge(mode, 'Faltam Fragmentos de Ferro: são necessários ' + config.iron + '.', true);
 
+    // Roll exactly once before the ritual. The animation never changes the odds.
+    const success = Math.random() < config.chance;
     character.removeItem('iron_scrap', config.iron);
     character.spendGold(config.cost);
-    const success = Math.random() < config.chance;
-    if (success) character.setUpgradeLevel(slot, level + 1);
     this.ui.setProgress(character);
     this.ui.setInventory(character);
     this.ui.setActionBar(character);
-    if (success) {
-      this.fx.ring(this.player.pos, 0xffc66b, 1.4, 0.7, 0.8);
-      this.renderForge(mode, 'Sucesso! ' + item.name + ' agora está no nível +' + (level + 1) + '.', false);
-    } else {
-      this.fx.ring(this.player.pos, 0xa45a43, 1.0, 0.45, 0.6);
-      this.renderForge(mode, 'A tentativa falhou. Os materiais e o ouro foram consumidos; o equipamento foi preservado.', true);
-    }
+
+    this.ui.playForgeRitual({
+      itemName: item.name,
+      targetLevel: level + 1,
+      success,
+      onComplete: () => {
+        if (success) character.setUpgradeLevel(slot, level + 1);
+        this.ui.setProgress(character);
+        this.ui.setInventory(character);
+        this.ui.setActionBar(character);
+        if (success) {
+          this.fx.ring(this.player.pos, 0xffc66b, 1.4, 0.7, 0.8);
+          this.renderForge(mode, 'Sucesso! ' + item.name + ' agora está no nível +' + (level + 1) + '.', false);
+        } else {
+          this.fx.ring(this.player.pos, 0xa45a43, 1.0, 0.45, 0.6);
+          this.renderForge(mode, 'A tentativa falhou. Os materiais e o ouro foram consumidos; o equipamento foi preservado.', true);
+        }
+      },
+    });
   }
 
   forgeRecycle(itemId, quantity = 1, mode = this.forgeMode) {
