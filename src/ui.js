@@ -458,12 +458,11 @@ export class UI {
     overlay.className = 'forge-ritual is-charging';
     overlay.setAttribute('aria-hidden', 'false');
     const name = overlay.querySelector('.forge-ritual-name');
-    const item = overlay.querySelector('.forge-ritual-item');
     const result = overlay.querySelector('.forge-ritual-result');
     const subtitle = overlay.querySelector('.forge-ritual-subtitle');
     const meter = overlay.querySelector('.forge-ritual-meter');
+    if (!name || !result || !subtitle || !meter) { overlay.className = 'forge-ritual'; overlay.setAttribute('aria-hidden', 'true'); onComplete?.(); return; }
     name.textContent = itemName;
-    item.textContent = '';
     result.textContent = '';
     subtitle.textContent = '';
     meter.style.setProperty('--ritual-progress', '0%');
