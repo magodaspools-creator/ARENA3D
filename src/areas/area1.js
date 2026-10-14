@@ -2322,7 +2322,7 @@ const leaveMine = () => {
     name: 'Brom, o Ferreiro',
     // Keep Brom beside the anvil near the open/front half of the hut so
     // the roof and wall silhouette do not swallow his working pose.
-    x: 31.6, z: 29.1, facing: -Math.PI / 2,
+    x: 32.0, z: 30.0, facing: -Math.PI / 2,
     look: {
       skin: 0xc98f68, body: 0x514039, legs: 0x302720, boots: 0x211a16,
       accent: 0x77716a, npcRole: 'blacksmith', beard: 0x493026, apron: 0x513522,
