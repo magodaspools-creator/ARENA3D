@@ -497,6 +497,84 @@ export const ENEMY_TYPES = {
   ], aggro: 7.5, range: 1.05, damage: [5, 8], windup: 0.28, cooldown: 1.1, radius: 0.28, height: 0.75, knock: 2, poison: { damage: [1, 2], duration: 3, tick: 1 } },
 };
 
+
+const ENEMY_NAV_CELL = 0.8;
+const ENEMY_NAV_MAX_NODES = 260;
+
+function enemyCanOccupy(collision, x, z, radius) {
+  if (!collision.inside(x, z, -radius * 0.72)) return false;
+  for (const o of collision.obstacles) {
+    if (!o.enabled) continue;
+    if (o.type === 'circle') {
+      if (Math.hypot(x - o.x, z - o.z) < o.r + radius) return false;
+    } else if (o.type === 'orientedBox') {
+      const dx = x - o.x, dz = z - o.z;
+      const cs = Math.cos(o.rotationY), sn = Math.sin(o.rotationY);
+      const lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+      const cx = Math.max(-o.halfX, Math.min(o.halfX, lx));
+      const cz = Math.max(-o.halfZ, Math.min(o.halfZ, lz));
+      if ((lx - cx) ** 2 + (lz - cz) ** 2 < radius * radius) return false;
+    } else if (x > o.minX - radius && x < o.maxX + radius && z > o.minZ - radius && z < o.maxZ + radius) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function enemyPathIsClear(collision, from, to, radius) {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  const steps = Math.ceil(Math.hypot(dx, dz) / 0.45);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (!enemyCanOccupy(collision, from.x + dx * t, from.z + dz * t, radius * 0.9)) return false;
+  }
+  return true;
+}
+
+function findEnemyPath(collision, from, to, radius) {
+  const cell = ENEMY_NAV_CELL;
+  const sx = Math.round(from.x / cell), sz = Math.round(from.z / cell);
+  const gx = Math.round(to.x / cell), gz = Math.round(to.z / cell);
+  if (sx === gx && sz === gz) return [];
+  const minX = Math.min(sx, gx) - 9, maxX = Math.max(sx, gx) + 9;
+  const minZ = Math.min(sz, gz) - 9, maxZ = Math.max(sz, gz) + 9;
+  const key = (x, z) => x + ',' + z;
+  const heuristic = (x, z) => Math.hypot(gx - x, gz - z);
+  const start = { x: sx, z: sz, g: 0, f: heuristic(sx, sz), parent: null };
+  const open = [start], nodes = new Map([[key(sx, sz), start]]), closed = new Set();
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  let expanded = 0, found = null;
+  while (open.length && expanded < ENEMY_NAV_MAX_NODES) {
+    let best = 0;
+    for (let i = 1; i < open.length; i++) if (open[i].f < open[best].f) best = i;
+    const cur = open.splice(best, 1)[0], ck = key(cur.x, cur.z);
+    if (closed.has(ck)) continue;
+    closed.add(ck);
+    expanded++;
+    if (cur.x === gx && cur.z === gz) { found = cur; break; }
+    for (const [ox, oz] of dirs) {
+      const nx = cur.x + ox, nz = cur.z + oz, nk = key(nx, nz);
+      if (nx < minX || nx > maxX || nz < minZ || nz > maxZ || closed.has(nk)) continue;
+      const wx = nx * cell, wz = nz * cell;
+      if (!(nx === gx && nz === gz) && !enemyCanOccupy(collision, wx, wz, radius * 0.92)) continue;
+      if (ox && oz &&
+          (!enemyCanOccupy(collision, (cur.x + ox) * cell, cur.z * cell, radius * 0.92) ||
+           !enemyCanOccupy(collision, cur.x * cell, (cur.z + oz) * cell, radius * 0.92))) continue;
+      const ng = cur.g + (ox && oz ? 1.4142 : 1);
+      const prev = nodes.get(nk);
+      if (prev && ng >= prev.g) continue;
+      const node = { x: nx, z: nz, g: ng, f: ng + heuristic(nx, nz), parent: cur };
+      nodes.set(nk, node);
+      open.push(node);
+    }
+  }
+  if (!found) return null;
+  const path = [];
+  for (let node = found; node && node.parent; node = node.parent) path.push({ x: node.x * cell, z: node.z * cell });
+  path.reverse();
+  return path;
+}
+
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
 
 export class Enemy {
@@ -620,6 +698,8 @@ export class Enemy {
     this.t = Math.random() * 10;
     this.wanderT = Math.random() * 3;
     this.wanderTo = this.home.clone();
+    this.navPath = null;
+    this.navTimer = 0;
     this.alive = true;
     this.removed = false;
     this.bar = game.ui.createBar();
@@ -756,13 +836,35 @@ export class Enemy {
       case 'chase': {
         if (!playerOK || this.pos.distanceTo(this.home) > 22) { this.state = 'return'; break; }
         face = toPlayer;
+        let chaseDX = dx, chaseDZ = dz;
+        if (!def.ranged && dist > def.range * 0.8) {
+          this.navTimer -= dt;
+          const directClear = enemyPathIsClear(g.collision, this.pos, p.pos, this.radius);
+          if (directClear) {
+            this.navPath = null;
+            this.navTimer = 0;
+          } else if (this.navTimer <= 0 || !this.navPath?.length) {
+            this.navPath = findEnemyPath(g.collision, this.pos, p.pos, this.radius);
+            this.navTimer = 0.55;
+          }
+          if (this.navPath?.length) {
+            while (this.navPath.length && Math.hypot(this.navPath[0].x - this.pos.x, this.navPath[0].z - this.pos.z) < 0.5) this.navPath.shift();
+            if (this.navPath.length) {
+              chaseDX = this.navPath[0].x - this.pos.x;
+              chaseDZ = this.navPath[0].z - this.pos.z;
+            }
+          }
+        }
         if (def.ranged) {
           if (dist > def.range * 0.9) { mvx = dx / dist; mvz = dz / dist; spd = def.speed; }
           else if (dist < def.keep - 1.5) { mvx = -dx / dist; mvz = -dz / dist; spd = def.speed * 0.7; }
           else { mvx = -dz / dist; mvz = dx / dist; spd = def.speed * 0.35 * Math.sin(this.t * 0.7); }
           if (dist <= def.range && this.cd <= 0) this.startWindup();
         } else {
-          if (dist > def.range * 0.8) { mvx = dx / dist; mvz = dz / dist; spd = def.speed; }
+          if (dist > def.range * 0.8) {
+            const chaseLen = Math.hypot(chaseDX, chaseDZ) || 1;
+            mvx = chaseDX / chaseLen; mvz = chaseDZ / chaseLen; spd = def.speed;
+          }
           if (dist <= def.range + 0.3 && this.cd <= 0) this.startWindup();
         }
         break;
