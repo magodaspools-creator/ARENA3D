@@ -22,6 +22,11 @@ export const BOSS_KEY = 'arena.proto.bossKills';
 
 export function createArea1(game) {
   const { scene, collision } = game;
+
+  // Pequeno preenchimento de luz exclusivo da superfície da Fase 1.
+  // A mina mantém sua iluminação subterrânea original.
+  const area1FillLight = new THREE.HemisphereLight(0x829b8c, 0x273329, 0.16);
+  scene.add(area1FillLight);
   const r = rng(1337);
 
   // ---------- walkable space ----------
@@ -2733,6 +2738,7 @@ const leaveMine = () => {
     },
 
     update(dt, t) {
+      area1FillLight.visible = !mine.active;
       campfire.update(dt, t);
       forgeScene.update(dt, t, game.player?.pos);
       if (mine.active && !mine.loading) {
